@@ -144,7 +144,7 @@ Shapes:
   `type` is the upstream type, such as `PvP` or `pathOfLegend`. `gameModeName` is the display name, such as
   `Ladder`. The `mode` filter matches either one. In 2v2, `teamDeck` has 16 cards with the player's 8 first.
 - **byMode entry**: `{ type, mode, games, wins, losses, draws, winRate }`.
-- **byDeck entry**: `{ deckKey, cards, games, wins, losses, draws, winRate, avgElixir }`. `winRate` is 0 to 1.
+- **byDeck entry**: `{ deckKey, cards, games, wins, losses, draws, winRate, avgElixir, lastPlayed }`. `winRate` is 0 to 1; `lastPlayed` is the newest battle time with the deck.
 - **CollectionEntry**: `{ name, rarity, elixirCost, owned, level, maxLevel, count, countNeeded, goldNeeded,
   copiesToMax, goldToMax, upgradeReady, evolutionLevel, maxEvolutionLevel, kind }`. `level` is null for
   unowned cards. `count` is the copies held. `countNeeded` and `goldNeeded` are the cost of the next level,

@@ -26,7 +26,7 @@ The CR API key is bound to an IP allowlist. From a dev machine, create a key for
 ```
 src/
   server.ts            Entry: requires env, migrate(), card sync if empty, scheduler, Bun.serve, SIGTERM.
-  app.tsx              createApp(): static, csrf, authenticate, flash, registerRoutes, 404 + error handlers.
+  app.tsx              createApp(): static, HTML cache header, csrf, authenticate, flash, registerRoutes, 404 + error handlers.
   config.ts            `config` (zod-parsed env), requireEnv("CR_API_TOKEN").
   errors.ts            AppError(code, message, status, details?) + errorBody().
   types.ts             User, AuthMethod, Flash, AppEnv (use `new Hono<AppEnv>()` everywhere).
@@ -38,14 +38,19 @@ src/
   auth/                passwords, users, register, sessions, apiKeys, adminTokens, invites, middleware, crypto.
   repos/               Typed queries: players, battles, cards, decks, notes, syncRuns.
   sync/                syncPlayer, syncCards, syncAll, manualSync, trackPlayer, scheduler (index.ts re-exports).
-  http/                validate.ts (zod helpers), flash.ts, csrf.ts, currentPlayer.ts (header player switcher).
+  http/                validate.ts (zod helpers), flash.ts, csrf.ts, currentPlayer.ts (header player switcher),
+                       assets.ts (content-hashed /static URLs and their Cache-Control).
+  domain/              collection.ts (collection entries, sortCollection), upgradeTable.ts (copies/gold, upgradableNow),
+                       deckUsage.ts (saved vs used vs equipped decks), context.ts (AI context markdown).
   routes/index.ts      registerRoutes(app): THE place routers are mounted.
   routes/api/*.ts      JSON routers, mounted under /api.
   routes/pages/*.tsx   HTML routers, mounted under /.
   views/               Layout.tsx, render.tsx (renderPage), components.tsx, format.ts.
   cli/index.ts         bun run cli: migrate, invite, user (list|create|set-password|rename), admin-token create|list|revoke, player, sync, stats.
-public/                Served at /static/* (app.css dark theme; app.js: copy buttons, card image fallback, sync countdown,
-                       player menu keyboard support, clickable battle rows opening the detail in a <dialog>).
+public/                Served at /static/* (app.css dark theme; app.js: copy buttons, card image fallback, header sync
+                       spinner and cooldown countdown, player menu keyboard support, live filter forms, clickable
+                       battle rows opening the detail in a <dialog>). Reference files with assetUrl("app.css"):
+                       Cloudflare caches /static by URL, so only the ?v=<content hash> URL is sent as immutable.
 test/                  *.test.ts(x), helpers.ts, fixtures/{player,battlelog,chests,cards}.json.
 ```
 
@@ -197,7 +202,7 @@ Codes are 12 chars, case-insensitive.
 - `countBattles(tag, filter)`, `getBattle(tag, id) -> BattleRecord & { raw }`
 - `getBattleStats(tag, { sinceDays?, mode? }) -> { sinceDays, total, wins, losses, draws, winRate, netTrophies, byMode[], byDeck[] }`.
   Each byMode entry has `{ type, mode, games, wins, losses, draws, winRate }`. Each byDeck entry has
-  `{ deckKey, cards, games, wins, losses, draws, winRate, avgElixir | null }`. winRate is 0..1.
+  `{ deckKey, cards, games, wins, losses, draws, winRate, avgElixir | null, lastPlayed }`. winRate is 0..1.
 - `BattleRecord.teamDeck` / `opponentDeck` are `DeckCard[] = { id, name, level, evolutionLevel }`.
   `level` is already the in-game display level.
 - 2v2: `teamDeck` holds 16 cards with the tracked player's 8 first. `isTwoVsTwo` comes from the stored
@@ -249,7 +254,14 @@ The scheduler is in-process, so run exactly one app instance per database.
   the cookie is rewritten). Player pages call `resolvePlayer(c)`, which also honours `?tag=` from old links
   (404 for tags the user doesn't own) and remembers it. The switcher POSTs `{ tag, next }` to
   `/players/current`, which redirects to `safeNext(next)` minus `tag`/`page` (a battle detail goes to `/battles`).
-  Decks are per user, not per player; their level check uses the current player's collection.
+  Decks are per user, not per player; their level check uses the current player's collection. The Decks page
+  lists saved decks and the current player's used decks via `classifyDecks` (matched by card set, any order).
+- The header shows a sync button for the current player (POST `/players/:tag/sync` with `next`, redirecting
+  back there) and its last sync time; during the cooldown it renders disabled with `data-retry-after`.
+- HTML responses get `Cache-Control: private, no-cache` unless the route set one. Filter forms marked
+  `data-live-filter` apply without a submit button: app.js fetches the page with the new query and swaps
+  every `[data-live-swap]` element by id, then `history.replaceState`s the URL. Keep the form outside those
+  elements and put the no-JS submit button in `<noscript>`.
 - `BattleTable({ battles, catalog, empty })` in `battleTable.tsx` is the single battle list (dashboard and
   Battles page). Rows carry `data-href`; the time cell keeps the real link. `GET /battles/:tag/:id?partial=1`
   returns the detail body without Layout for the dialog; without JS the full page still works.

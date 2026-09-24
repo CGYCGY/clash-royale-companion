@@ -14,12 +14,15 @@ process in one Docker container.
 
 **Web pages**
 
-- A player switcher in the header: with several linked tags, every page shows the one you picked.
-- Dashboard with trophies, Path of Legend, recent form, and a manual sync button.
-- Battle history with filters; click a battle to see both decks in a dialog (or on its own page).
-- Card collection with levels, upgrade-ready cards, and the copies and gold needed for the next level and
-  for max level.
-- Deck builder with average elixir, and a level check against your collection.
+- A player switcher in the header: with several linked tags, every page shows the one you picked. Next to
+  it, a sync button and how long ago the current player last synced.
+- Dashboard with trophies, Path of Legend, recent form, and the current deck.
+- Battle history, 10 per page, with filters that apply as you change them; click a battle to see both
+  decks in a dialog (or on its own page).
+- Card collection with levels, live search and filters, sorting, and the copies and gold needed for the next
+  level and for max level. Upgrade-ready cards show how many levels the copies you hold cover right now.
+- Decks: your saved decks next to the decks the current player used in battles, with win rates, and the
+  equipped deck marked in use. Deck builder with average elixir and a level check against your collection.
 - Settings to link player tags, keep notes per player, manage API keys, and change your username or password.
 
 **JSON API** under `/api`
@@ -213,7 +216,7 @@ Any other agent can follow `.claude/skills/clash-royale-companion/SKILL.md` as p
 | `PORT` | `3000` | HTTP port. Keep `3000` in Docker. |
 | `SYNC_CRON` | `0 3 * * *` | Schedule for syncing all players, in the server's timezone. Daily at 03:00 by default. Use hourly (`0 * * * *`) if someone plays more than about 25 battles a day, since the API only keeps the last 25. |
 | `TZ` | `UTC` | Timezone for the cron schedule, e.g. `Asia/Kuala_Lumpur`. |
-| `SYNC_COOLDOWN_SECONDS` | `60` | Minimum gap between manual syncs of one player, from the dashboard button or the API. |
+| `SYNC_COOLDOWN_SECONDS` | `60` | Minimum gap between manual syncs of one player, from the header sync button or the API. |
 | `SNAPSHOT_KEEP_ALL_DAYS` | `0` (off) | Opt-in thinning. When above 0, snapshots older than this many days are reduced to one per UTC day. |
 | `SNAPSHOT_KEEP_DAILY_DAYS` | `0` (off) | Opt-in deletion. When above 0, snapshots older than this many days are deleted. |
 
