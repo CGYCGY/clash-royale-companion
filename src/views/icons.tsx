@@ -73,3 +73,25 @@ export const ArrowLeftIcon = () => (
     <path d="M19 12H5M12 19l-7-7 7-7" />
   </svg>
 );
+
+// lucide "refresh-cw"
+export const RefreshIcon = () => (
+  <svg {...svgProps} class="icon-refresh">
+    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+    <path d="M21 3v5h-5" />
+    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+    <path d="M8 16H3v5" />
+  </svg>
+);
+
+export const SortAscIcon = () => (
+  <svg {...svgProps} class="icon-sort" width="16" height="16">
+    <path d="M3 8l4-4 4 4M7 4v16M13 12h8M13 16h5M13 20h2" />
+  </svg>
+);
+
+export const SortDescIcon = () => (
+  <svg {...svgProps} class="icon-sort" width="16" height="16">
+    <path d="M3 16l4 4 4-4M7 20V4M13 4h8M13 8h5M13 12h2" />
+  </svg>
+);

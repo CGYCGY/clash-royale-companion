@@ -1,9 +1,6 @@
 import { z } from "zod";
-import { config } from "../../config";
 import { PasswordPolicyError } from "../../auth/passwordPolicy";
 import { AppError, type ErrorCode } from "../../errors";
-import type { PlayerRecord } from "../../repos/players";
-import { getLastSyncRun } from "../../repos/syncRuns";
 
 /** Form text field: missing becomes "", repeated keys fail validation. */
 export const text = z.string().default("");
@@ -41,14 +38,6 @@ export function safeNext(next: string | undefined): string {
   }
   if (url.origin !== "http://x") return "/";
   return url.pathname + url.search + url.hash;
-}
-
-/** Seconds until manualSync would accept a request; mirrors its cooldown rule for display. */
-export function syncCooldownRemaining(player: PlayerRecord, now: Date = new Date()): number {
-  const last = getLastSyncRun(player.tag)?.startedAt ?? player.lastSyncedAt;
-  if (!last) return 0;
-  const remaining = Math.ceil(config.SYNC_COOLDOWN_SECONDS - (now.getTime() - Date.parse(last)) / 1000);
-  return Math.max(0, remaining);
 }
 
 export const idParam = (raw: string): number => {

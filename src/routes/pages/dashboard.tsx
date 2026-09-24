@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { currentUser, requireUser } from "../../auth/middleware";
-import { normalizeTag, tagSlug } from "../../cr/tag";
+import { normalizeTag } from "../../cr/tag";
 import { afterSwitchPath, rememberPlayer, resolvePlayer } from "../../http/currentPlayer";
 import { setFlash } from "../../http/flash";
 import { parseForm } from "../../http/validate";
@@ -13,9 +13,9 @@ import type { AppEnv } from "../../types";
 import { BattleTable } from "../../views/battleTable";
 import { formatElixir, playerCardView } from "../../views/cardViews";
 import { CardIcon, DeckGrid, EmptyState, StatTile } from "../../views/components";
-import { formatDateTime, formatPercent, formatRelative, formatSigned } from "../../views/format";
+import { formatPercent, formatRelative, formatSigned } from "../../views/format";
 import { renderPage } from "../../views/render";
-import { safeNext, syncCooldownRemaining, text } from "./shared";
+import { safeNext, text } from "./shared";
 
 function PlayerHeader({ player, snapshot }: { player: PlayerRecord; snapshot: Snapshot }) {
   const p = snapshot.player;
@@ -69,12 +69,12 @@ function WindowTiles({ label, stats }: { label: string; stats: BattleStats }) {
   return (
     <>
       <StatTile
-        label={`${label} win rate`}
+        label={`${label} Win Rate`}
         value={stats.total ? formatPercent(stats.winRate) : "–"}
         hint={`${stats.wins}W ${stats.losses}L ${stats.draws}D`}
       />
-      <StatTile label={`${label} games`} value={stats.total} />
-      <StatTile label={`${label} trophies`} value={formatSigned(stats.netTrophies)} hint="ladder net" />
+      <StatTile label={`${label} Games`} value={stats.total} />
+      <StatTile label={`${label} Trophies`} value={formatSigned(stats.netTrophies)} hint="ladder net" />
     </>
   );
 }
@@ -89,7 +89,7 @@ function CurrentDeck({ snapshot }: { snapshot: Snapshot }) {
   );
   return (
     <section class="card">
-      <h2>Current deck</h2>
+      <h2>Current Deck</h2>
       {deck.length ? (
         <DeckGrid cards={deck.map((c) => playerCardView(c, catalog))} size="md" />
       ) : (
@@ -116,7 +116,7 @@ function Chests({ snapshot }: { snapshot: Snapshot }) {
   const items = snapshot.chests?.items ?? [];
   return (
     <section class="card">
-      <h2>Upcoming chests</h2>
+      <h2>Upcoming Chests</h2>
       {items.length ? (
         <ol class="chest-strip">
           {items.map((ch) => (
@@ -133,34 +133,6 @@ function Chests({ snapshot }: { snapshot: Snapshot }) {
   );
 }
 
-function SyncCard({ player }: { player: PlayerRecord }) {
-  const wait = syncCooldownRemaining(player);
-  return (
-    <section class="card">
-      <h2>Sync</h2>
-      <p>
-        Last synced:{" "}
-        {player.lastSyncedAt ? (
-          <span title={formatDateTime(player.lastSyncedAt)}>{formatRelative(player.lastSyncedAt)}</span>
-        ) : (
-          <span class="muted">never</span>
-        )}
-      </p>
-      {player.lastSyncError && <p class="error-text">Last error: {player.lastSyncError}</p>}
-      <form method="post" action={`/players/${tagSlug(player.tag)}/sync`}>
-        <button
-          type="submit"
-          disabled={wait > 0}
-          data-retry-after={wait > 0 ? String(wait) : undefined}
-          data-ready-label="Sync now"
-        >
-          {wait > 0 ? `Try again in ${wait}s` : "Sync now"}
-        </button>
-      </form>
-    </section>
-  );
-}
-
 export const dashboardPages = new Hono<AppEnv>()
   .use("/", requireUser)
   .use("/players/*", requireUser)
@@ -170,10 +142,10 @@ export const dashboardPages = new Hono<AppEnv>()
       return renderPage(
         c,
         { title: "Dashboard", active: "dashboard" },
-        <EmptyState title="No players linked yet">
+        <EmptyState title="No Players Linked Yet">
           <p class="muted">Link your Clash Royale player tag to start syncing battles.</p>
           <a class="btn" href="/settings">
-            Link a player
+            Link a Player
           </a>
         </EmptyState>,
       );
@@ -206,21 +178,21 @@ export const dashboardPages = new Hono<AppEnv>()
         )}
         <section>
           <div class="row section-head">
-            <h2>Recent battles</h2>
+            <h2>Recent Battles</h2>
             <div class="spacer" />
             <a class="btn btn-secondary btn-small" href="/battles">
-              All battles
+              All Battles
             </a>
           </div>
           <BattleTable battles={battles} catalog={catalog} empty="No battles stored yet." />
         </section>
-        <SyncCard player={player} />
       </div>,
     );
   })
   .post("/players/:tag/sync", async (c) => {
     const tag = normalizeTag(c.req.param("tag"));
     assertPlayerOwnedBy(tag, currentUser(c).id);
+    const { next } = await parseForm(c, z.object({ next: text }));
     const r = await manualSync(tag);
     if (r.ok) {
       setFlash(c, "success", `Synced, ${r.battlesAdded} new battle${r.battlesAdded === 1 ? "" : "s"}.`);
@@ -230,7 +202,7 @@ export const dashboardPages = new Hono<AppEnv>()
       setFlash(c, "error", `Sync failed: ${r.error}`);
     }
     rememberPlayer(c, tag);
-    return c.redirect("/");
+    return c.redirect(safeNext(next));
   })
   .post("/players/current", async (c) => {
     const form = await parseForm(c, z.object({ tag: text, next: text }));

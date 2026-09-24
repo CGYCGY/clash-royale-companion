@@ -61,8 +61,8 @@ describe("current player", () => {
     const lonely = cookieFor(makeUser("lonely"));
     const res = await env.app.request("/", { headers: { Cookie: `${lonely}; cr_player=${ALT}` } });
     const html = await res.text();
-    expect(html).toContain("No players linked yet");
-    expect(html).toContain(">Add a player<");
+    expect(html).toContain("No Players Linked Yet");
+    expect(html).toContain(">Add a Player<");
     expect(res.headers.getSetCookie().join()).toMatch(/cr_player=;.*Max-Age=0/);
   });
 
@@ -148,10 +148,10 @@ describe("header", () => {
     expect(html).toMatch(/<button type="submit" name="tag" value="9QJUGC2R" class="menu-item" aria-current="true"/);
     expect(html).toMatch(/<button type="submit" name="tag" value="PYVJ98G2" class="menu-item" data-menu-item/);
     expect(html).toContain("Signed in as <strong>alice</strong>");
-    expect(html).toContain('href="/settings#players" data-menu-item="link">Manage players</a>');
+    expect(html).toContain('href="/settings#players" data-menu-item="link">Manage Players</a>');
     expect(html).toMatch(/<a href="\/settings" class="icon-btn" aria-label="Settings" title="Settings"><svg/);
     expect(html).toMatch(
-      /<form method="post" action="\/logout" class="inline"><button type="submit" class="icon-btn" aria-label="Log out" title="Log out"><svg/,
+      /<form method="post" action="\/logout" class="logout-form"><button type="submit" class="icon-btn" aria-label="Log Out" title="Log Out"><svg/,
     );
     // Settings is no longer a text nav link.
     expect(html).not.toMatch(/<nav class="nav"[^]*?>Settings<\/a>[^]*?<\/nav>/);

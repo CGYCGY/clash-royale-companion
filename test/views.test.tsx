@@ -28,7 +28,7 @@ describe("card icon fallback", () => {
     const css = asset("app.css");
     const js = asset("app.js");
     expect(js).toContain('getElementById("battle-modal-template")');
-    expect(js).toContain('"tr.battle-row[data-href]"');
+    expect(js).toContain("tr.battle-row[data-href]");
     expect(js).toContain('"a.row-link"');
     expect(js).toContain("?partial=1");
     expect(js).toContain('"details.player-menu"');

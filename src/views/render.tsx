@@ -1,7 +1,8 @@
 import type { Context } from "hono";
 import type { Child } from "hono/jsx";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
-import { playerContext } from "../http/currentPlayer";
+import { type PlayerContext, playerContext } from "../http/currentPlayer";
+import { syncCooldownRemaining } from "../sync/manualSync";
 import type { AppEnv } from "../types";
 import { Layout, NAV_HREF, type NavKey } from "./Layout";
 
@@ -26,6 +27,14 @@ function headerPlayers(c: Context<AppEnv>) {
   }
 }
 
+function syncWaitFor(player: NonNullable<PlayerContext["current"]>): number {
+  try {
+    return syncCooldownRemaining(player);
+  } catch {
+    return 0;
+  }
+}
+
 /** Renders `content` inside Layout with the current user, flash, and header player switcher. */
 export function renderPage(
   c: Context<AppEnv>,
@@ -34,13 +43,15 @@ export function renderPage(
 ) {
   const user = c.var.user ?? null;
   const status = opts.status ?? 200;
+  const players = user ? headerPlayers(c) : null;
   return c.html(
     <Layout
       title={opts.title}
       user={user}
       flash={c.var.flash ?? null}
       active={opts.active}
-      players={user ? headerPlayers(c) : null}
+      players={players}
+      syncWait={players?.current ? syncWaitFor(players.current) : 0}
       next={returnPath(c, opts.active, status)}
     >
       {content}

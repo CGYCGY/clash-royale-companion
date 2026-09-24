@@ -1,9 +1,12 @@
 import { raw } from "hono/html";
 import type { Child } from "hono/jsx";
 import { tagSlug } from "../cr/tag";
+import { assetUrl } from "../http/assets";
 import type { PlayerContext } from "../http/currentPlayer";
 import type { Flash, User } from "../types";
-import { CheckIcon, ChevronDownIcon, CloseIcon, GearIcon, LogOutIcon } from "./icons";
+import type { PlayerRecord } from "../repos/players";
+import { formatDateTime, formatRelative } from "./format";
+import { CheckIcon, ChevronDownIcon, CloseIcon, GearIcon, LogOutIcon, RefreshIcon } from "./icons";
 
 export type NavKey = "dashboard" | "battles" | "collection" | "decks" | "settings";
 
@@ -32,9 +35,50 @@ export interface LayoutProps {
   active?: NavKey;
   /** Linked players for the header switcher; null when signed out. */
   players?: PlayerContext | null;
-  /** Where the switcher sends the browser back to after changing player. */
+  /** Where the switcher and sync button send the browser back to. */
   next?: string;
+  /** Seconds left on the current player's manual-sync cooldown. */
+  syncWait?: number;
   children?: Child;
+}
+
+const SYNC_READY_LABEL = "Sync Now";
+
+/** A plain POST form, so it works without JS; app.js adds the spinner and the cooldown countdown. */
+function SyncControl({ player, wait, next }: { player: PlayerRecord; wait: number; next: string }) {
+  const label = wait > 0 ? `Sync available in ${wait}s` : SYNC_READY_LABEL;
+  const failed = player.lastSyncError !== null;
+  return (
+    <form method="post" action={`/players/${tagSlug(player.tag)}/sync`} class="sync-form">
+      <input type="hidden" name="next" value={next} />
+      <button
+        type="submit"
+        class="icon-btn sync-btn"
+        aria-label={label}
+        title={label}
+        aria-describedby="sync-time"
+        disabled={wait > 0}
+        data-retry-after={wait > 0 ? String(wait) : undefined}
+        data-ready-label={SYNC_READY_LABEL}
+      >
+        <RefreshIcon />
+      </button>
+      {player.lastSyncedAt ? (
+        <time
+          id="sync-time"
+          class={`sync-time${failed ? " sync-failed" : ""}`}
+          datetime={player.lastSyncedAt}
+          title={`Last synced ${formatDateTime(player.lastSyncedAt)}${failed ? `. Last attempt failed: ${player.lastSyncError}` : ""}`}
+        >
+          {formatRelative(player.lastSyncedAt)}
+        </time>
+      ) : (
+        <span id="sync-time" class={`sync-time${failed ? " sync-failed" : ""}`} title={failed ? `Sync failed: ${player.lastSyncError}` : "Never synced"}>
+          never
+        </span>
+      )}
+    </form>
+  );
 }
 
 /**
@@ -46,7 +90,7 @@ function PlayerMenu({ ctx, username, next }: { ctx: PlayerContext; username: str
   if (!current) {
     return (
       <a class="player-trigger" href="/settings#players" title={`Signed in as ${username}`}>
-        <span class="player-trigger-name">Add a player</span>
+        <span class="player-trigger-name">Add a Player</span>
       </a>
     );
   }
@@ -86,14 +130,14 @@ function PlayerMenu({ ctx, username, next }: { ctx: PlayerContext; username: str
           Signed in as <strong>{username}</strong>
         </p>
         <a class="menu-item" href="/settings#players" data-menu-item="link">
-          Manage players
+          Manage Players
         </a>
       </div>
     </details>
   );
 }
 
-export function Layout({ title, user, flash, active, players, next = "/", children }: LayoutProps) {
+export function Layout({ title, user, flash, active, players, next = "/", syncWait = 0, children }: LayoutProps) {
   return (
     <>
       {raw("<!doctype html>")}
@@ -103,13 +147,13 @@ export function Layout({ title, user, flash, active, players, next = "/", childr
           <meta name="viewport" content="width=device-width, initial-scale=1" />
           <meta name="color-scheme" content="dark" />
           <title>{`${title} · ${APP_NAME}`}</title>
-          <link rel="stylesheet" href="/static/app.css" />
-          <script src="/static/app.js" defer></script>
+          <link rel="stylesheet" href={assetUrl("app.css")} />
+          <script src={assetUrl("app.js")} defer></script>
         </head>
         <body>
           <header class="topbar">
-            <a class="brand" href="/">
-              {APP_NAME}
+            <a class="brand" href="/" aria-label={APP_NAME}>
+              CR<span class="brand-rest"> Companion</span>
             </a>
             {user && (
               <nav class="nav" aria-label="Main">
@@ -127,6 +171,7 @@ export function Layout({ title, user, flash, active, players, next = "/", childr
             <div class="account">
               {user ? (
                 <>
+                  {players?.current && <SyncControl player={players.current} wait={syncWait} next={next} />}
                   {players && <PlayerMenu ctx={players} username={user.username} next={next} />}
                   <a
                     href="/settings"
@@ -138,15 +183,15 @@ export function Layout({ title, user, flash, active, players, next = "/", childr
                     <GearIcon />
                   </a>
                   {/* Logout is POST so a cross-site link can't sign the user out. */}
-                  <form method="post" action="/logout" class="inline">
-                    <button type="submit" class="icon-btn" aria-label="Log out" title="Log out">
+                  <form method="post" action="/logout" class="logout-form">
+                    <button type="submit" class="icon-btn" aria-label="Log Out" title="Log Out">
                       <LogOutIcon />
                     </button>
                   </form>
                 </>
               ) : (
                 <a class="btn btn-secondary btn-small" href="/login">
-                  Log in
+                  Log In
                 </a>
               )}
             </div>
@@ -167,7 +212,7 @@ export function Layout({ title, user, flash, active, players, next = "/", childr
                   <span class="modal-title">Battle</span>
                   <div class="spacer" />
                   <a class="btn btn-ghost btn-small modal-full" href="#">
-                    Open full page
+                    Open Full Page
                   </a>
                   <button type="button" class="icon-btn modal-close" aria-label="Close" title="Close">
                     <CloseIcon />
