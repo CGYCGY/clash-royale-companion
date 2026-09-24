@@ -240,7 +240,30 @@ export const collectionPages = new Hono<AppEnv>().use("/collection/*", requireUs
           <label for="q">Search</label>
           <input type="search" id="q" name="q" value={f.q} placeholder="Card name" autocomplete="off" />
         </div>
-        <div class="field">
+        <div class="filter-checks">
+          <label class="check">
+            <input type="checkbox" name="ready" value="1" checked={onlyReady} /> Upgrade Ready
+          </label>
+          <label class="check">
+            <input type="checkbox" name="missing" value="1" checked={onlyMissing} /> Missing
+          </label>
+        </div>
+        <div class="filter-actions">
+          <noscript>
+            <button type="submit">Apply</button>
+          </noscript>
+          <a
+            id="collection-clear"
+            class="btn btn-ghost"
+            href={collectionHref(f, { q: "", ready: undefined, missing: undefined })}
+            data-live-clear
+            data-live-swap
+            hidden={!filtered}
+          >
+            Clear
+          </a>
+        </div>
+        <div class="field field-sort">
           <label for="sort">Sort By</label>
           <div class="sort-control">
             <select id="sort" name="sort">
@@ -266,29 +289,6 @@ export const collectionPages = new Hono<AppEnv>().use("/collection/*", requireUs
               <span>{order === "asc" ? "Asc" : "Desc"}</span>
             </a>
           </div>
-        </div>
-        <div class="filter-checks">
-          <label class="check">
-            <input type="checkbox" name="ready" value="1" checked={onlyReady} /> Upgrade Ready
-          </label>
-          <label class="check">
-            <input type="checkbox" name="missing" value="1" checked={onlyMissing} /> Missing
-          </label>
-        </div>
-        <div class="filter-actions">
-          <noscript>
-            <button type="submit">Apply</button>
-          </noscript>
-          <a
-            id="collection-clear"
-            class="btn btn-ghost"
-            href={collectionHref(f, { q: "", ready: undefined, missing: undefined })}
-            data-live-clear
-            data-live-swap
-            hidden={!filtered}
-          >
-            Clear
-          </a>
         </div>
       </form>
 

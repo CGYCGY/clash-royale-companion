@@ -1395,9 +1395,16 @@ body.modal-open {
 .filters .field-search {
   flex: 1 1 200px;
 }
-.filters .field:has(.sort-control) {
+.filters .field-sort {
   max-width: 330px;
   flex: 1 1 260px;
+  margin-left: auto;
+}
+/* Once it wraps onto its own line, pushing it right just leaves a gap on the left. */
+@media (max-width: 720px) {
+  .filters .field-sort {
+    margin-left: 0;
+  }
 }
 
 /* Upgrade-ready strip on Collection */
