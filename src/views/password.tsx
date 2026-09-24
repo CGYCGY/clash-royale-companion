@@ -1,7 +1,6 @@
 import { PASSWORD_MAX, PASSWORD_MIN, passwordPolicyClientConfig } from "../auth/passwordPolicy";
 import { EyeIcon, EyeOffIcon } from "./icons";
 
-
 interface PasswordInputProps {
   id: string;
   name: string;
@@ -31,9 +30,14 @@ export function PasswordInput({ id, name, autocomplete, policy, describedby, aut
         spellcheck={false}
         autocapitalize="off"
       />
-      <button type="button" class="input-btn password-toggle" aria-label="Show password" aria-pressed="false" aria-controls={id} hidden>
-        <EyeIcon />
-        <EyeOffIcon />
+      {/* One icon at a time: app.js flips the two spans' `hidden` along with aria-pressed. */}
+      <button type="button" class="input-btn password-toggle" aria-label="Show Password" title="Show Password" aria-pressed="false" aria-controls={id} hidden>
+        <span class="icon-slot" data-show-icon>
+          <EyeIcon />
+        </span>
+        <span class="icon-slot" data-hide-icon hidden>
+          <EyeOffIcon />
+        </span>
       </button>
     </div>
   );

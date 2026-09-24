@@ -17,7 +17,7 @@ import { trackPlayer } from "../../sync";
 import type { AppEnv } from "../../types";
 import { Table } from "../../views/components";
 import { formatDateTime, formatRelative } from "../../views/format";
-import { CheckIcon, CopyIcon } from "../../views/icons";
+import { CheckIcon, ChevronDownIcon, CopyIcon } from "../../views/icons";
 import { PasswordChecklist, PasswordInput, PasswordMatch } from "../../views/password";
 import { renderPage } from "../../views/render";
 import { formError, formErrors, idParam, text } from "./shared";
@@ -77,13 +77,13 @@ function renderSettings(
       <h1>Settings</h1>
 
       <section class="card" id="players">
-        <h2>Linked players</h2>
+        <h2>Linked Players</h2>
         <Table
           columns={[
             { label: "Name", render: (p) => p.name || <span class="muted">unknown</span> },
             { label: "Tag", render: (p) => <code>{p.tag}</code> },
             {
-              label: "Last synced",
+              label: "Last Synced",
               render: (p) =>
                 p.lastSyncedAt ? (
                   <span title={formatDateTime(p.lastSyncedAt)}>{formatRelative(p.lastSyncedAt)}</span>
@@ -92,7 +92,7 @@ function renderSettings(
                 ),
             },
             {
-              label: "Last error",
+              label: "Last Error",
               render: (p) => (p.lastSyncError ? <span class="error-text">{p.lastSyncError}</span> : <span class="muted">–</span>),
             },
             {
@@ -120,7 +120,7 @@ function renderSettings(
             <label for="tag">Add a player tag</label>
             <input type="text" id="tag" name="tag" placeholder="#9QJUGC2R" autocomplete="off" required />
           </div>
-          <button type="submit">Add player</button>
+          <button type="submit">Add Player</button>
         </form>
         <ErrorText message={errors.player} />
         <p class="help">Find your tag under your name in the in-game profile. The first sync runs right away.</p>
@@ -128,7 +128,7 @@ function renderSettings(
 
       {players.length > 0 && (
         <section class="card" id="notes">
-          <h2>Player notes</h2>
+          <h2>Player Notes</h2>
           <p class="help">Free text the AI will see: budget, pass status, goals, playstyle.</p>
           {players.map((p) => {
             const notes = getNotes(p.tag);
@@ -142,7 +142,7 @@ function renderSettings(
                 </textarea>
                 <div class="row">
                   <button type="submit" class="btn-secondary">
-                    Save notes
+                    Save Notes
                   </button>
                   {notes && <span class="muted small">Updated {formatRelative(notes.updatedAt)}</span>}
                 </div>
@@ -153,7 +153,7 @@ function renderSettings(
       )}
 
       <section class="card" id="keys">
-        <h2>API keys</h2>
+        <h2>API Keys</h2>
         <p>
           Give this key to your AI assistant. Base URL: <code>{base}</code>
         </p>
@@ -173,7 +173,7 @@ function renderSettings(
                 spellcheck={false}
                 data-autocopy
               />
-              <button type="button" class="input-btn copy-key" aria-label="Copy API key" aria-controls="new-api-key" hidden>
+              <button type="button" class="input-btn copy-key" aria-label="Copy API Key" aria-controls="new-api-key" hidden>
                 <CopyIcon />
                 <CheckIcon />
               </button>
@@ -187,7 +187,7 @@ function renderSettings(
             { label: "Prefix", render: (k) => <code>{k.keyPrefix}…</code> },
             { label: "Created", render: (k) => <span title={formatDateTime(k.createdAt)}>{formatRelative(k.createdAt)}</span> },
             {
-              label: "Last used",
+              label: "Last Used",
               render: (k) => (k.lastUsedAt ? formatRelative(k.lastUsedAt) : <span class="muted">never</span>),
             },
             {
@@ -215,7 +215,7 @@ function renderSettings(
             <label for="key-name">New key name</label>
             <input type="text" id="key-name" name="name" placeholder="e.g. Claude" maxlength={64} required />
           </div>
-          <button type="submit">Create key</button>
+          <button type="submit">Create Key</button>
         </form>
         <ErrorText message={errors.key} />
       </section>
@@ -254,33 +254,40 @@ function renderSettings(
           </div>
           <ErrorText message={errors.username} />
           <div class="field">
-            <button type="submit">Change username</button>
+            <button type="submit">Change Username</button>
           </div>
         </form>
       </section>
 
       <section class="card" id="account">
         <h2>Password</h2>
-        <form method="post" action="/settings/password" class="form-narrow">
-          <div class="field">
-            <label for="current">Current password</label>
-            <PasswordInput id="current" name="current" autocomplete="current-password" />
-          </div>
-          <div class="field">
-            <label for="new-password">New password</label>
-            <PasswordInput id="new-password" name="password" autocomplete="new-password" policy describedby="new-password-rules" />
-            <PasswordChecklist id="new-password-rules" passwordId="new-password" username={user.username} />
-          </div>
-          <div class="field">
-            <label for="confirm">Confirm new password</label>
-            <PasswordInput id="confirm" name="confirm" autocomplete="new-password" describedby="confirm-match" />
-            <PasswordMatch id="confirm-match" passwordId="new-password" confirmId="confirm" />
-          </div>
-          <ErrorText message={errors.password} />
-          <div class="field">
-            <button type="submit">Change password</button>
-          </div>
-        </form>
+        {/* Collapsed until asked for; re-rendered open when the submission had errors so they're visible. */}
+        <details class="disclosure" open={errors.password !== undefined}>
+          <summary class="btn btn-secondary">
+            Change Password
+            <ChevronDownIcon />
+          </summary>
+          <form method="post" action="/settings/password" class="form-narrow disclosure-body">
+            <div class="field">
+              <label for="current">Current password</label>
+              <PasswordInput id="current" name="current" autocomplete="current-password" />
+            </div>
+            <div class="field">
+              <label for="new-password">New password</label>
+              <PasswordInput id="new-password" name="password" autocomplete="new-password" policy describedby="new-password-rules" />
+              <PasswordChecklist id="new-password-rules" passwordId="new-password" username={user.username} />
+            </div>
+            <div class="field">
+              <label for="confirm">Confirm new password</label>
+              <PasswordInput id="confirm" name="confirm" autocomplete="new-password" describedby="confirm-match" />
+              <PasswordMatch id="confirm-match" passwordId="new-password" confirmId="confirm" />
+            </div>
+            <ErrorText message={errors.password} />
+            <div class="field">
+              <button type="submit">Change Password</button>
+            </div>
+          </form>
+        </details>
       </section>
     </div>,
   );

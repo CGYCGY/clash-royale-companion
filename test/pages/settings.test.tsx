@@ -66,7 +66,7 @@ describe("settings page", () => {
     const first = await follow(env.app, created, cookie);
     const html = await first.text();
     const shown = /<input[^>]*id="new-api-key"[^>]*value="(crk_[A-Za-z0-9_-]+)"[^>]*readonly/.exec(html)?.[1];
-    expect(html).toContain('aria-label="Copy API key"');
+    expect(html).toContain('aria-label="Copy API Key"');
     expect(shown).toBeDefined();
     expect(shown!.startsWith(key!.keyPrefix)).toBe(true);
     expect(html).toContain("http://localhost/api");
@@ -112,6 +112,29 @@ describe("settings page", () => {
     const removed = await env.app.request("/settings/players/9QJUGC2R/remove", formPost(cookie, {}));
     expect(removed.status).toBe(302);
     expect(listPlayersForUser(user.id)).toHaveLength(0);
+  });
+
+  test("Change Password is collapsed until opened, and re-renders open with its errors", async () => {
+    const html = await (await env.app.request("/settings", { headers: { Cookie: cookie } })).text();
+    expect(html).toMatch(/<details class="disclosure"><summary class="btn btn-secondary">Change Password<svg/);
+    expect(html).toContain('<form method="post" action="/settings/password" class="form-narrow disclosure-body">');
+
+    const failed = await env.app.request("/settings/password", formPost(cookie, { current: "x", password: "a", confirm: "b" }));
+    expect(failed.status).toBe(400);
+    const failedHtml = await failed.text();
+    expect(failedHtml).toContain('<details class="disclosure" open="">');
+    expect(failedHtml).toContain("New passwords don&#39;t match.");
+
+    // Another section's error leaves it collapsed.
+    const keyError = await (await env.app.request("/settings/keys", formPost(cookie, { name: "" }))).text();
+    expect(keyError).toContain('<details class="disclosure">');
+  });
+
+  test("password fields ship one visible eye icon; the eye-off one starts hidden", async () => {
+    const html = await (await env.app.request("/settings", { headers: { Cookie: cookie } })).text();
+    expect(html).toMatch(
+      /<button type="button" class="input-btn password-toggle" aria-label="Show Password" title="Show Password" aria-pressed="false" aria-controls="current" hidden=""><span class="icon-slot" data-show-icon="true"><svg[^>]*class="icon-eye"[^]*?<\/span><span class="icon-slot" data-hide-icon="true" hidden=""><svg[^>]*class="icon-eye-off"/,
+    );
   });
 
   test("change password validates and rotates sessions", async () => {

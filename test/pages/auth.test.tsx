@@ -30,7 +30,7 @@ describe("auth pages", () => {
     const dash = await env.app.request("/", { headers: { Cookie: cookies } });
     expect(dash.status).toBe(200);
     const html = await dash.text();
-    expect(html).toContain("No players linked yet");
+    expect(html).toContain("No Players Linked Yet");
     expect(html).toContain("newuser");
   });
 
@@ -96,7 +96,7 @@ describe("auth pages", () => {
     expect(html).toContain('data-policy="');
     expect(html).toContain("12–128 characters");
     expect(html.match(/class="input-btn password-toggle"/g)).toHaveLength(2);
-    expect(html).toContain('aria-label="Show password"');
+    expect(html).toContain('aria-label="Show Password"');
     const login = await (await env.app.request("/login")).text();
     expect(login.match(/class="input-btn password-toggle"/g)).toHaveLength(1);
     expect(login).not.toContain("minlength");

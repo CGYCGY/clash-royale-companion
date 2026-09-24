@@ -30,7 +30,7 @@ function ErrorBox({ messages = [] }: { messages?: string[] }) {
 function LoginForm({ username = "", next = "/", error }: { username?: string; next?: string; error?: string }) {
   return (
     <div class="card form-narrow auth-card">
-      <h1>Log in</h1>
+      <h1>Log In</h1>
       <ErrorBox messages={error ? [error] : []} />
       <form method="post" action="/login">
         <input type="hidden" name="next" value={next} />
@@ -43,7 +43,7 @@ function LoginForm({ username = "", next = "/", error }: { username?: string; ne
           <PasswordInput id="password" name="password" autocomplete="current-password" />
         </div>
         <div class="field">
-          <button type="submit">Log in</button>
+          <button type="submit">Log In</button>
         </div>
       </form>
       <p class="muted">
@@ -56,7 +56,7 @@ function LoginForm({ username = "", next = "/", error }: { username?: string; ne
 function RegisterForm({ username = "", invite = "", errors }: { username?: string; invite?: string; errors?: string[] }) {
   return (
     <div class="card form-narrow auth-card">
-      <h1>Create account</h1>
+      <h1>Create Account</h1>
       <ErrorBox messages={errors} />
       <form method="post" action="/register">
         <div class="field">
@@ -79,7 +79,7 @@ function RegisterForm({ username = "", invite = "", errors }: { username?: strin
           <input type="text" id="invite" name="invite" value={invite} autocomplete="off" required />
         </div>
         <div class="field">
-          <button type="submit">Create account</button>
+          <button type="submit">Create Account</button>
         </div>
       </form>
       <p class="muted">
@@ -95,14 +95,14 @@ const registerSchema = z.object({ username: text, password: text, confirm: text,
 export const authPages = new Hono<AppEnv>()
   .get("/login", (c) => {
     if (c.var.user) return c.redirect("/");
-    return renderPage(c, { title: "Log in" }, <LoginForm next={safeNext(c.req.query("next"))} />);
+    return renderPage(c, { title: "Log In" }, <LoginForm next={safeNext(c.req.query("next"))} />);
   })
   .post("/login", async (c) => {
     let form: z.infer<typeof loginSchema>;
     try {
       form = await parseForm(c, loginSchema);
     } catch (err) {
-      return renderPage(c, { title: "Log in", status: 400 }, <LoginForm error={formError(err)} />);
+      return renderPage(c, { title: "Log In", status: 400 }, <LoginForm error={formError(err)} />);
     }
     const next = safeNext(form.next);
     // Usernames are stored lowercased; verifyCredentials only trims.
@@ -110,7 +110,7 @@ export const authPages = new Hono<AppEnv>()
     if (!user) {
       return renderPage(
         c,
-        { title: "Log in", status: 401 },
+        { title: "Log In", status: 401 },
         <LoginForm username={form.username} next={next} error="Wrong username or password." />,
       );
     }
@@ -119,7 +119,7 @@ export const authPages = new Hono<AppEnv>()
   })
   .get("/register", (c) => {
     if (c.var.user) return c.redirect("/");
-    return renderPage(c, { title: "Create account" }, <RegisterForm invite={c.req.query("invite") ?? ""} />);
+    return renderPage(c, { title: "Create Account" }, <RegisterForm invite={c.req.query("invite") ?? ""} />);
   })
   .post("/register", async (c) => {
     let form: z.infer<typeof registerSchema> | undefined;
@@ -128,7 +128,7 @@ export const authPages = new Hono<AppEnv>()
       if (form.password !== form.confirm) {
         return renderPage(
           c,
-          { title: "Create account", status: 400 },
+          { title: "Create Account", status: 400 },
           <RegisterForm username={form.username} invite={form.invite} errors={["Passwords don't match."]} />,
         );
       }
@@ -147,7 +147,7 @@ export const authPages = new Hono<AppEnv>()
       });
       return renderPage(
         c,
-        { title: "Create account", status: 400 },
+        { title: "Create Account", status: 400 },
         <RegisterForm username={form?.username} invite={form?.invite} errors={errors} />,
       );
     }
