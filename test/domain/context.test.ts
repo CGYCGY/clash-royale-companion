@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from "bun:test";
-import type { Player, UpcomingChests } from "../../src/cr/types";
+import type { Player } from "../../src/cr/types";
 import { buildCollection } from "../../src/domain/collection";
 import { renderContextMarkdown } from "../../src/domain/context";
 import { copiesForNextLevel, copiesToMax, goldForNextLevel, goldToMax } from "../../src/domain/upgradeTable";
@@ -99,7 +99,6 @@ describe("renderContextMarkdown", () => {
     expect(headings).toEqual([
       "Profile",
       "Current deck",
-      "Upcoming chests",
       "Recent performance",
       "Last battles",
       "Collection",
@@ -111,12 +110,20 @@ describe("renderContextMarkdown", () => {
     expect(md).toContain("card levels are in-game display levels");
     expect(md).toContain("App: https://cr.example.com/?tag=9QJUGC2R");
     expect(md).toContain("| The Log | 13 |");
+    expect(md).toContain("- King Tower level: 15 (next level needs 14 cards at level 15+, has 3; tower troops don't count)");
+    expect(md).toContain("- Collection level: 546 (");
+    expect(md).toContain("- Current streak: 3 wins in a row");
+    expect(md).not.toContain("Exp level");
+    expect(md).toContain("| Musketeer | 14 | Evo + Hero | 4 |");
+    expect(md).toContain("| Ice Golem | 14 | Hero | 2 |");
     expect(md).toContain("Tower troop: Tower Princess (level 14)");
     expect(md).toContain("- Last 7 days: 10 battles");
-    expect(md).toContain("| Path of Legend (Ranked1v1_NewArena2) | 3 | 2-0-1 | 67% |");
-    expect(md).toMatch(/\| Path of Legend \| draw \| 1-1 \| Pekka Pete \|/);
+    expect(md).toContain("| Ranked | 3 | 2-0-1 | 67% |");
+    expect(md).toMatch(/\| Ranked \| draw \| 1-1 \| Pekka Pete \|/);
+    expect(md).toContain("| Trophy Road | win | 3-1 | BaitMaster |");
     expect(md).toContain("- Electro Wizard 13 → 14 (768/12 cards, 60,000 gold)");
-    expect(md).toContain("| Knight | 14/16 | 102/5500 | 90,000 | 1/1 |");
+    expect(md).toContain("| Knight | 14/16 | 102/5500 | 90,000 | Evo, Hero (not owned) |");
+    expect(md).toContain("| Musketeer | 14/16 | 799/1000 | 90,000 | Evo, Hero |");
     expect(md).toContain("Gold to max: current deck 1,560,000, all owned cards 9,370,000.");
     expect(md).toContain("Card levels cap at 16. Elite Wild Cards no longer exist");
     expect(md).toContain("Missing cards: Mirror, Archer Queen");
@@ -127,8 +134,7 @@ describe("renderContextMarkdown", () => {
     expect(md).not.toContain("x".repeat(301));
     expect(md).toContain("> ## Budget\n> F2P, no pass this season.");
     expect(md).toContain("Snapshot age: 0 min");
-    const chests = loadFixture<UpcomingChests>("chests");
-    expect(md).toContain(`+0: ${chests.items[0]!.name}`);
+    expect(md).not.toMatch(/upcoming chests|silver chest/i);
     const battleRows = md.split("## Last battles")[1]!.split("## Collection")[0]!.split("\n").filter((l) => /^\| \d{4}-/.test(l));
     expect(md).toContain("| Opponent | Own deck | Opponent deck |");
     const hog = "Hog Rider, Musketeer, Ice Golem, Ice Spirit, Skeletons, Cannon, Fireball, The Log";
@@ -145,11 +151,16 @@ describe("renderContextMarkdown", () => {
     const player = addPlayer(user.id, FIXTURE_TAG, "Sparky");
     const empty = getBattleStats(FIXTURE_TAG, { sinceDays: 7 });
     const now = new Date("2026-09-25T12:00:00.000Z");
+    const {
+      kingTowerLevel: _kt,
+      collectionLevel: _cl,
+      currentWinLoseStreak: _ws,
+      ...beforeCollectionLevels
+    } = loadFixture<Player>("player");
     const md = renderContextMarkdown({
       player,
       snapshot: {
-        player: loadFixture<Player>("player"),
-        chests: null,
+        player: beforeCollectionLevels,
         fetchedAt: "2026-09-01T08:00:00.000Z",
         lastSeenAt: "2026-09-25T11:50:00.000Z",
       },
@@ -163,6 +174,9 @@ describe("renderContextMarkdown", () => {
     });
     expect(md).toContain("snapshot: 2026-09-25 11:50 UTC (unchanged since 2026-09-01 08:00 UTC)");
     expect(md).toContain("Snapshot age: 10 min");
+    expect(md).toContain("- King Tower level: unknown (snapshot predates the field)");
+    expect(md).not.toContain("Collection level");
+    expect(md).not.toContain("Current streak");
   });
 
   test("handles a player that has never synced", () => {

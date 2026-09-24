@@ -2,11 +2,12 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { currentUser, requireUser } from "../../auth/middleware";
 import { normalizeTag } from "../../cr/tag";
+import { nextKingTower } from "../../domain/kingTower";
 import { afterSwitchPath, rememberPlayer, resolvePlayer } from "../../http/currentPlayer";
 import { setFlash } from "../../http/flash";
 import { parseForm } from "../../http/validate";
 import { averageElixir, type BattleStats, getBattleStats, listBattles } from "../../repos/battles";
-import { cardsMap } from "../../repos/cards";
+import { cardsById, cardsMap } from "../../repos/cards";
 import { assertPlayerOwnedBy, getLatestSnapshot, type PlayerRecord, type Snapshot } from "../../repos/players";
 import { manualSync } from "../../sync";
 import type { AppEnv } from "../../types";
@@ -26,7 +27,8 @@ function PlayerHeader({ player, snapshot }: { player: PlayerRecord; snapshot: Sn
         <div>
           <h1 class="player-name">{p.name}</h1>
           <div class="muted">
-            {player.tag} · King level {p.expLevel}
+            {/* Not expLevel: XP was removed on 2026-05-26 and that field is frozen. */}
+            {player.tag} · King Tower {p.kingTowerLevel ?? "—"}
           </div>
         </div>
         <div class="spacer" />
@@ -48,7 +50,8 @@ function PlayerHeader({ player, snapshot }: { player: PlayerRecord; snapshot: Sn
           <dd>{p.clan ? p.clan.name : <span class="muted">none</span>}</dd>
         </div>
         <div>
-          <dt>Path of Legend</dt>
+          {/* The API still calls Ranked "Path of Legend". */}
+          <dt>Ranked</dt>
           <dd>
             {pol ? (
               <>
@@ -112,23 +115,47 @@ function CurrentDeck({ snapshot }: { snapshot: Snapshot }) {
   );
 }
 
-function Chests({ snapshot }: { snapshot: Snapshot }) {
-  const items = snapshot.chests?.items ?? [];
+function KingTowerCard({ snapshot }: { snapshot: Snapshot }) {
+  const p = snapshot.player;
+  const known = p.kingTowerLevel !== undefined || p.collectionLevel !== undefined;
+  const next = nextKingTower(p, cardsById());
   return (
     <section class="card">
-      <h2>Upcoming Chests</h2>
-      {items.length ? (
-        <ol class="chest-strip">
-          {items.map((ch) => (
-            <li>
-              <span class="chest-index">{ch.index === 0 ? "Next" : `+${ch.index}`}</span>
-              <span>{ch.name}</span>
-            </li>
-          ))}
-        </ol>
+      <h2>King Tower &amp; Collection Level</h2>
+      <div class="kt-levels">
+        <div>
+          <div class="stat-label">King Tower</div>
+          <div class="stat-value">{p.kingTowerLevel ?? "—"}</div>
+        </div>
+        <div>
+          <div class="stat-label">Collection Level</div>
+          <div class="stat-value">{p.collectionLevel?.toLocaleString("en-US") ?? "—"}</div>
+        </div>
+      </div>
+      {!known ? (
+        <p class="muted small">Not in this snapshot yet; the next sync adds them.</p>
+      ) : next ? (
+        <div class="kt-next">
+          <div>
+            Next: King Tower {next.level} needs {next.cards} cards at level {next.minLevel}+
+          </div>
+          <div class="progress" title={`${next.have} of ${next.cards} cards at level ${next.minLevel}+`}>
+            <div
+              class={`progress-bar${next.have >= next.cards ? " ready" : ""}`}
+              style={`width:${Math.min(100, Math.round((next.have / next.cards) * 100))}%`}
+            />
+            <span class="progress-text">
+              {Math.min(next.have, next.cards)}/{next.cards}
+            </span>
+          </div>
+        </div>
       ) : (
-        <p class="muted">Not available.</p>
+        p.kingTowerLevel !== undefined && <p class="kt-next">Max King Tower level.</p>
       )}
+      <p class="muted small kt-note">
+        Collection Level adds up every card and tower troop level, plus 5 per Evolution and Hero owned. Tower
+        troops don't count toward King Tower.
+      </p>
     </section>
   );
 }
@@ -166,7 +193,7 @@ export const dashboardPages = new Hono<AppEnv>()
             </div>
             <div class="grid grid-2">
               <CurrentDeck snapshot={snapshot} />
-              <Chests snapshot={snapshot} />
+              <KingTowerCard snapshot={snapshot} />
             </div>
           </>
         ) : (

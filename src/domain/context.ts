@@ -5,6 +5,8 @@ import type { BattleRecord, BattleStats } from "../repos/battles";
 import type { DeckRecord } from "../repos/decks";
 import type { PlayerRecord, Snapshot } from "../repos/players";
 import { type Collection, type CollectionEntry, RARITY_ORDER } from "./collection";
+import { formsLabel, formsOwnership } from "./evolution";
+import { nextKingTower } from "./kingTower";
 
 export interface ContextInput {
   player: PlayerRecord;
@@ -26,10 +28,6 @@ const DECK_NOTES_CHARS = 300;
 
 const cell = (s: string | number | null | undefined): string =>
   s === null || s === undefined || s === "" ? "-" : String(s).replace(/\|/g, "\\|").replace(/\s*\n\s*/g, " ");
-
-// gameModeName for ranked is an internal id like "Ranked1v1_NewArena2" that an AI can't map to Path of Legend.
-const modeName = (type: string, gameModeName: string): string =>
-  type === "pathOfLegend" ? "Path of Legend" : gameModeName;
 
 const gold = (n: number): string => n.toLocaleString("en-US");
 const pct = (r: number): string => `${Math.round(r * 100)}%`;
@@ -67,6 +65,22 @@ function header({ player, snapshot, appUrl }: ContextInput): string {
   return lines.join("\n");
 }
 
+function kingTowerLines(p: NonNullable<ContextInput["snapshot"]>["player"]): string[] {
+  // expLevel is deliberately absent: XP was removed on 2026-05-26 and the field is frozen.
+  if (p.kingTowerLevel === undefined) return ["- King Tower level: unknown (snapshot predates the field)"];
+  const next = nextKingTower(p);
+  const nextText = next
+    ? ` (next level needs ${next.cards} cards at level ${next.minLevel}+, has ${next.have}; tower troops don't count)`
+    : " (max)";
+  return [`- King Tower level: ${p.kingTowerLevel}${nextText}`];
+}
+
+function streakText(n: number): string {
+  if (n === 0) return "none";
+  const k = Math.abs(n);
+  return `${k} ${n > 0 ? "win" : "loss"}${k === 1 ? "" : n > 0 ? "s" : "es"} in a row`;
+}
+
 function profile({ snapshot }: ContextInput): string {
   if (!snapshot) return "## Profile\n\nNo snapshot yet; the player has not synced successfully.";
   const p = snapshot.player;
@@ -75,13 +89,17 @@ function profile({ snapshot }: ContextInput): string {
   const polText = (r: typeof pol) =>
     r ? `league ${r.leagueNumber}, ${r.trophies} trophies${r.rank ? `, rank ${r.rank}` : ""}` : "-";
   const rows = [
-    `- Exp level: ${p.expLevel}`,
+    ...kingTowerLines(p),
+    ...(p.collectionLevel === undefined
+      ? []
+      : [`- Collection level: ${p.collectionLevel} (sum of card and tower troop levels + 5 per Evo or Hero owned)`]),
     `- Trophies: ${p.trophies} (best ${p.bestTrophies})${p.arena ? ` · ${p.arena.name}` : ""}`,
-    `- Path of Legend this season: ${polText(pol)}`,
-    `- Best Path of Legend: ${polText(best)}`,
+    `- Ranked this season: ${polText(pol)}`,
+    `- Best Ranked: ${polText(best)}`,
     `- Record: ${p.wins} W / ${p.losses} L in ${p.battleCount} battles, ${p.threeCrownWins} three-crown wins`,
     `- Clan: ${p.clan ? `${p.clan.name} (${p.clan.tag})` : "none"}`,
   ];
+  if (p.currentWinLoseStreak !== undefined) rows.push(`- Current streak: ${streakText(p.currentWinLoseStreak)}`);
   if (p.currentFavouriteCard) rows.push(`- Favourite card: ${p.currentFavouriteCard.name}`);
   return `## Profile\n\n${rows.join("\n")}`;
 }
@@ -93,24 +111,23 @@ function currentDeck({ snapshot, collection }: ContextInput): string {
   const rows = deck.map((c: PlayerCard) => {
     const entry = byId.get(c.id);
     const rarity = c.rarity ?? entry?.rarity;
-    const evo = c.evolutionLevel ? `evo ${c.evolutionLevel}` : "";
-    return [c.name, displayLevel(c.level, rarity), evo, c.elixirCost ?? entry?.elixirCost ?? null];
+    return [c.name, displayLevel(c.level, rarity), formsLabel(c.evolutionLevel), c.elixirCost ?? entry?.elixirCost ?? null];
   });
   const costs = rows.map((r) => r[3]).filter((x): x is number => typeof x === "number");
   const avg = costs.length === deck.length ? (costs.reduce((a, b) => a + b, 0) / costs.length).toFixed(2) : "?";
-  const parts = ["## Current deck", "", table(["Card", "Level", "Evolution", "Elixir"], rows), "", `Average elixir: ${avg}`];
+  const parts = [
+    "## Current deck",
+    "",
+    table(["Card", "Level", "Evo/Hero owned", "Elixir"], rows),
+    "",
+    `Average elixir: ${avg}`,
+  ];
   const tower = snapshot?.player.currentDeckSupportCards?.[0];
   if (tower) {
     const rarity = tower.rarity ?? byId.get(tower.id)?.rarity;
     parts.push(`Tower troop: ${tower.name} (level ${displayLevel(tower.level, rarity)})`);
   }
   return parts.join("\n");
-}
-
-function chests({ snapshot }: ContextInput): string {
-  const items = snapshot?.chests?.items ?? [];
-  if (!items.length) return "## Upcoming chests\n\nNot available.";
-  return `## Upcoming chests\n\n${items.map((c) => `+${c.index}: ${c.name}`).join(", ")}`;
 }
 
 function statsLine(label: string, s: BattleStats): string {
@@ -127,10 +144,7 @@ function performance({ stats7, stats30 }: ContextInput): string {
       "",
       table(
         ["Mode", "Games", "W-L-D", "Win rate"],
-        stats30.byMode.map((m) => [
-          // Keep the raw name so two ranked variants stay distinguishable rows.
-          m.type === "pathOfLegend" ? `Path of Legend (${m.mode})` : m.mode,
-          m.games, `${m.wins}-${m.losses}-${m.draws}`, pct(m.winRate)]),
+        stats30.byMode.map((m) => [m.modeLabel, m.games, `${m.wins}-${m.losses}-${m.draws}`, pct(m.winRate)]),
       ),
     );
   }
@@ -156,7 +170,7 @@ function lastBattles({ recentBattles }: ContextInput): string {
     .slice(0, MAX_BATTLES)
     .map((b) => [
       utc(b.battleTime).replace(" UTC", ""),
-      modeName(b.type, b.gameModeName),
+      b.modeLabel,
       b.result,
       `${b.teamCrowns}-${b.opponentCrowns}`,
       b.opponentName,
@@ -169,9 +183,6 @@ function lastBattles({ recentBattles }: ContextInput): string {
     rows,
   )}`;
 }
-
-const evoText = (e: CollectionEntry): string =>
-  e.maxEvolutionLevel ? `${e.evolutionLevel}/${e.maxEvolutionLevel}` : "";
 
 const isMaxed = (e: CollectionEntry): boolean => e.level !== null && e.level >= e.maxLevel;
 
@@ -218,13 +229,13 @@ function collectionSection({ collection, snapshot }: ContextInput): string {
       `### ${rarity[0]!.toUpperCase()}${rarity.slice(1)}`,
       "",
       table(
-        ["Card", "Level", "Cards", "Gold", "Evo"],
+        ["Card", "Level", "Cards", "Gold", "Evo/Hero"],
         group.map((e) => [
           e.name,
           `${e.level}/${e.maxLevel}`,
           progressText(e),
           e.goldNeeded === null ? null : gold(e.goldNeeded),
-          evoText(e),
+          formsOwnership(e.evolutionLevel, e.maxEvolutionLevel),
         ]),
       ),
     );
@@ -268,6 +279,7 @@ function limitations({ snapshot, now = new Date() }: ContextInput): string {
     "- The official API exposes no gold, gems, shop offers, or Pass Royale status; see Player notes for those.",
     "- Card levels cap at 16. Elite Wild Cards no longer exist (removed November 2025); every level costs copies plus gold.",
     "- The API battle log keeps only about 25 battles, so history covers what this app has stored since tracking began.",
+    "- Merge Tactics matches never appear in the battle log. There is no chest cycle any more (removed March 2025).",
     `- Snapshot age: ${snapshot ? ageText(snapshot.lastSeenAt, now) : "no snapshot"}.`,
   ].join("\n");
 }
@@ -278,7 +290,6 @@ export function renderContextMarkdown(input: ContextInput): string {
     header,
     profile,
     currentDeck,
-    chests,
     performance,
     lastBattles,
     collectionSection,

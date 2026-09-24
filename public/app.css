@@ -11,6 +11,7 @@
   --loss: #f85149;
   --draw: #d29922;
   --evo: #c77dff;
+  --hero: #f2b544;
   --radius: 10px;
   --gap: 1rem;
   --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -520,6 +521,12 @@ pre {
 .card-icon.evolved {
   border-color: var(--evo);
 }
+.card-icon.hero {
+  border-color: var(--hero);
+}
+.card-icon.evolved.hero {
+  border-color: var(--evo) var(--hero) var(--hero) var(--evo);
+}
 .card-icon img {
   width: 100%;
   height: 100%;
@@ -540,8 +547,8 @@ pre {
   display: block;
 }
 .card-level,
-.card-evo {
-  position: absolute;
+.card-evo,
+.card-hero {
   font-size: 0.65rem;
   font-weight: 700;
   padding: 0 0.3rem;
@@ -549,15 +556,26 @@ pre {
   background: rgba(0, 0, 0, 0.75);
 }
 .card-level {
+  position: absolute;
   bottom: 2px;
   left: 50%;
   transform: translateX(-50%);
   white-space: nowrap;
 }
-.card-evo {
+.card-forms {
+  position: absolute;
   top: 2px;
   right: 2px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+.card-evo {
   color: var(--evo);
+}
+.card-hero {
+  color: var(--hero);
 }
 
 /* Forms and buttons */
@@ -921,9 +939,32 @@ legend {
   font-size: 0.5rem;
   padding: 0 0.15rem;
 }
-.card-icon.size-sm .card-evo {
-  font-size: 0.5rem;
-  padding: 0 0.15rem;
+.card-icon.size-sm .card-evo,
+.card-icon.size-sm .card-hero {
+  font-size: 0.45rem;
+  padding: 0 0.12rem;
+}
+.card-icon.size-sm .card-forms {
+  top: 1px;
+  right: 1px;
+}
+/* Stacked, two badges would cover a small icon's level label, and "EVO HERO" side by side is wider than it. */
+.card-icon.size-sm.evolved.hero .card-forms {
+  flex-direction: row;
+}
+.card-icon.size-sm.evolved.hero .card-evo,
+.card-icon.size-sm.evolved.hero .card-hero {
+  font-size: 0;
+}
+.card-icon.size-sm.evolved.hero .card-evo::before,
+.card-icon.size-sm.evolved.hero .card-hero::before {
+  font-size: 0.45rem;
+}
+.card-icon.size-sm.evolved.hero .card-evo::before {
+  content: "E";
+}
+.card-icon.size-sm.evolved.hero .card-hero::before {
+  content: "H";
 }
 .card-icon.size-sm .card-fallback {
   font-size: 0.45rem;
@@ -931,33 +972,6 @@ legend {
 }
 .deck-grid.size-md {
   max-width: 560px;
-}
-
-.chest-strip {
-  display: flex;
-  gap: 0.5rem;
-  overflow-x: auto;
-  list-style: none;
-  margin: 0;
-  padding: 0 0 0.25rem;
-}
-.chest-strip li {
-  flex: 0 0 auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-width: 88px;
-  padding: 0.5rem 0.6rem;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  font-size: 0.85rem;
-  text-align: center;
-}
-.chest-index {
-  color: var(--muted);
-  font-size: 0.75rem;
-  font-weight: 700;
 }
 
 .filters {
@@ -1172,16 +1186,24 @@ details pre {
   color: var(--draw);
   font-variant-numeric: tabular-nums;
 }
-.evo-badge {
+.form-badges {
+  display: flex;
+  gap: 0.25rem;
+}
+.form-badge {
   font-size: 0.65rem;
   color: var(--muted);
   border: 1px solid var(--border);
   border-radius: 999px;
   padding: 0 0.4rem;
 }
-.evo-badge.unlocked {
+.form-badge.form-evo.unlocked {
   color: var(--evo);
   border-color: var(--evo);
+}
+.form-badge.form-hero.unlocked {
+  color: var(--hero);
+  border-color: var(--hero);
 }
 
 /* The base .card + .card margin is for stacked cards; in a grid it misaligns the row. */
@@ -1502,4 +1524,20 @@ body.modal-open {
   font-size: 0.72rem;
   font-weight: 700;
   line-height: 1.2;
+}
+
+.kt-levels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 2rem;
+}
+.kt-next {
+  margin: 0.9rem 0 0;
+}
+.kt-next .progress {
+  margin-top: 0.4rem;
+  max-width: 320px;
+}
+.kt-note {
+  margin: 0.9rem 0 0;
 }

@@ -16,7 +16,7 @@ beforeEach(() => {
 });
 
 describe("dashboard", () => {
-  test("renders the fixture snapshot, stats, deck, chests and battles, without a sync card", async () => {
+  test("renders the fixture snapshot, stats, deck, King Tower card and battles, without a sync card", async () => {
     await linkFixturePlayer(user, env.client);
     const res = await env.app.request("/", { headers: { Cookie: cookie } });
     expect(res.status).toBe(200);
@@ -32,10 +32,57 @@ describe("dashboard", () => {
     // The name fallback is always rendered after the image (CSS hides it; app.js reveals it on load errors).
     expect(html).toMatch(/title="Hog Rider"><img[^>]*\/><span class="card-fallback">Hog Rider<\/span><span class="card-level">Lv 14</);
     expect(html).toContain("Tower Princess");
-    expect(html).toContain("Golden Chest");
+    expect(html).not.toMatch(/chest/i);
+    expect(html).toContain("#9QJUGC2R · King Tower 15</div>");
+    expect(html).not.toContain("King level");
+    expect(html).toContain("<h2>King Tower &amp; Collection Level</h2>");
+    expect(html).toContain('<div class="stat-label">Collection Level</div><div class="stat-value">546</div>');
+    // KT15 → 16 needs 14 cards at level 15+ (tower troops excluded); the fixture has 3.
+    expect(html).toContain("Next: King Tower 16 needs 14 cards at level 15+");
+    expect(html).toContain('<span class="progress-text">3/14</span>');
+    expect(html).toContain("plus 5 per Evolution and Hero owned");
     expect(html).toContain("/battles/9QJUGC2R/");
     expect(html).not.toContain("<h2>Sync</h2>");
     expect(html).not.toContain("Last synced:");
+  });
+
+  test("current deck marks Evo, Hero, and Evo + Hero cards", async () => {
+    await linkFixturePlayer(user, env.client);
+    const html = await (await env.app.request("/", { headers: { Cookie: cookie } })).text();
+    const icon = (name: string) => new RegExp(`<figure class="([^"]*)" title="${name}"><img src="([^"]*)"[^>]*/>.*?</figure>`).exec(html);
+    const musketeer = icon("Musketeer")!;
+    expect(musketeer[1]).toBe("card-icon size-md evolved hero");
+    expect(musketeer[0]).toContain('<span class="card-forms"><span class="card-evo">EVO</span><span class="card-hero">HERO</span></span>');
+    const golem = icon("Ice Golem")!;
+    expect(golem[1]).toBe("card-icon size-md hero");
+    expect(golem[2]).toContain("/cardheroes/");
+    expect(golem[0]).toContain('<span class="card-forms"><span class="card-hero">HERO</span></span>');
+    const spirit = icon("Ice Spirit")!;
+    expect(spirit[1]).toBe("card-icon size-md evolved");
+    expect(spirit[0]).not.toContain("HERO");
+    expect(icon("Hog Rider")![0]).not.toContain("card-forms");
+  });
+
+  test("King Tower card falls back to a dash for snapshots from before the fields existed", async () => {
+    const { kingTowerLevel: _kt, collectionLevel: _cl, ...old } = env.client.player;
+    env.client.player = old as typeof env.client.player;
+    await linkFixturePlayer(user, env.client);
+    const html = await (await env.app.request("/", { headers: { Cookie: cookie } })).text();
+    expect(html).toContain("#9QJUGC2R · King Tower —</div>");
+    expect(html).toContain('<div class="stat-label">King Tower</div><div class="stat-value">—</div>');
+    expect(html).toContain('<div class="stat-label">Collection Level</div><div class="stat-value">—</div>');
+    expect(html).toContain("Not in this snapshot yet");
+    expect(html).not.toContain("Next: King Tower");
+    // The frozen expLevel must not leak back in as a stand-in.
+    expect(html).not.toContain(`King Tower ${old.expLevel}`);
+  });
+
+  test("King Tower card says max at level 16", async () => {
+    env.client.player = { ...env.client.player, kingTowerLevel: 16 };
+    await linkFixturePlayer(user, env.client);
+    const html = await (await env.app.request("/", { headers: { Cookie: cookie } })).text();
+    expect(html).toContain("Max King Tower level.");
+    expect(html).not.toContain("Next: King Tower");
   });
 
   test("the snapshot header shows the last confirming sync, not when the state first appeared", async () => {

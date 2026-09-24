@@ -6,7 +6,10 @@ export interface IconUrls {
   heroMedium?: string;
 }
 
-/** A card as it appears in a player's collection or current deck. `level` is API-relative, see src/cr/levels.ts. */
+/**
+ * A card as it appears in a player's collection or current deck. `level` is API-relative, see src/cr/levels.ts.
+ * `evolutionLevel`/`maxEvolutionLevel` are a bitmask (1 = Evolution, 2 = Hero), decoded in src/domain/evolution.ts.
+ */
 export interface PlayerCard {
   id: number;
   name: string;
@@ -30,6 +33,15 @@ export interface ClanRef {
 export interface Arena {
   id: number;
   name: string;
+  /** Internal id such as "Arena_L18"; absent from snapshots taken before mid-2026. */
+  rawName?: string;
+}
+
+/** One entry of Player.progress, keyed e.g. "seasonal-trophy-road-202609" or "AutoChess_2026_Season_11". */
+export interface ProgressEntry {
+  arena: Arena;
+  trophies: number;
+  bestTrophies: number;
 }
 
 export interface PathOfLegendResult {
@@ -65,6 +77,7 @@ export interface LeagueSeason {
 export interface Player {
   tag: string;
   name: string;
+  /** Frozen since XP was removed on 2026-05-26; use kingTowerLevel instead. */
   expLevel: number;
   expPoints?: number;
   totalExpPoints?: number;
@@ -102,6 +115,15 @@ export interface Player {
   currentPathOfLegendSeasonResult?: PathOfLegendResult;
   lastPathOfLegendSeasonResult?: PathOfLegendResult;
   bestPathOfLegendSeasonResult?: PathOfLegendResult;
+  // The fields below arrived with the 2026-05-26 Collection Levels update; older snapshots lack them.
+  kingTowerLevel?: number;
+  /** Sum of all card and tower troop display levels plus 5 per Evolution or Hero owned. */
+  collectionLevel?: number;
+  /** Signed: positive is a win streak, negative a loss streak. */
+  currentWinLoseStreak?: number;
+  /** Best Trophy Road score before the 2026 rework; null for players who never had one. */
+  legacyTrophyRoadHighScore?: number | null;
+  progress?: Record<string, ProgressEntry>;
 }
 
 export interface BattleCard {
@@ -146,6 +168,8 @@ export interface BattleLogEntry {
   challengeTitle?: string;
   challengeWinCountBefore?: number;
   tournamentTag?: string;
+  /** Joins to GET /events for a readable title; null for ladder, ranked and clan war battles. */
+  eventTag?: string | null;
   /** Boat battles report 0-0 crowns; the outcome is only here. */
   boatBattleWon?: boolean;
   boatBattleSide?: string;
@@ -153,8 +177,11 @@ export interface BattleLogEntry {
   opponent: BattleParticipant[];
 }
 
-export interface UpcomingChests {
-  items: { index: number; name: string }[];
+/** From the undocumented GET /events; lists only currently running events. */
+export interface GameEvent {
+  eventTag: string;
+  title: string;
+  description: string | null;
 }
 
 export interface CatalogCard {
