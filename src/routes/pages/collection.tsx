@@ -1,15 +1,14 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { requireUser } from "../../auth/middleware";
-import { tagSlug } from "../../cr/tag";
 import { buildCollection, type CollectionEntry, RARITY_ORDER } from "../../domain/collection";
+import { resolvePlayer } from "../../http/currentPlayer";
 import { parseQuery } from "../../http/validate";
 import { listCards } from "../../repos/cards";
 import { getLatestSnapshot } from "../../repos/players";
 import type { AppEnv } from "../../types";
 import { CardIcon, EmptyState, StatTile } from "../../views/components";
 import { formatRelative } from "../../views/format";
-import { PlayerSwitcher, resolvePlayer } from "../../views/playerSelect";
 import { renderPage } from "../../views/render";
 
 const filterSchema = z.object({
@@ -69,7 +68,7 @@ function CollectionCard({ e }: { e: CollectionEntry }) {
 }
 
 export const collectionPages = new Hono<AppEnv>().use("/collection/*", requireUser).get("/collection", (c) => {
-  const { players, player } = resolvePlayer(c);
+  const { current: player } = resolvePlayer(c);
   if (!player) {
     return renderPage(
       c,
@@ -87,7 +86,6 @@ export const collectionPages = new Hono<AppEnv>().use("/collection/*", requireUs
       c,
       { title: "Collection", active: "collection" },
       <div class="stack">
-        <PlayerSwitcher players={players} active={player} basePath="/collection" />
         <EmptyState title="No collection data yet">
           <p class="muted">This player hasn't synced successfully.</p>
           {player.lastSyncError && <p class="error-text">Last error: {player.lastSyncError}</p>}
@@ -117,7 +115,6 @@ export const collectionPages = new Hono<AppEnv>().use("/collection/*", requireUs
     c,
     { title: "Collection", active: "collection" },
     <div class="stack">
-      <PlayerSwitcher players={players} active={player} basePath="/collection" />
       <div class="row">
         <h1>Collection</h1>
         <div class="spacer" />
@@ -150,7 +147,6 @@ export const collectionPages = new Hono<AppEnv>().use("/collection/*", requireUs
       )}
 
       <form method="get" action="/collection" class="filters">
-        <input type="hidden" name="tag" value={tagSlug(player.tag)} />
         <div class="field">
           <label for="q">Search</label>
           <input type="search" id="q" name="q" value={f.q} placeholder="Card name" />
@@ -163,7 +159,11 @@ export const collectionPages = new Hono<AppEnv>().use("/collection/*", requireUs
         </label>
         <div class="filter-actions">
           <button type="submit">Filter</button>
-          {filtered && <a href={`/collection?tag=${tagSlug(player.tag)}`}>Clear</a>}
+          {filtered && (
+            <a class="btn btn-secondary" href="/collection">
+              Clear
+            </a>
+          )}
         </div>
       </form>
 

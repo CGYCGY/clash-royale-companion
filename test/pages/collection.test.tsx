@@ -32,7 +32,7 @@ describe("collection page", () => {
 
     const searched = await get("/collection?q=hog");
     expect(searched).toContain('title="Hog Rider"');
-    expect(searched).toMatch(/<div class="filter-actions"><button type="submit">Filter<\/button><a href="\/collection\?tag=9QJUGC2R">Clear<\/a><\/div>/);
+    expect(searched).toMatch(/<div class="filter-actions"><button type="submit">Filter<\/button><a class="btn btn-secondary" href="\/collection">Clear<\/a><\/div>/);
     expect(html).not.toContain(">Clear</a>");
     expect(searched).not.toContain('title="Knight"');
 

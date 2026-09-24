@@ -23,4 +23,17 @@ describe("card icon fallback", () => {
     expect(js).toContain("button[data-retry-after]");
     expect(js).toContain("dataset.readyLabel");
   });
+
+  test("battle rows, the dialog template, and the player menu keep the hooks app.js looks for", () => {
+    const css = asset("app.css");
+    const js = asset("app.js");
+    expect(js).toContain('getElementById("battle-modal-template")');
+    expect(js).toContain('"tr.battle-row[data-href]"');
+    expect(js).toContain('"a.row-link"');
+    expect(js).toContain("?partial=1");
+    expect(js).toContain('"details.player-menu"');
+    expect(js).toContain("[data-menu-item]");
+    expect(css).toContain(".battle-row.is-clickable");
+    expect(css).toContain(".modal::backdrop");
+  });
 });

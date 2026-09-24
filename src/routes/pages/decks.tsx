@@ -4,16 +4,18 @@ import { z } from "zod";
 import { currentUser, requireUser } from "../../auth/middleware";
 import { buildCollection, type CollectionEntry } from "../../domain/collection";
 import { AppError, notFound } from "../../errors";
+import { resolvePlayer } from "../../http/currentPlayer";
 import { setFlash } from "../../http/flash";
 import { parseForm } from "../../http/validate";
 import { averageElixir } from "../../repos/battles";
 import { cardsMap, listCards } from "../../repos/cards";
 import { createDeck, DECK_SIZE, type DeckRecord, deleteDeck, getDeck, listDecks, updateDeck } from "../../repos/decks";
-import { getLatestSnapshot, listPlayersForUser, type PlayerRecord } from "../../repos/players";
+import { getLatestSnapshot, type PlayerRecord } from "../../repos/players";
 import type { AppEnv } from "../../types";
 import { formatElixir, namedCardViews } from "../../views/cardViews";
 import { DeckGrid, EmptyState } from "../../views/components";
 import { formatDateTime, formatRelative } from "../../views/format";
+import { ArrowLeftIcon } from "../../views/icons";
 import { renderPage } from "../../views/render";
 import { formError, idParam } from "./shared";
 
@@ -53,13 +55,16 @@ interface PlayerLevels {
   byName: Map<string, CollectionEntry> | null;
 }
 
-function playerLevels(players: PlayerRecord[]): PlayerLevels[] {
-  const catalog = listCards();
-  return players.map((player) => {
-    const snap = getLatestSnapshot(player.tag);
-    const byName = snap ? new Map(buildCollection(snap.player, catalog).entries.map((e) => [e.name, e])) : null;
-    return { player, byName };
-  });
+/**
+ * Decks belong to the user, not to a player, so the same deck is checked against whichever player is
+ * current in the header (empty when none is linked).
+ */
+function currentPlayerLevels(c: Context<AppEnv>): PlayerLevels[] {
+  const player = resolvePlayer(c).current;
+  if (!player) return [];
+  const snap = getLatestSnapshot(player.tag);
+  const byName = snap ? new Map(buildCollection(snap.player, listCards()).entries.map((e) => [e.name, e])) : null;
+  return [{ player, byName }];
 }
 
 function LevelCell({ entry }: { entry: CollectionEntry | undefined }) {
@@ -156,7 +161,9 @@ function DeckForm({
       )}
       <div class="row">
         <button type="submit">Save deck</button>
-        <a href="/decks">Cancel</a>
+        <a class="btn btn-secondary" href="/decks">
+          Cancel
+        </a>
       </div>
     </form>
   );
@@ -191,7 +198,6 @@ function renderDeckForm(
   opts: { deck?: DeckRecord; values: DeckFormValues; error?: ReturnType<typeof deckFormError> },
 ) {
   const title = opts.deck ? `Edit ${opts.deck.name}` : "New deck";
-  const firstPlayer = listPlayersForUser(currentUser(c).id).slice(0, 1);
   return renderPage(
     c,
     { title, active: "decks", status: opts.error ? 400 : 200 },
@@ -201,7 +207,7 @@ function renderDeckForm(
         action={opts.deck ? `/decks/${opts.deck.id}` : "/decks"}
         values={opts.values}
         error={opts.error}
-        levels={opts.deck ? playerLevels(firstPlayer) : undefined}
+        levels={opts.deck ? currentPlayerLevels(c) : undefined}
       />
     </div>,
   );
@@ -231,6 +237,8 @@ function loadDeck(c: Context<AppEnv>): DeckRecord {
 export const deckPages = new Hono<AppEnv>()
   .use("/decks/*", requireUser)
   .get("/decks", (c) => {
+    // Only for the header here, but it keeps old /decks?tag= links selecting their player.
+    resolvePlayer(c);
     const decks = listDecks(currentUser(c).id);
     const catalog = cardsMap();
     return renderPage(
@@ -263,15 +271,17 @@ export const deckPages = new Hono<AppEnv>()
                   <span class="muted small">updated {formatRelative(d.updatedAt)}</span>
                 </div>
                 {d.notes && <p class="muted excerpt">{d.notes.length > 140 ? `${d.notes.slice(0, 140)}…` : d.notes}</p>}
-                <div class="row">
-                  <a href={`/decks/${d.id}/edit`}>Edit</a>
+                <div class="row deck-actions">
+                  <a class="btn btn-secondary btn-small" href={`/decks/${d.id}/edit`}>
+                    Edit
+                  </a>
                   <form
                     method="post"
                     action={`/decks/${d.id}/delete`}
                     class="inline"
                     onsubmit="return confirm('Delete this deck?')"
                   >
-                    <button type="submit" class="btn-link danger-link">
+                    <button type="submit" class="btn-danger btn-small">
                       Delete
                     </button>
                   </form>
@@ -295,13 +305,15 @@ export const deckPages = new Hono<AppEnv>()
   .get("/decks/:id{[0-9]+}", (c) => {
     const deck = loadDeck(c);
     const catalog = cardsMap();
-    const levels = playerLevels(listPlayersForUser(currentUser(c).id));
+    const levels = currentPlayerLevels(c);
     return renderPage(
       c,
       { title: deck.name, active: "decks" },
       <div class="stack">
         <p>
-          <a href="/decks">Back to decks</a>
+          <a class="btn btn-ghost btn-small" href="/decks">
+            <ArrowLeftIcon /> Back to decks
+          </a>
         </p>
         <section class="card">
           <div class="row">

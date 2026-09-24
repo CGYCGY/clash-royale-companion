@@ -1,15 +1,26 @@
 import { raw } from "hono/html";
 import type { Child } from "hono/jsx";
+import { tagSlug } from "../cr/tag";
+import type { PlayerContext } from "../http/currentPlayer";
 import type { Flash, User } from "../types";
+import { CheckIcon, ChevronDownIcon, CloseIcon, GearIcon, LogOutIcon } from "./icons";
 
 export type NavKey = "dashboard" | "battles" | "collection" | "decks" | "settings";
 
-const NAV: { key: NavKey; label: string; href: string }[] = [
-  { key: "dashboard", label: "Dashboard", href: "/" },
-  { key: "battles", label: "Battles", href: "/battles" },
-  { key: "collection", label: "Collection", href: "/collection" },
-  { key: "decks", label: "Decks", href: "/decks" },
-  { key: "settings", label: "Settings", href: "/settings" },
+export const NAV_HREF: Record<NavKey, string> = {
+  dashboard: "/",
+  battles: "/battles",
+  collection: "/collection",
+  decks: "/decks",
+  settings: "/settings",
+};
+
+// Settings lives in the header's gear button, not here.
+const NAV: { key: NavKey; label: string }[] = [
+  { key: "dashboard", label: "Dashboard" },
+  { key: "battles", label: "Battles" },
+  { key: "collection", label: "Collection" },
+  { key: "decks", label: "Decks" },
 ];
 
 export const APP_NAME = "CR Companion";
@@ -19,10 +30,70 @@ export interface LayoutProps {
   user: User | null;
   flash?: Flash | null;
   active?: NavKey;
+  /** Linked players for the header switcher; null when signed out. */
+  players?: PlayerContext | null;
+  /** Where the switcher sends the browser back to after changing player. */
+  next?: string;
   children?: Child;
 }
 
-export function Layout({ title, user, flash, active, children }: LayoutProps) {
+/**
+ * <details> keeps the menu usable without JS; app.js layers on the menu-button semantics (roles,
+ * aria-expanded, arrow keys, Esc and outside-click close) that only hold once it runs.
+ */
+function PlayerMenu({ ctx, username, next }: { ctx: PlayerContext; username: string; next: string }) {
+  const { players, current } = ctx;
+  if (!current) {
+    return (
+      <a class="player-trigger" href="/settings#players" title={`Signed in as ${username}`}>
+        <span class="player-trigger-name">Add a player</span>
+      </a>
+    );
+  }
+  return (
+    <details class="player-menu">
+      <summary class="player-trigger" title={`${current.name || current.tag} ${current.tag}`}>
+        <span class="sr-only">Player: </span>
+        <span class="player-trigger-name">{current.name || current.tag}</span>
+        <span class="player-trigger-tag">{current.tag}</span>
+        <ChevronDownIcon />
+      </summary>
+      <div class="menu" aria-label="Switch player">
+        <form method="post" action="/players/current">
+          <input type="hidden" name="next" value={next} />
+          {players.map((p) => {
+            const selected = p.tag === current.tag;
+            return (
+              <button
+                type="submit"
+                name="tag"
+                value={tagSlug(p.tag)}
+                class="menu-item"
+                aria-current={selected ? "true" : undefined}
+                data-menu-item="radio"
+              >
+                <span class="menu-item-text">
+                  <span class="menu-item-name">{p.name || p.tag}</span>
+                  <span class="menu-item-tag">{p.tag}</span>
+                </span>
+                {selected && <CheckIcon />}
+              </button>
+            );
+          })}
+        </form>
+        <hr class="menu-sep" />
+        <p class="menu-note">
+          Signed in as <strong>{username}</strong>
+        </p>
+        <a class="menu-item" href="/settings#players" data-menu-item="link">
+          Manage players
+        </a>
+      </div>
+    </details>
+  );
+}
+
+export function Layout({ title, user, flash, active, players, next = "/", children }: LayoutProps) {
   return (
     <>
       {raw("<!doctype html>")}
@@ -41,9 +112,13 @@ export function Layout({ title, user, flash, active, children }: LayoutProps) {
               {APP_NAME}
             </a>
             {user && (
-              <nav class="nav">
+              <nav class="nav" aria-label="Main">
                 {NAV.map((n) => (
-                  <a href={n.href} class={n.key === active ? "active" : undefined}>
+                  <a
+                    href={NAV_HREF[n.key]}
+                    class={n.key === active ? "active" : undefined}
+                    aria-current={n.key === active ? "page" : undefined}
+                  >
                     {n.label}
                   </a>
                 ))}
@@ -52,27 +127,56 @@ export function Layout({ title, user, flash, active, children }: LayoutProps) {
             <div class="account">
               {user ? (
                 <>
-                  <span class="muted">{user.username}</span>
+                  {players && <PlayerMenu ctx={players} username={user.username} next={next} />}
+                  <a
+                    href="/settings"
+                    class={`icon-btn${active === "settings" ? " active" : ""}`}
+                    aria-label="Settings"
+                    title="Settings"
+                    aria-current={active === "settings" ? "page" : undefined}
+                  >
+                    <GearIcon />
+                  </a>
                   {/* Logout is POST so a cross-site link can't sign the user out. */}
                   <form method="post" action="/logout" class="inline">
-                    <button type="submit" class="btn-link">
-                      Log out
+                    <button type="submit" class="icon-btn" aria-label="Log out" title="Log out">
+                      <LogOutIcon />
                     </button>
                   </form>
                 </>
               ) : (
-                <a href="/login">Log in</a>
+                <a class="btn btn-secondary btn-small" href="/login">
+                  Log in
+                </a>
               )}
             </div>
           </header>
           <main class="container">
-            {flash && (
+            {flash && !flash.target && (
               <div class={`flash flash-${flash.type}`} role="status">
                 {flash.message}
               </div>
             )}
             {children}
           </main>
+          {user && (
+            // Only app.js opens this (battle rows); without JS rows are plain links to the detail page.
+            <template id="battle-modal-template">
+              <dialog class="modal" aria-labelledby="battle-detail-title" aria-label="Battle details">
+                <div class="modal-head">
+                  <span class="modal-title">Battle</span>
+                  <div class="spacer" />
+                  <a class="btn btn-ghost btn-small modal-full" href="#">
+                    Open full page
+                  </a>
+                  <button type="button" class="icon-btn modal-close" aria-label="Close" title="Close">
+                    <CloseIcon />
+                  </button>
+                </div>
+                <div class="modal-body" tabindex={-1} autofocus></div>
+              </dialog>
+            </template>
+          )}
         </body>
       </html>
     </>
