@@ -51,18 +51,6 @@ function SyncControl({ player, wait, next }: { player: PlayerRecord; wait: numbe
   return (
     <form method="post" action={`/players/${tagSlug(player.tag)}/sync`} class="sync-form">
       <input type="hidden" name="next" value={next} />
-      <button
-        type="submit"
-        class="icon-btn sync-btn"
-        aria-label={label}
-        title={label}
-        aria-describedby="sync-time"
-        disabled={wait > 0}
-        data-retry-after={wait > 0 ? String(wait) : undefined}
-        data-ready-label={SYNC_READY_LABEL}
-      >
-        <RefreshIcon />
-      </button>
       {player.lastSyncedAt ? (
         <time
           id="sync-time"
@@ -77,6 +65,18 @@ function SyncControl({ player, wait, next }: { player: PlayerRecord; wait: numbe
           never
         </span>
       )}
+      <button
+        type="submit"
+        class="icon-btn sync-btn"
+        aria-label={label}
+        title={label}
+        aria-describedby="sync-time"
+        disabled={wait > 0}
+        data-retry-after={wait > 0 ? String(wait) : undefined}
+        data-ready-label={SYNC_READY_LABEL}
+      >
+        <RefreshIcon />
+      </button>
     </form>
   );
 }
