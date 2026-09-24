@@ -102,9 +102,18 @@ pre {
   z-index: 10;
 }
 .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   font-weight: 700;
   color: var(--text);
   white-space: nowrap;
+}
+.brand-logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  flex-shrink: 0;
 }
 .nav {
   display: flex;

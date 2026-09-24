@@ -156,7 +156,10 @@ export function Layout({ title, user, flash, active, players, next = "/", syncWa
         <body>
           <header class="topbar">
             <a class="brand" href="/" aria-label={APP_NAME}>
-              CR<span class="brand-rest"> Companion</span>
+              <img class="brand-logo" src={assetUrl("logo-64.png")} alt="" width="28" height="28" />
+              <span>
+                CR<span class="brand-rest"> Companion</span>
+              </span>
             </a>
             {user && (
               <nav class="nav" aria-label="Main">
