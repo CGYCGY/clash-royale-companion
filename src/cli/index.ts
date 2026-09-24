@@ -3,7 +3,7 @@ import { parseArgs } from "node:util";
 import { PasswordPolicyError } from "../auth/passwordPolicy";
 import { createAdminToken, listAdminTokens, revokeAdminToken } from "../auth/adminTokens";
 import { createInvite, listInvites, revokeInvite } from "../auth/invites";
-import { createUser, listUsers, setPassword, getUserByUsername } from "../auth/users";
+import { createUser, getUserByUsername, listUsers, renameUser, setPassword } from "../auth/users";
 import { config } from "../config";
 import { getCrClient } from "../cr/client";
 import { normalizeTag } from "../cr/tag";
@@ -23,6 +23,7 @@ Commands:
   user list                                 List users
   user create <username> <password>         Create a user without an invite
   user set-password <username> <password>   Reset a user's password
+  user rename <old> <new>                   Change a username (sessions and API keys keep working)
   admin-token create [--name <name>]        Create a token for /api/admin/* (printed once)
   admin-token list                          List admin tokens, including revoked ones
   admin-token revoke <id>                   Revoke an admin token
@@ -131,6 +132,15 @@ async function main(argv: string[]): Promise<number> {
       if (!user) throw new Error(`No user named ${username}`);
       await setPassword(user.id, password);
       console.log(`Password updated for ${user.username}.`);
+      return 0;
+    }
+    case "user rename": {
+      const [from, to] = rest;
+      if (!from || !to) throw new Error("user rename <old> <new>");
+      const user = getUserByUsername(from.toLowerCase());
+      if (!user) throw new Error(`No user named ${from}`);
+      const renamed = renameUser(user.id, to);
+      console.log(`Renamed ${user.username} to ${renamed.username}.`);
       return 0;
     }
     case "admin-token create": {

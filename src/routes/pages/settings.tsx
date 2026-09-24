@@ -5,7 +5,7 @@ import { z } from "zod";
 import { createApiKey, listApiKeys, revokeApiKey } from "../../auth/apiKeys";
 import { currentUser, requireSession } from "../../auth/middleware";
 import { deleteSessionsForUser, startSession } from "../../auth/sessions";
-import { setPassword, verifyCredentials } from "../../auth/users";
+import { normalizeUsername, renameUser, setPassword, verifyCredentials } from "../../auth/users";
 import { config, isSecureCookie } from "../../config";
 import { normalizeTag, tagSlug } from "../../cr/tag";
 import { notFound } from "../../errors";
@@ -39,7 +39,7 @@ function takeNewKey(c: Context): string | null {
   return RAW_KEY_RE.test(raw) ? raw : null;
 }
 
-type FormErrors = Partial<Record<"player" | "key" | "password", string | string[]>>;
+type FormErrors = Partial<Record<"player" | "key" | "password" | "username", string | string[]>>;
 
 function ErrorText({ message }: { message?: string | string[] }) {
   const messages = message === undefined ? [] : [message].flat();
@@ -57,8 +57,14 @@ function ErrorText({ message }: { message?: string | string[] }) {
   );
 }
 
-function renderSettings(c: Context<AppEnv>, errors: FormErrors = {}, status: 200 | 400 = 200) {
+function renderSettings(
+  c: Context<AppEnv>,
+  errors: FormErrors = {},
+  status: 200 | 400 = 200,
+  values: { username?: string } = {},
+) {
   const user = currentUser(c);
+  const usernameFlash = c.var.flash?.target === "username" ? c.var.flash : null;
   const players = listPlayersForUser(user.id);
   const keys = listApiKeys(user.id);
   const newKey = takeNewKey(c);
@@ -214,9 +220,47 @@ function renderSettings(c: Context<AppEnv>, errors: FormErrors = {}, status: 200
         <ErrorText message={errors.key} />
       </section>
 
+      <section class="card" id="username">
+        <h2>Username</h2>
+        <p class="muted">
+          You sign in as <strong>{user.username}</strong>.
+        </p>
+        {usernameFlash && (
+          <p class={`inline-status ${usernameFlash.type === "error" ? "error-text" : "pos"}`} role="status">
+            {usernameFlash.message}
+          </p>
+        )}
+        <form method="post" action="/settings/username" class="form-narrow">
+          <div class="field">
+            <label for="new-username">New username</label>
+            <input
+              type="text"
+              id="new-username"
+              name="username"
+              value={values.username ?? user.username}
+              autocomplete="username"
+              aria-describedby="new-username-help"
+              required
+              spellcheck={false}
+              autocapitalize="off"
+            />
+            <p class="help" id="new-username-help">
+              3–32 lowercase letters, digits, or underscores.
+            </p>
+          </div>
+          <div class="field">
+            <label for="username-current">Current password</label>
+            <PasswordInput id="username-current" name="current" autocomplete="current-password" />
+          </div>
+          <ErrorText message={errors.username} />
+          <div class="field">
+            <button type="submit">Change username</button>
+          </div>
+        </form>
+      </section>
+
       <section class="card" id="account">
-        <h2>Account</h2>
-        <p class="muted">Signed in as {user.username}.</p>
+        <h2>Password</h2>
         <form method="post" action="/settings/password" class="form-narrow">
           <div class="field">
             <label for="current">Current password</label>
@@ -301,6 +345,29 @@ export const settingsPages = new Hono<AppEnv>()
     if (!revokeApiKey(currentUser(c).id, idParam(c.req.param("id")))) throw notFound("API key");
     setFlash(c, "success", "API key revoked.");
     return c.redirect("/settings#keys");
+  })
+  .post("/settings/username", async (c) => {
+    const user = currentUser(c);
+    let submitted: string | undefined;
+    try {
+      const form = await parseForm(c, z.object({ username: text, current: text }));
+      submitted = form.username;
+      const username = normalizeUsername(form.username);
+      if (!(await verifyCredentials(user.username, form.current))) {
+        return renderSettings(c, { username: "Current password is wrong." }, 400, { username: submitted });
+      }
+      const renamed = renameUser(user.id, username);
+      setFlash(
+        c,
+        "success",
+        renamed.username === user.username ? "That's already your username." : `Username changed to ${renamed.username}.`,
+        "username",
+      );
+      return c.redirect("/settings#username");
+    } catch (err) {
+      const message = formError(err, { conflict: "That username is taken. Pick another one." });
+      return renderSettings(c, { username: message }, 400, { username: submitted });
+    }
   })
   .post("/settings/password", async (c) => {
     const user = currentUser(c);

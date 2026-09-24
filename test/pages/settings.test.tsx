@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { createApiKey, listApiKeys } from "../../src/auth/apiKeys";
-import { createUser } from "../../src/auth/users";
+import { createUser, getUserById } from "../../src/auth/users";
 import { CrApiError } from "../../src/cr/client";
 import { getNotes } from "../../src/repos/notes";
 import { listPlayersForUser } from "../../src/repos/players";
@@ -135,5 +135,60 @@ describe("settings page", () => {
     expect(ok.headers.getSetCookie().join()).toContain("cr_session=");
     // The old session was revoked.
     expect((await env.app.request("/settings", { headers: { Cookie: c } })).status).toBe(302);
+  });
+
+  test("change username: success keeps sessions and API keys working", async () => {
+    const real = await createUser("erin", "Old-Password-11");
+    const c = cookieFor(real);
+    const { raw } = createApiKey(real.id, "bot");
+    const ok = await env.app.request("/settings/username", formPost(c, { username: " Erin_2 ", current: "Old-Password-11" }));
+    expect(ok.status).toBe(302);
+    expect(ok.headers.get("location")).toBe("/settings#username");
+    expect(getUserById(real.id)?.username).toBe("erin_2");
+
+    const page = await (await follow(env.app, ok, c)).text();
+    expect(page).toContain('<p class="inline-status pos" role="status">Username changed to erin_2.</p>');
+    // Shown beside the form, not also as the page-top flash.
+    expect(page).not.toContain('class="flash flash-success"');
+    expect(page).toContain('title="Signed in as erin_2"');
+
+    const me = await env.app.request("/api/me", { headers: { Authorization: `Bearer ${raw}` } });
+    expect(((await me.json()) as { user: { username: string } }).user.username).toBe("erin_2");
+    const login = await env.app.request("/login", formPost(null, { username: "erin_2", password: "Old-Password-11", next: "/" }));
+    expect(login.status).toBe(302);
+    expect(login.headers.get("location")).toBe("/");
+  });
+
+  test("change username: taken, wrong password, and invalid names re-render inline", async () => {
+    const real = await createUser("frank", "Old-Password-11");
+    makeUser("taken_name");
+    const c = cookieFor(real);
+    const attempt = async (username: string, current = "Old-Password-11") => {
+      const res = await env.app.request("/settings/username", formPost(c, { username, current }));
+      expect(res.status).toBe(400);
+      return res.text();
+    };
+    const taken = await attempt("TAKEN_NAME");
+    expect(taken).toContain("That username is taken. Pick another one.");
+    expect(taken).toContain('value="TAKEN_NAME"');
+    expect(await attempt("new_frank", "wrong-password")).toContain("Current password is wrong.");
+    expect(await attempt("x!")).toContain("Username must be 3–32 characters");
+    expect(await attempt("ab")).toContain("Username must be 3–32 characters");
+    expect(getUserById(real.id)?.username).toBe("frank");
+
+    // Renaming to your own name (any case) is not a conflict.
+    const same = await env.app.request("/settings/username", formPost(c, { username: "FRANK", current: "Old-Password-11" }));
+    expect(same.status).toBe(302);
+  });
+
+  test("change username needs a browser session", async () => {
+    const { raw } = createApiKey(user.id, "bot");
+    const res = await env.app.request("/settings/username", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${raw}`, "Content-Type": "application/x-www-form-urlencoded" },
+      body: "username=hijack&current=x",
+    });
+    expect(res.status).toBe(302);
+    expect(getUserById(user.id)?.username).toBe("alice");
   });
 });

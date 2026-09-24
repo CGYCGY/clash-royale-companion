@@ -70,4 +70,17 @@ describe("cli user", () => {
     expect(reset.stderr).toContain("too common");
     expect(cli("user", "set-password", "frank", "Green-Heron-5523").code).toBe(0);
   });
+
+  test("rename applies the registration rules", () => {
+    expect(cli("user", "create", "gina", "Blue-Otter-4412").code).toBe(0);
+    expect(cli("user", "create", "hank", "Blue-Otter-4412").code).toBe(0);
+    const ok = cli("user", "rename", "GINA", "Gina_2");
+    expect(ok.code).toBe(0);
+    expect(ok.stdout).toContain("Renamed gina to gina_2.");
+    expect(cli("user", "rename", "gina_2", "hank").stderr).toContain("already taken");
+    expect(cli("user", "rename", "gina_2", "no!").stderr).toContain("Username must be");
+    expect(cli("user", "rename", "nobody", "x_y_z").stderr).toContain("No user named nobody");
+    expect(cli("user", "rename", "gina_2").code).toBe(1);
+  });
 });
+

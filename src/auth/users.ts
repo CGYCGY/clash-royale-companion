@@ -86,3 +86,20 @@ export async function setPassword(userId: number, password: string): Promise<voi
   const hash = await hashPassword(password);
   getDb().query("UPDATE users SET password_hash = ? WHERE id = ?").run(hash, userId);
 }
+
+/**
+ * Same rules as registration. Sessions and API keys reference the user id, so they keep working. The
+ * password is not re-checked against the new name (the "must not contain username" rule only applies
+ * when a password is set).
+ */
+export function renameUser(userId: number, usernameInput: string): User {
+  const username = normalizeUsername(usernameInput);
+  const db = getDb();
+  const taken = db.query<{ id: number }, [string]>("SELECT id FROM users WHERE username = ?").get(username);
+  if (taken && taken.id !== userId) throw new AppError("conflict", "Username is already taken", 409);
+  const row = db
+    .query<UserRow, [string, number]>("UPDATE users SET username = ? WHERE id = ? RETURNING *")
+    .get(username, userId);
+  if (!row) throw new AppError("not_found", "User not found", 404);
+  return toUser(row);
+}

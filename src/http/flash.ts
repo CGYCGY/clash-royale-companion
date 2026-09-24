@@ -7,8 +7,8 @@ import type { AppEnv, Flash } from "../types";
 const FLASH_COOKIE = "cr_flash";
 
 /** Queue a one-shot message shown on the next rendered page (use before a redirect). */
-export function setFlash(c: Context, type: Flash["type"], message: string): void {
-  const value = Buffer.from(JSON.stringify({ type, message })).toString("base64url");
+export function setFlash(c: Context, type: Flash["type"], message: string, target?: string): void {
+  const value = Buffer.from(JSON.stringify({ type, message, target })).toString("base64url");
   setCookie(c, FLASH_COOKIE, value, {
     httpOnly: true,
     sameSite: "Lax",
