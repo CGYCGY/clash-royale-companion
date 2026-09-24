@@ -147,6 +147,9 @@ export function Layout({ title, user, flash, active, players, next = "/", syncWa
           <meta name="viewport" content="width=device-width, initial-scale=1" />
           <meta name="color-scheme" content="dark" />
           <title>{`${title} · ${APP_NAME}`}</title>
+          <link rel="icon" href={assetUrl("favicon.ico")} sizes="any" />
+          <link rel="icon" type="image/png" href={assetUrl("favicon-32.png")} sizes="32x32" />
+          <link rel="apple-touch-icon" href={assetUrl("apple-touch-icon.png")} />
           <link rel="stylesheet" href={assetUrl("app.css")} />
           <script src={assetUrl("app.js")} defer></script>
         </head>
