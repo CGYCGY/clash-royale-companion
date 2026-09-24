@@ -4,11 +4,12 @@
       "name": "Knight",
       "id": 26000000,
       "maxLevel": 16,
-      "maxEvolutionLevel": 1,
+      "maxEvolutionLevel": 3,
       "elixirCost": 3,
       "iconUrls": {
         "medium": "https://api-assets.clashroyale.com/cards/300/8c23b2b86573edf2a5ea48.png",
-        "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/6f9935ccd740be29ae9789.png"
+        "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/6f9935ccd740be29ae9789.png",
+        "heroMedium": "https://api-assets.clashroyale.com/cardheroes/300/jAj1Q5rclXxU9kVImGqSJxa4wEMfEhvwNQ_4jiGUuqg.png"
       },
       "rarity": "common"
     },
@@ -30,9 +31,11 @@
       "maxLevel": 16,
       "elixirCost": 2,
       "iconUrls": {
-        "medium": "https://api-assets.clashroyale.com/cards/300/50833bc56023c454a3f3f8.png"
+        "medium": "https://api-assets.clashroyale.com/cards/300/50833bc56023c454a3f3f8.png",
+        "heroMedium": "https://api-assets.clashroyale.com/cardheroes/300/X_DQUye_OaS3QN6VC9CPw05Fit7wvSm3XegXIXKP--0.png"
       },
-      "rarity": "common"
+      "rarity": "common",
+      "maxEvolutionLevel": 2
     },
     {
       "name": "Giant",
@@ -40,9 +43,11 @@
       "maxLevel": 14,
       "elixirCost": 5,
       "iconUrls": {
-        "medium": "https://api-assets.clashroyale.com/cards/300/6ff015f9a4c7dc3387263a.png"
+        "medium": "https://api-assets.clashroyale.com/cards/300/6ff015f9a4c7dc3387263a.png",
+        "heroMedium": "https://api-assets.clashroyale.com/cardheroes/300/Axr4ox5_b7edmLsoHxBX3vmgijAIibuF6RImTbqLlXE.png"
       },
-      "rarity": "rare"
+      "rarity": "rare",
+      "maxEvolutionLevel": 2
     },
     {
       "name": "P.E.K.K.A",
@@ -70,9 +75,11 @@
       "maxLevel": 11,
       "elixirCost": 5,
       "iconUrls": {
-        "medium": "https://api-assets.clashroyale.com/cards/300/502dd302b6d8d3c24b20ee.png"
+        "medium": "https://api-assets.clashroyale.com/cards/300/502dd302b6d8d3c24b20ee.png",
+        "heroMedium": "https://api-assets.clashroyale.com/cardheroes/300/qBipxLo-3hhCnPrApp2Nn3b2NgrSrvwzWytvREev0CY.png"
       },
-      "rarity": "epic"
+      "rarity": "epic",
+      "maxEvolutionLevel": 2
     },
     {
       "name": "Witch",
@@ -122,11 +129,12 @@
       "name": "Valkyrie",
       "id": 26000011,
       "maxLevel": 14,
-      "maxEvolutionLevel": 1,
+      "maxEvolutionLevel": 3,
       "elixirCost": 4,
       "iconUrls": {
         "medium": "https://api-assets.clashroyale.com/cards/300/0af3f80a54716414f24a16.png",
-        "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/27cb067ea05b2da1514bbf.png"
+        "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/27cb067ea05b2da1514bbf.png",
+        "heroMedium": "https://api-assets.clashroyale.com/cardheroes/300/0lIoYf3Y_plFTzo95zZL93JVxpfb3MMgFDDhgSDGU9A.png"
       },
       "rarity": "rare"
     },
@@ -156,11 +164,12 @@
       "name": "Musketeer",
       "id": 26000014,
       "maxLevel": 14,
-      "maxEvolutionLevel": 1,
+      "maxEvolutionLevel": 3,
       "elixirCost": 4,
       "iconUrls": {
         "medium": "https://api-assets.clashroyale.com/cards/300/387073f98e383bc8b443f5.png",
-        "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/aa9fb18c6a87e316483e44.png"
+        "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/aa9fb18c6a87e316483e44.png",
+        "heroMedium": "https://api-assets.clashroyale.com/cardheroes/300/Tex1C48UTq9FKtAX-3tzG0FJmc9jzncUZG3bb5Vf-Ds.png"
       },
       "rarity": "rare"
     },
@@ -188,11 +197,12 @@
       "name": "Wizard",
       "id": 26000017,
       "maxLevel": 14,
-      "maxEvolutionLevel": 1,
+      "maxEvolutionLevel": 3,
       "elixirCost": 5,
       "iconUrls": {
         "medium": "https://api-assets.clashroyale.com/cards/300/5af874093e5efcbaeb4377.png",
-        "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/78cda81713abf4e3d030ce.png"
+        "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/78cda81713abf4e3d030ce.png",
+        "heroMedium": "https://api-assets.clashroyale.com/cardheroes/300/Mej7vnv4H_3p_8qPs_N6_GKahy6HDr7pU7i9eTHS84U.png"
       },
       "rarity": "rare"
     },
@@ -232,9 +242,11 @@
       "maxLevel": 8,
       "elixirCost": 3,
       "iconUrls": {
-        "medium": "https://api-assets.clashroyale.com/cards/300/6fa5814186d95388289ec1.png"
+        "medium": "https://api-assets.clashroyale.com/cards/300/6fa5814186d95388289ec1.png",
+        "heroMedium": "https://api-assets.clashroyale.com/cardheroes/300/W3dkw0HTw9n1jB-zbknY2w3wHuyuLxSRIAV5fUT1SEY.png"
       },
-      "rarity": "legendary"
+      "rarity": "legendary",
+      "maxEvolutionLevel": 2
     },
     {
       "name": "Royal Giant",
@@ -276,9 +288,11 @@
       "maxLevel": 14,
       "elixirCost": 2,
       "iconUrls": {
-        "medium": "https://api-assets.clashroyale.com/cards/300/5c70cbebb77d152030ca13.png"
+        "medium": "https://api-assets.clashroyale.com/cards/300/5c70cbebb77d152030ca13.png",
+        "heroMedium": "https://api-assets.clashroyale.com/cardheroes/300/r05cmpwV1o7i7FHodtZwW3fmjbXCW34IJCsDEV5cZC4.png"
       },
-      "rarity": "rare"
+      "rarity": "rare",
+      "maxEvolutionLevel": 2
     },
     {
       "name": "Electro Wizard",

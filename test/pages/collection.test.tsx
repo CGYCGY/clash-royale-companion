@@ -19,6 +19,19 @@ describe("collection page", () => {
     expect(await get("/collection")).toContain("No Players Linked Yet");
   });
 
+  test("Evo and Hero pills show which forms a card has and which are owned", async () => {
+    await linkFixturePlayer(user, env.client);
+    const html = await get("/collection?q=");
+    const card = (name: string) => new RegExp(`<div class="coll-name" title="${name}">.*?</div></div>(?=<div class="coll-card|</div></section>)`).exec(html)?.[0] ?? "";
+    const pills = (name: string) => [...card(name).matchAll(/<span class="form-badge ([^"]+)"[^>]*>(\w+)</g)].map((m) => `${m[2]}:${m[1]}`);
+    expect(pills("Musketeer")).toEqual(["Evo:form-evo unlocked", "Hero:form-hero unlocked"]);
+    expect(pills("Knight")).toEqual(["Evo:form-evo unlocked", "Hero:form-hero"]);
+    expect(pills("Ice Golem")).toEqual(["Hero:form-hero unlocked"]);
+    expect(pills("Goblins")).toEqual(["Hero:form-hero"]);
+    expect(pills("Hog Rider")).toEqual([]);
+    expect(html).not.toContain("evo-badge");
+  });
+
   test("renders summary, rarity sections, tower troops, and filters", async () => {
     await linkFixturePlayer(user, env.client);
     const html = await get("/collection");

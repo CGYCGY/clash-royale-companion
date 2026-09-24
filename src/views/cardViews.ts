@@ -11,7 +11,12 @@ export function playerCardView(card: PlayerCard, catalog: Map<string, CardRecord
     { name: card.name, level: displayLevel(card.level, rarity), evolutionLevel: card.evolutionLevel ?? 0 },
     catalog,
   );
-  return { ...view, iconUrl: view.iconUrl ?? card.iconUrls.medium ?? null, iconUrlEvo: view.iconUrlEvo ?? card.iconUrls.evolutionMedium ?? null };
+  return {
+    ...view,
+    iconUrl: view.iconUrl ?? card.iconUrls.medium ?? null,
+    iconUrlEvo: view.iconUrlEvo ?? card.iconUrls.evolutionMedium ?? null,
+    iconUrlHero: view.iconUrlHero ?? card.iconUrls.heroMedium ?? null,
+  };
 }
 
 export const deckCardViews = (cards: DeckCard[], catalog: Map<string, CardRecord>): CardView[] =>

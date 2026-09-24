@@ -30,10 +30,12 @@ export interface CollectionEntry {
   upgradableGold: number;
   /** Levels between the current level and maxLevel; null when not owned. */
   levelsToMax: number | null;
+  /** Bitmasks (1 = Evo, 2 = Hero): what the player owns, and what the card can have. */
   evolutionLevel: number;
   maxEvolutionLevel: number;
   iconUrl: string | null;
   iconUrlEvo: string | null;
+  iconUrlHero: string | null;
   kind: "card" | "support";
 }
 
@@ -89,6 +91,7 @@ function toEntry(card: CardRecord | null, owned: PlayerCard | undefined, kind: "
     maxEvolutionLevel: card?.maxEvolutionLevel ?? owned?.maxEvolutionLevel ?? 0,
     iconUrl: card?.iconUrl ?? owned?.iconUrls.medium ?? null,
     iconUrlEvo: card?.iconUrlEvo ?? owned?.iconUrls.evolutionMedium ?? null,
+    iconUrlHero: card?.iconUrlHero ?? owned?.iconUrls.heroMedium ?? null,
     kind,
   };
 }

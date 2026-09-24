@@ -2,6 +2,21 @@
   "tag": "#9QJUGC2R",
   "name": "Sparky",
   "expLevel": 58,
+  "kingTowerLevel": 15,
+  "collectionLevel": 546,
+  "currentWinLoseStreak": 3,
+  "legacyTrophyRoadHighScore": 8012,
+  "progress": {
+    "seasonal-trophy-road-202609": {
+      "arena": {
+        "id": 168000195,
+        "name": "Seasonal Arena I",
+        "rawName": "SeasonalArenas_202609_Arena1"
+      },
+      "trophies": 14000,
+      "bestTrophies": 0
+    }
+  },
   "expPoints": 41250,
   "totalExpPoints": 1893210,
   "trophies": 7584,
@@ -27,7 +42,8 @@
   },
   "arena": {
     "id": 54000024,
-    "name": "Legendary Arena"
+    "name": "Legendary Arena",
+    "rawName": "Arena_L11"
   },
   "leagueStatistics": {
     "currentSeason": {
@@ -121,7 +137,7 @@
       "id": 26000000,
       "level": 14,
       "maxLevel": 16,
-      "maxEvolutionLevel": 1,
+      "maxEvolutionLevel": 3,
       "evolutionLevel": 1,
       "rarity": "common",
       "count": 102,
@@ -155,7 +171,8 @@
       "elixirCost": 2,
       "iconUrls": {
         "medium": "https://api-assets.clashroyale.com/cards/300/50833bc56023c454a3f3f8.png"
-      }
+      },
+      "maxEvolutionLevel": 2
     },
     {
       "name": "Giant",
@@ -167,7 +184,8 @@
       "elixirCost": 5,
       "iconUrls": {
         "medium": "https://api-assets.clashroyale.com/cards/300/6ff015f9a4c7dc3387263a.png"
-      }
+      },
+      "maxEvolutionLevel": 2
     },
     {
       "name": "P.E.K.K.A",
@@ -203,7 +221,8 @@
       "elixirCost": 5,
       "iconUrls": {
         "medium": "https://api-assets.clashroyale.com/cards/300/502dd302b6d8d3c24b20ee.png"
-      }
+      },
+      "maxEvolutionLevel": 2
     },
     {
       "name": "Witch",
@@ -262,7 +281,7 @@
       "id": 26000011,
       "level": 11,
       "maxLevel": 14,
-      "maxEvolutionLevel": 1,
+      "maxEvolutionLevel": 3,
       "rarity": "rare",
       "count": 792,
       "elixirCost": 4,
@@ -303,8 +322,8 @@
       "id": 26000014,
       "level": 12,
       "maxLevel": 14,
-      "maxEvolutionLevel": 1,
-      "evolutionLevel": 1,
+      "maxEvolutionLevel": 3,
+      "evolutionLevel": 3,
       "rarity": "rare",
       "count": 799,
       "elixirCost": 4,
@@ -342,7 +361,7 @@
       "id": 26000017,
       "level": 11,
       "maxLevel": 14,
-      "maxEvolutionLevel": 1,
+      "maxEvolutionLevel": 3,
       "rarity": "rare",
       "count": 790,
       "elixirCost": 5,
@@ -397,7 +416,8 @@
       "elixirCost": 3,
       "iconUrls": {
         "medium": "https://api-assets.clashroyale.com/cards/300/6fa5814186d95388289ec1.png"
-      }
+      },
+      "maxEvolutionLevel": 2
     },
     {
       "name": "Royal Giant",
@@ -450,7 +470,9 @@
       "elixirCost": 2,
       "iconUrls": {
         "medium": "https://api-assets.clashroyale.com/cards/300/5c70cbebb77d152030ca13.png"
-      }
+      },
+      "maxEvolutionLevel": 2,
+      "evolutionLevel": 2
     },
     {
       "name": "Electro Wizard",
@@ -636,8 +658,8 @@
       "id": 26000014,
       "level": 12,
       "maxLevel": 14,
-      "maxEvolutionLevel": 1,
-      "evolutionLevel": 1,
+      "maxEvolutionLevel": 3,
+      "evolutionLevel": 3,
       "rarity": "rare",
       "count": 799,
       "elixirCost": 4,
@@ -656,7 +678,9 @@
       "elixirCost": 2,
       "iconUrls": {
         "medium": "https://api-assets.clashroyale.com/cards/300/5c70cbebb77d152030ca13.png"
-      }
+      },
+      "maxEvolutionLevel": 2,
+      "evolutionLevel": 2
     },
     {
       "name": "Ice Spirit",

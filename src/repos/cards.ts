@@ -15,6 +15,7 @@ export interface CardRecord {
   maxEvolutionLevel: number | null;
   iconUrl: string | null;
   iconUrlEvo: string | null;
+  iconUrlHero: string | null;
   updatedAt: string;
 }
 
@@ -28,11 +29,12 @@ interface CardRow {
   max_evolution_level: number | null;
   icon_url: string | null;
   icon_url_evo: string | null;
+  icon_url_hero: string | null;
   updated_at: string;
 }
 
 const COLUMNS =
-  "id, name, kind, rarity, elixir_cost, max_level, max_evolution_level, icon_url, icon_url_evo, updated_at";
+  "id, name, kind, rarity, elixir_cost, max_level, max_evolution_level, icon_url, icon_url_evo, icon_url_hero, updated_at";
 
 const toRecord = (r: CardRow): CardRecord => ({
   id: r.id,
@@ -44,18 +46,21 @@ const toRecord = (r: CardRow): CardRecord => ({
   maxEvolutionLevel: r.max_evolution_level,
   iconUrl: r.icon_url,
   iconUrlEvo: r.icon_url_evo,
+  iconUrlHero: r.icon_url_hero,
   updatedAt: r.updated_at,
 });
 
 export function upsertCards(items: CatalogCard[], kind: CardKind = "card"): number {
   const db = getDb();
   const stmt = db.query(
-    `INSERT INTO cards (id, name, kind, rarity, elixir_cost, max_level, max_evolution_level, icon_url, icon_url_evo, data, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO cards (id, name, kind, rarity, elixir_cost, max_level, max_evolution_level, icon_url, icon_url_evo,
+       icon_url_hero, data, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, rarity = excluded.rarity,
        elixir_cost = excluded.elixir_cost, max_level = excluded.max_level,
        max_evolution_level = excluded.max_evolution_level, icon_url = excluded.icon_url,
-       icon_url_evo = excluded.icon_url_evo, data = excluded.data, updated_at = excluded.updated_at`,
+       icon_url_evo = excluded.icon_url_evo, icon_url_hero = excluded.icon_url_hero, data = excluded.data,
+       updated_at = excluded.updated_at`,
   );
   const now = nowIso();
   db.transaction(() => {
@@ -70,6 +75,7 @@ export function upsertCards(items: CatalogCard[], kind: CardKind = "card"): numb
         c.maxEvolutionLevel ?? null,
         c.iconUrls.medium ?? null,
         c.iconUrls.evolutionMedium ?? null,
+        c.iconUrls.heroMedium ?? null,
         JSON.stringify(c),
         now,
       );

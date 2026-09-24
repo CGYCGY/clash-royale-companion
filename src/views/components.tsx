@@ -1,4 +1,5 @@
 import type { Child } from "hono/jsx";
+import { cardForms } from "../domain/evolution";
 import type { BattleResult } from "../repos/battles";
 import type { CardRecord } from "../repos/cards";
 
@@ -7,8 +8,10 @@ export interface CardView {
   name: string;
   iconUrl?: string | null;
   iconUrlEvo?: string | null;
+  iconUrlHero?: string | null;
   /** Display level (1–16 scale). */
   level?: number;
+  /** API bitmask: 1 = Evo, 2 = Hero, 3 = both. */
   evolutionLevel?: number;
   elixirCost?: number | null;
 }
@@ -22,6 +25,7 @@ export function toCardView(
     name: card.name,
     iconUrl: c?.iconUrl ?? null,
     iconUrlEvo: c?.iconUrlEvo ?? null,
+    iconUrlHero: c?.iconUrlHero ?? null,
     level: card.level,
     evolutionLevel: card.evolutionLevel,
     elixirCost: c?.elixirCost ?? null,
@@ -31,15 +35,22 @@ export function toCardView(
 export type CardSize = "sm" | "md" | "lg";
 
 export function CardIcon({ card, size = "md" }: { card: CardView; size?: CardSize }) {
-  const evolved = (card.evolutionLevel ?? 0) > 0;
-  const src = (evolved && card.iconUrlEvo) || card.iconUrl;
+  const { evo, hero } = cardForms(card.evolutionLevel);
+  // With both forms the log doesn't say which one was played, so the Evo art wins arbitrarily.
+  const src = (evo && card.iconUrlEvo) || (hero && card.iconUrlHero) || card.iconUrl;
+  const cls = `card-icon size-${size}${evo ? " evolved" : ""}${hero ? " hero" : ""}`;
   return (
-    <figure class={`card-icon size-${size}${evolved ? " evolved" : ""}`} title={card.name}>
+    <figure class={cls} title={card.name}>
       {/* The name is always rendered; CSS hides it behind the image and app.js reveals it if the image fails. */}
       {src && <img src={src} alt={card.name} loading="lazy" />}
       <span class="card-fallback">{card.name}</span>
       {card.level !== undefined && <span class="card-level">Lv {card.level}</span>}
-      {evolved && <span class="card-evo">EVO</span>}
+      {(evo || hero) && (
+        <span class="card-forms">
+          {evo && <span class="card-evo">EVO</span>}
+          {hero && <span class="card-hero">HERO</span>}
+        </span>
+      )}
     </figure>
   );
 }

@@ -10,6 +10,7 @@ import {
   RARITY_ORDER,
   sortCollection,
 } from "../../domain/collection";
+import { cardForms } from "../../domain/evolution";
 import { resolvePlayer } from "../../http/currentPlayer";
 import { parseQuery } from "../../http/validate";
 import { listCards } from "../../repos/cards";
@@ -57,6 +58,7 @@ const view = (e: CollectionEntry) => ({
   name: e.name,
   iconUrl: e.iconUrl,
   iconUrlEvo: e.iconUrlEvo,
+  iconUrlHero: e.iconUrlHero,
   level: e.level ?? undefined,
   evolutionLevel: e.evolutionLevel,
   elixirCost: e.elixirCost,
@@ -93,6 +95,27 @@ function Progress({ e }: { e: CollectionEntry }) {
   );
 }
 
+/** One pill per form the card can have, highlighted when owned. */
+function FormBadges({ e }: { e: CollectionEntry }) {
+  const can = cardForms(e.maxEvolutionLevel);
+  const has = cardForms(e.evolutionLevel);
+  if (!can.evo && !can.hero) return null;
+  const pill = (kind: "evo" | "hero", label: string) => (
+    <span
+      class={`form-badge form-${kind}${has[kind] ? " unlocked" : ""}`}
+      title={`${label} ${has[kind] ? "owned" : "not owned"}`}
+    >
+      {label}
+    </span>
+  );
+  return (
+    <div class="form-badges">
+      {can.evo && pill("evo", "Evo")}
+      {can.hero && pill("hero", "Hero")}
+    </div>
+  );
+}
+
 function CollectionCard({ e }: { e: CollectionEntry }) {
   return (
     <div class={`coll-card${e.owned ? "" : " missing"}${e.upgradeReady ? " ready" : ""}`}>
@@ -101,11 +124,7 @@ function CollectionCard({ e }: { e: CollectionEntry }) {
         {e.name}
       </div>
       <Progress e={e} />
-      {e.maxEvolutionLevel > 0 && (
-        <div class={`evo-badge${e.evolutionLevel > 0 ? " unlocked" : ""}`}>
-          Evo {e.evolutionLevel}/{e.maxEvolutionLevel}
-        </div>
-      )}
+      <FormBadges e={e} />
     </div>
   );
 }
