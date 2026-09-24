@@ -137,7 +137,7 @@ Both use the same image.
 
 ### Option C: Prebuilt image with `deploy/deploy.sh`
 
-This is how the maintainer's instance runs. Coolify pulls `ghcr.io/cgycgy/clash-royale-agent` instead of
+This is how the maintainer's instance runs. Coolify pulls `ghcr.io/cgycgy/clash-royale-companion` instead of
 building from Git.
 
 1. Copy `deploy/.env.deploy.example` to `deploy/.env.deploy` and fill in the Coolify URL, API token,
