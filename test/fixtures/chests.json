@@ -1,0 +1,40 @@
+{
+  "items": [
+    {
+      "index": 0,
+      "name": "Silver Chest"
+    },
+    {
+      "index": 1,
+      "name": "Golden Chest"
+    },
+    {
+      "index": 2,
+      "name": "Silver Chest"
+    },
+    {
+      "index": 3,
+      "name": "Magical Chest"
+    },
+    {
+      "index": 4,
+      "name": "Silver Chest"
+    },
+    {
+      "index": 7,
+      "name": "Giant Chest"
+    },
+    {
+      "index": 36,
+      "name": "Epic Chest"
+    },
+    {
+      "index": 112,
+      "name": "Legendary Chest"
+    },
+    {
+      "index": 457,
+      "name": "Mega Lightning Chest"
+    }
+  ]
+}

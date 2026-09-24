@@ -1,0 +1,450 @@
+{
+  "items": [
+    {
+      "name": "Knight",
+      "id": 26000000,
+      "maxLevel": 16,
+      "maxEvolutionLevel": 1,
+      "elixirCost": 3,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/8c23b2b86573edf2a5ea48.png",
+        "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/6f9935ccd740be29ae9789.png"
+      },
+      "rarity": "common"
+    },
+    {
+      "name": "Archers",
+      "id": 26000001,
+      "maxLevel": 16,
+      "maxEvolutionLevel": 1,
+      "elixirCost": 3,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/b846b258851257e0691161.png",
+        "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/7e711b383dabb834cc73b5.png"
+      },
+      "rarity": "common"
+    },
+    {
+      "name": "Goblins",
+      "id": 26000002,
+      "maxLevel": 16,
+      "elixirCost": 2,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/50833bc56023c454a3f3f8.png"
+      },
+      "rarity": "common"
+    },
+    {
+      "name": "Giant",
+      "id": 26000003,
+      "maxLevel": 14,
+      "elixirCost": 5,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/6ff015f9a4c7dc3387263a.png"
+      },
+      "rarity": "rare"
+    },
+    {
+      "name": "P.E.K.K.A",
+      "id": 26000004,
+      "maxLevel": 11,
+      "elixirCost": 7,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/de9ec1cd17e4e7da187439.png"
+      },
+      "rarity": "epic"
+    },
+    {
+      "name": "Minions",
+      "id": 26000005,
+      "maxLevel": 16,
+      "elixirCost": 3,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/c3f582f37a7c6d9e24d128.png"
+      },
+      "rarity": "common"
+    },
+    {
+      "name": "Balloon",
+      "id": 26000006,
+      "maxLevel": 11,
+      "elixirCost": 5,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/502dd302b6d8d3c24b20ee.png"
+      },
+      "rarity": "epic"
+    },
+    {
+      "name": "Witch",
+      "id": 26000007,
+      "maxLevel": 11,
+      "elixirCost": 5,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/1e5801f6c2ee2ba36fb7c4.png"
+      },
+      "rarity": "epic"
+    },
+    {
+      "name": "Barbarians",
+      "id": 26000008,
+      "maxLevel": 16,
+      "maxEvolutionLevel": 1,
+      "elixirCost": 5,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/a36b0e750dfb942fd89d96.png",
+        "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/0c43983705fabcece50f40.png"
+      },
+      "rarity": "common"
+    },
+    {
+      "name": "Golem",
+      "id": 26000009,
+      "maxLevel": 11,
+      "elixirCost": 8,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/dd61c3dc259e5c43722e89.png"
+      },
+      "rarity": "epic"
+    },
+    {
+      "name": "Skeletons",
+      "id": 26000010,
+      "maxLevel": 16,
+      "maxEvolutionLevel": 1,
+      "elixirCost": 1,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/1f3f66500d51cd085b337a.png",
+        "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/59f551384d2073a263c43d.png"
+      },
+      "rarity": "common"
+    },
+    {
+      "name": "Valkyrie",
+      "id": 26000011,
+      "maxLevel": 14,
+      "maxEvolutionLevel": 1,
+      "elixirCost": 4,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/0af3f80a54716414f24a16.png",
+        "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/27cb067ea05b2da1514bbf.png"
+      },
+      "rarity": "rare"
+    },
+    {
+      "name": "Skeleton Army",
+      "id": 26000012,
+      "maxLevel": 11,
+      "elixirCost": 3,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/e66690a346edf345e4a3b4.png"
+      },
+      "rarity": "epic"
+    },
+    {
+      "name": "Bomber",
+      "id": 26000013,
+      "maxLevel": 16,
+      "maxEvolutionLevel": 1,
+      "elixirCost": 2,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/84ac13a9696967dc4dce46.png",
+        "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/cacf31bc99054529438fa9.png"
+      },
+      "rarity": "common"
+    },
+    {
+      "name": "Musketeer",
+      "id": 26000014,
+      "maxLevel": 14,
+      "maxEvolutionLevel": 1,
+      "elixirCost": 4,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/387073f98e383bc8b443f5.png",
+        "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/aa9fb18c6a87e316483e44.png"
+      },
+      "rarity": "rare"
+    },
+    {
+      "name": "Baby Dragon",
+      "id": 26000015,
+      "maxLevel": 11,
+      "elixirCost": 4,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/2f1c708cb75e847cec6f5b.png"
+      },
+      "rarity": "epic"
+    },
+    {
+      "name": "Prince",
+      "id": 26000016,
+      "maxLevel": 11,
+      "elixirCost": 5,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/97c8f692a928a55577aaf6.png"
+      },
+      "rarity": "epic"
+    },
+    {
+      "name": "Wizard",
+      "id": 26000017,
+      "maxLevel": 14,
+      "maxEvolutionLevel": 1,
+      "elixirCost": 5,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/5af874093e5efcbaeb4377.png",
+        "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/78cda81713abf4e3d030ce.png"
+      },
+      "rarity": "rare"
+    },
+    {
+      "name": "Spear Goblins",
+      "id": 26000019,
+      "maxLevel": 16,
+      "elixirCost": 2,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/f345f06d50bc3fff0ff45b.png"
+      },
+      "rarity": "common"
+    },
+    {
+      "name": "Giant Skeleton",
+      "id": 26000020,
+      "maxLevel": 11,
+      "elixirCost": 6,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/8fc13231a442906cf4854d.png"
+      },
+      "rarity": "epic"
+    },
+    {
+      "name": "Hog Rider",
+      "id": 26000021,
+      "maxLevel": 14,
+      "elixirCost": 4,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/ab87d27e725f33fb50e775.png"
+      },
+      "rarity": "rare"
+    },
+    {
+      "name": "Ice Wizard",
+      "id": 26000023,
+      "maxLevel": 8,
+      "elixirCost": 3,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/6fa5814186d95388289ec1.png"
+      },
+      "rarity": "legendary"
+    },
+    {
+      "name": "Royal Giant",
+      "id": 26000024,
+      "maxLevel": 16,
+      "maxEvolutionLevel": 1,
+      "elixirCost": 6,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/fb6b974c9e482d70775559.png",
+        "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/7ff1f5228b70c02a91a2d3.png"
+      },
+      "rarity": "common"
+    },
+    {
+      "name": "Ice Spirit",
+      "id": 26000030,
+      "maxLevel": 16,
+      "maxEvolutionLevel": 1,
+      "elixirCost": 1,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/cc42ae6f55ae6277b87666.png",
+        "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/1c0823df216da5fd549056.png"
+      },
+      "rarity": "common"
+    },
+    {
+      "name": "Miner",
+      "id": 26000032,
+      "maxLevel": 8,
+      "elixirCost": 3,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/7f874e656a245ae57206c3.png"
+      },
+      "rarity": "legendary"
+    },
+    {
+      "name": "Ice Golem",
+      "id": 26000038,
+      "maxLevel": 14,
+      "elixirCost": 2,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/5c70cbebb77d152030ca13.png"
+      },
+      "rarity": "rare"
+    },
+    {
+      "name": "Electro Wizard",
+      "id": 26000042,
+      "maxLevel": 8,
+      "elixirCost": 4,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/521d11b4ed6d281f6f74a6.png"
+      },
+      "rarity": "legendary"
+    },
+    {
+      "name": "Mega Knight",
+      "id": 26000055,
+      "maxLevel": 8,
+      "maxEvolutionLevel": 1,
+      "elixirCost": 7,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/f9304b36a81e17712d2895.png",
+        "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/c43625c36ef8cfde491b22.png"
+      },
+      "rarity": "legendary"
+    },
+    {
+      "name": "Archer Queen",
+      "id": 26000072,
+      "maxLevel": 6,
+      "elixirCost": 5,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/2c4788ea725e672f85b80a.png"
+      },
+      "rarity": "champion"
+    },
+    {
+      "name": "Cannon",
+      "id": 27000000,
+      "maxLevel": 16,
+      "maxEvolutionLevel": 1,
+      "elixirCost": 3,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/22ef5d9468d7aa2f806d86.png",
+        "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/e3ca9fab361ed0586a1331.png"
+      },
+      "rarity": "common"
+    },
+    {
+      "name": "Tesla",
+      "id": 27000006,
+      "maxLevel": 16,
+      "maxEvolutionLevel": 1,
+      "elixirCost": 4,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/8f3182163857c5463c8830.png",
+        "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/ead194a2715e3a86407185.png"
+      },
+      "rarity": "common"
+    },
+    {
+      "name": "Fireball",
+      "id": 28000000,
+      "maxLevel": 14,
+      "elixirCost": 4,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/a8155b0ea02bae01cd4136.png"
+      },
+      "rarity": "rare"
+    },
+    {
+      "name": "Arrows",
+      "id": 28000001,
+      "maxLevel": 16,
+      "elixirCost": 3,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/4e05974b02cc4aa95db4d8.png"
+      },
+      "rarity": "common"
+    },
+    {
+      "name": "Rocket",
+      "id": 28000003,
+      "maxLevel": 14,
+      "elixirCost": 6,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/15e8bfff2c10ca22da244d.png"
+      },
+      "rarity": "rare"
+    },
+    {
+      "name": "Mirror",
+      "id": 28000006,
+      "maxLevel": 11,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/2403def5083f02105e7802.png"
+      },
+      "rarity": "epic"
+    },
+    {
+      "name": "Zap",
+      "id": 28000008,
+      "maxLevel": 16,
+      "maxEvolutionLevel": 1,
+      "elixirCost": 2,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/99a4b6174c552d969d49eb.png",
+        "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/d1f544bd4ac204442e4f80.png"
+      },
+      "rarity": "common"
+    },
+    {
+      "name": "Poison",
+      "id": 28000009,
+      "maxLevel": 11,
+      "elixirCost": 4,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/3a9d1818d0d7f5646e6346.png"
+      },
+      "rarity": "epic"
+    },
+    {
+      "name": "The Log",
+      "id": 28000011,
+      "maxLevel": 8,
+      "elixirCost": 2,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/54b778a7b6b194ae705bfb.png"
+      },
+      "rarity": "legendary"
+    },
+    {
+      "name": "Earthquake",
+      "id": 28000014,
+      "maxLevel": 14,
+      "elixirCost": 3,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/5143a0acadb54ccf178031.png"
+      },
+      "rarity": "rare"
+    }
+  ],
+  "supportItems": [
+    {
+      "name": "Tower Princess",
+      "id": 159000000,
+      "maxLevel": 16,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/b1f613ca79b5b7ebb46895.png"
+      },
+      "rarity": "common"
+    },
+    {
+      "name": "Cannoneer",
+      "id": 159000001,
+      "maxLevel": 11,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/3c1ddb1e900772ec105468.png"
+      },
+      "rarity": "epic"
+    },
+    {
+      "name": "Dagger Duchess",
+      "id": 159000002,
+      "maxLevel": 8,
+      "iconUrls": {
+        "medium": "https://api-assets.clashroyale.com/cards/300/dbd8297e962ff6431ff3c8.png"
+      },
+      "rarity": "legendary"
+    }
+  ]
+}
