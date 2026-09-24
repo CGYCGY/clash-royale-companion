@@ -65,7 +65,8 @@ describe("settings page", () => {
 
     const first = await follow(env.app, created, cookie);
     const html = await first.text();
-    const shown = /<code class="key-value" data-copy="true">(crk_[A-Za-z0-9_-]+)<\/code>/.exec(html)?.[1];
+    const shown = /<input[^>]*id="new-api-key"[^>]*value="(crk_[A-Za-z0-9_-]+)"[^>]*readonly/.exec(html)?.[1];
+    expect(html).toContain('aria-label="Copy API key"');
     expect(shown).toBeDefined();
     expect(shown!.startsWith(key!.keyPrefix)).toBe(true);
     expect(html).toContain("http://localhost/api");
@@ -114,16 +115,22 @@ describe("settings page", () => {
   });
 
   test("change password validates and rotates sessions", async () => {
-    const real = await createUser("dave", "old-password");
+    const real = await createUser("dave", "Old-Password-11");
     const c = cookieFor(real);
-    const mismatch = await env.app.request("/settings/password", formPost(c, { current: "old-password", password: "new-password", confirm: "other-pass" }));
+    const mismatch = await env.app.request("/settings/password", formPost(c, { current: "Old-Password-11", password: "New-Password-22", confirm: "other-pass" }));
     expect(mismatch.status).toBe(400);
     expect(await mismatch.text()).toContain("New passwords don&#39;t match.");
 
-    const wrong = await env.app.request("/settings/password", formPost(c, { current: "nope-nope", password: "new-password", confirm: "new-password" }));
+    const weak = await env.app.request("/settings/password", formPost(c, { current: "Old-Password-11", password: "davedavedave", confirm: "davedavedave" }));
+    expect(weak.status).toBe(400);
+    const weakHtml = await weak.text();
+    expect(weakHtml).toContain("must not contain your username");
+    expect(weakHtml).toContain("at least 3 of");
+
+    const wrong = await env.app.request("/settings/password", formPost(c, { current: "nope-nope", password: "New-Password-22", confirm: "New-Password-22" }));
     expect(await wrong.text()).toContain("Current password is wrong.");
 
-    const ok = await env.app.request("/settings/password", formPost(c, { current: "old-password", password: "new-password", confirm: "new-password" }));
+    const ok = await env.app.request("/settings/password", formPost(c, { current: "Old-Password-11", password: "New-Password-22", confirm: "New-Password-22" }));
     expect(ok.status).toBe(302);
     expect(ok.headers.getSetCookie().join()).toContain("cr_session=");
     // The old session was revoked.

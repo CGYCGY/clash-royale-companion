@@ -6,22 +6,32 @@ import { verifyCredentials } from "../../auth/users";
 import { setFlash } from "../../http/flash";
 import { parseForm } from "../../http/validate";
 import type { AppEnv } from "../../types";
+import { PasswordChecklist, PasswordInput, PasswordMatch } from "../../views/password";
 import { renderPage } from "../../views/render";
-import { formError, safeNext, text } from "./shared";
+import { formError, formErrors, safeNext, text } from "./shared";
 
-function ErrorBox({ message }: { message?: string }) {
-  return message ? (
+function ErrorBox({ messages = [] }: { messages?: string[] }) {
+  if (!messages.length) return null;
+  return (
     <div class="flash flash-error" role="alert">
-      {message}
+      {messages.length === 1 ? (
+        messages[0]
+      ) : (
+        <ul class="error-list">
+          {messages.map((m) => (
+            <li>{m}</li>
+          ))}
+        </ul>
+      )}
     </div>
-  ) : null;
+  );
 }
 
 function LoginForm({ username = "", next = "/", error }: { username?: string; next?: string; error?: string }) {
   return (
     <div class="card form-narrow auth-card">
       <h1>Log in</h1>
-      <ErrorBox message={error} />
+      <ErrorBox messages={error ? [error] : []} />
       <form method="post" action="/login">
         <input type="hidden" name="next" value={next} />
         <div class="field">
@@ -30,7 +40,7 @@ function LoginForm({ username = "", next = "/", error }: { username?: string; ne
         </div>
         <div class="field">
           <label for="password">Password</label>
-          <input type="password" id="password" name="password" autocomplete="current-password" required />
+          <PasswordInput id="password" name="password" autocomplete="current-password" />
         </div>
         <div class="field">
           <button type="submit">Log in</button>
@@ -43,11 +53,11 @@ function LoginForm({ username = "", next = "/", error }: { username?: string; ne
   );
 }
 
-function RegisterForm({ username = "", invite = "", error }: { username?: string; invite?: string; error?: string }) {
+function RegisterForm({ username = "", invite = "", errors }: { username?: string; invite?: string; errors?: string[] }) {
   return (
     <div class="card form-narrow auth-card">
       <h1>Create account</h1>
-      <ErrorBox message={error} />
+      <ErrorBox messages={errors} />
       <form method="post" action="/register">
         <div class="field">
           <label for="username">Username</label>
@@ -56,12 +66,13 @@ function RegisterForm({ username = "", invite = "", error }: { username?: string
         </div>
         <div class="field">
           <label for="password">Password</label>
-          <input type="password" id="password" name="password" autocomplete="new-password" minlength={8} required />
-          <p class="help">At least 8 characters.</p>
+          <PasswordInput id="password" name="password" autocomplete="new-password" policy describedby="password-rules" />
+          <PasswordChecklist id="password-rules" passwordId="password" usernameInputId="username" />
         </div>
         <div class="field">
           <label for="confirm">Confirm password</label>
-          <input type="password" id="confirm" name="confirm" autocomplete="new-password" required />
+          <PasswordInput id="confirm" name="confirm" autocomplete="new-password" describedby="confirm-match" />
+          <PasswordMatch id="confirm-match" passwordId="password" confirmId="confirm" />
         </div>
         <div class="field">
           <label for="invite">Invite code</label>
@@ -118,7 +129,7 @@ export const authPages = new Hono<AppEnv>()
         return renderPage(
           c,
           { title: "Create account", status: 400 },
-          <RegisterForm username={form.username} invite={form.invite} error="Passwords don't match." />,
+          <RegisterForm username={form.username} invite={form.invite} errors={["Passwords don't match."]} />,
         );
       }
       const user = await registerWithInvite({
@@ -130,14 +141,14 @@ export const authPages = new Hono<AppEnv>()
       setFlash(c, "success", "Welcome. Link your player tag to get started.");
       return c.redirect("/settings");
     } catch (err) {
-      const error = formError(err, {
+      const errors = formErrors(err, {
         invalid_invite: "That invite code is invalid, expired, or already used.",
         conflict: "That username is taken. Pick another one.",
       });
       return renderPage(
         c,
         { title: "Create account", status: 400 },
-        <RegisterForm username={form?.username} invite={form?.invite} error={error} />,
+        <RegisterForm username={form?.username} invite={form?.invite} errors={errors} />,
       );
     }
   })

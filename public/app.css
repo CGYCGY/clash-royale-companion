@@ -492,6 +492,123 @@ button:disabled {
 .auth-card {
   margin: 2rem auto;
 }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+.error-list {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+.error-list li + li {
+  margin-top: 0.2rem;
+}
+
+/* Icon button inside an input's right edge (password reveal, copy API key). */
+.input-with-btn {
+  position: relative;
+}
+.input-with-btn.has-btn input {
+  padding-right: 2.75rem;
+}
+/* Edge draws its own reveal and clear buttons, which would sit next to ours. */
+.input-with-btn input::-ms-reveal,
+.input-with-btn input::-ms-clear {
+  display: none;
+}
+.input-btn {
+  position: absolute;
+  top: 50%;
+  right: 0.3rem;
+  transform: translateY(-50%);
+  width: 2.1rem;
+  height: 2.1rem;
+  padding: 0;
+  justify-content: center;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  border-radius: 5px;
+}
+/* The global `button { display: inline-flex }` would otherwise override the hidden attribute. */
+.input-btn[hidden] {
+  display: none;
+}
+.input-btn:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+.input-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 0;
+  color: var(--text);
+}
+.password-toggle .icon-eye-off,
+.password-toggle[aria-pressed="true"] .icon-eye {
+  display: none;
+}
+.password-toggle[aria-pressed="true"] .icon-eye-off {
+  display: block;
+}
+.copy-key .icon-check,
+.copy-key.copied .icon-copy {
+  display: none;
+}
+.copy-key.copied .icon-check {
+  display: block;
+}
+.copy-key.copied {
+  color: var(--win);
+}
+
+/* Password rules: a plain requirements list without JS, a live checklist with it. */
+.pw-checklist {
+  list-style: none;
+  margin: 0.4rem 0 0;
+  padding: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.pw-checklist[hidden] {
+  display: none;
+}
+.pw-checklist li {
+  position: relative;
+  padding-left: 1.3rem;
+  line-height: 1.45;
+}
+.pw-checklist li + li {
+  margin-top: 0.1rem;
+}
+.pw-checklist li::before {
+  content: "\2022";
+  position: absolute;
+  left: 0.3rem;
+}
+.pw-checklist li.ok {
+  color: var(--win);
+}
+.pw-checklist li.ok::before {
+  content: "\2713";
+  left: 0.1rem;
+  font-weight: 700;
+}
+.pw-checklist li.bad {
+  color: var(--loss);
+}
+.pw-checklist li.bad::before {
+  content: "\2715";
+  left: 0.1rem;
+  font-weight: 700;
+}
 fieldset {
   border: none;
   margin: 0;
@@ -713,20 +830,18 @@ details pre {
   padding: 0.75rem 1rem;
   margin-bottom: var(--gap);
 }
-.key-reveal p {
-  margin: 0 0 0.5rem;
+.key-reveal-note {
+  font-weight: 400;
+  color: var(--muted);
 }
 .key-value {
-  display: block;
-  padding: 0.5rem 0.65rem;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  overflow-wrap: anywhere;
-  user-select: all;
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  text-overflow: ellipsis;
 }
-.copy-btn {
-  margin-top: 0.5rem;
+/* Reserve the line so the live region stays rendered (and announced) and nothing jumps when it fills. */
+.copy-status {
+  min-height: 1.3em;
 }
 
 .card-strip {

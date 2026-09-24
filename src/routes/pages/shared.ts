@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { config } from "../../config";
+import { PasswordPolicyError } from "../../auth/passwordPolicy";
 import { AppError, type ErrorCode } from "../../errors";
 import type { PlayerRecord } from "../../repos/players";
 import { getLastSyncRun } from "../../repos/syncRuns";
@@ -17,6 +18,12 @@ export function formError(err: unknown, handled: Partial<Record<ErrorCode, strin
   if (typeof h === "string") return h;
   if (h === true || err.code === "validation_error") return err.message;
   throw err;
+}
+
+/** Like formError, but a password policy failure yields one message per broken rule. */
+export function formErrors(err: unknown, handled: Partial<Record<ErrorCode, string | true>> = {}): string[] {
+  if (err instanceof PasswordPolicyError) return err.problems.map((p) => p.message);
+  return [formError(err, handled)];
 }
 
 /**

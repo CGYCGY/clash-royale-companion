@@ -17,8 +17,10 @@ import { trackPlayer } from "../../sync";
 import type { AppEnv } from "../../types";
 import { Table } from "../../views/components";
 import { formatDateTime, formatRelative } from "../../views/format";
+import { CheckIcon, CopyIcon } from "../../views/icons";
+import { PasswordChecklist, PasswordInput, PasswordMatch } from "../../views/password";
 import { renderPage } from "../../views/render";
-import { formError, idParam, text } from "./shared";
+import { formError, formErrors, idParam, text } from "./shared";
 
 // The raw key rides a one-shot cookie (like the flash) so it survives the PRG redirect without being
 // stored server-side; it's scoped to /settings and deleted on the next render.
@@ -37,14 +39,22 @@ function takeNewKey(c: Context): string | null {
   return RAW_KEY_RE.test(raw) ? raw : null;
 }
 
-type FormErrors = Partial<Record<"player" | "key" | "password", string>>;
+type FormErrors = Partial<Record<"player" | "key" | "password", string | string[]>>;
 
-function ErrorText({ message }: { message?: string }) {
-  return message ? (
+function ErrorText({ message }: { message?: string | string[] }) {
+  const messages = message === undefined ? [] : [message].flat();
+  if (!messages.length) return null;
+  return messages.length === 1 ? (
     <p class="error-text" role="alert">
-      {message}
+      {messages[0]}
     </p>
-  ) : null;
+  ) : (
+    <ul class="error-text error-list" role="alert">
+      {messages.map((m) => (
+        <li>{m}</li>
+      ))}
+    </ul>
+  );
 }
 
 function renderSettings(c: Context<AppEnv>, errors: FormErrors = {}, status: 200 | 400 = 200) {
@@ -142,13 +152,27 @@ function renderSettings(c: Context<AppEnv>, errors: FormErrors = {}, status: 200
           Give this key to your AI assistant. Base URL: <code>{base}</code>
         </p>
         {newKey && (
-          <div class="key-reveal" role="status">
-            <p>
-              <strong>New API key.</strong> Copy it now; it won't be shown again.
-            </p>
-            <code class="key-value" data-copy>
-              {newKey}
-            </code>
+          <div class="key-reveal">
+            <label for="new-api-key">
+              New API key. <span class="key-reveal-note">Copy it now; it won't be shown again.</span>
+            </label>
+            <div class="input-with-btn">
+              <input
+                type="text"
+                id="new-api-key"
+                class="key-value"
+                value={newKey}
+                readonly
+                autocomplete="off"
+                spellcheck={false}
+                data-autocopy
+              />
+              <button type="button" class="input-btn copy-key" aria-label="Copy API key" aria-controls="new-api-key" hidden>
+                <CopyIcon />
+                <CheckIcon />
+              </button>
+            </div>
+            <p class="help copy-status" aria-live="polite" data-copy-status="new-api-key"></p>
           </div>
         )}
         <Table
@@ -196,15 +220,17 @@ function renderSettings(c: Context<AppEnv>, errors: FormErrors = {}, status: 200
         <form method="post" action="/settings/password" class="form-narrow">
           <div class="field">
             <label for="current">Current password</label>
-            <input type="password" id="current" name="current" autocomplete="current-password" required />
+            <PasswordInput id="current" name="current" autocomplete="current-password" />
           </div>
           <div class="field">
             <label for="new-password">New password</label>
-            <input type="password" id="new-password" name="password" autocomplete="new-password" minlength={8} required />
+            <PasswordInput id="new-password" name="password" autocomplete="new-password" policy describedby="new-password-rules" />
+            <PasswordChecklist id="new-password-rules" passwordId="new-password" username={user.username} />
           </div>
           <div class="field">
             <label for="confirm">Confirm new password</label>
-            <input type="password" id="confirm" name="confirm" autocomplete="new-password" required />
+            <PasswordInput id="confirm" name="confirm" autocomplete="new-password" describedby="confirm-match" />
+            <PasswordMatch id="confirm-match" passwordId="new-password" confirmId="confirm" />
           </div>
           <ErrorText message={errors.password} />
           <div class="field">
@@ -291,6 +317,6 @@ export const settingsPages = new Hono<AppEnv>()
       setFlash(c, "success", "Password changed. Other sessions were signed out.");
       return c.redirect("/settings");
     } catch (err) {
-      return renderSettings(c, { password: formError(err) }, 400);
+      return renderSettings(c, { password: formErrors(err) }, 400);
     }
   });

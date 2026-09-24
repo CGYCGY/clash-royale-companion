@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test } from "bun:test";
-import { createInvite } from "../../src/auth/invites";
-import { createUser } from "../../src/auth/users";
+import { createInvite, getInviteByCode } from "../../src/auth/invites";
+import { hashPassword } from "../../src/auth/passwords";
+import { createUser, insertUser } from "../../src/auth/users";
 import { safeNext } from "../../src/routes/pages/shared";
 import { makeUser } from "../helpers";
 import { cookieFor, formPost, type PageTestEnv, responseCookies, setupPages } from "./support";
@@ -15,7 +16,7 @@ describe("auth pages", () => {
     const invite = createInvite();
     const res = await env.app.request(
       "/register",
-      formPost(null, { username: "NewUser", password: "hunter2hunter2", confirm: "hunter2hunter2", invite: invite.code.toLowerCase() }),
+      formPost(null, { username: "NewUser", password: "Blue-Otter-4412", confirm: "Blue-Otter-4412", invite: invite.code.toLowerCase() }),
     );
     expect(res.status).toBe(302);
     expect(res.headers.get("location")).toBe("/settings");
@@ -36,14 +37,14 @@ describe("auth pages", () => {
   test("register errors re-render the form", async () => {
     const mismatch = await env.app.request(
       "/register",
-      formPost(null, { username: "bob", password: "hunter2hunter2", confirm: "different1", invite: "X" }),
+      formPost(null, { username: "bob", password: "Blue-Otter-4412", confirm: "different1", invite: "X" }),
     );
     expect(mismatch.status).toBe(400);
     expect(await mismatch.text()).toContain("Passwords don&#39;t match.");
 
     const badInvite = await env.app.request(
       "/register",
-      formPost(null, { username: "bob", password: "hunter2hunter2", confirm: "hunter2hunter2", invite: "NOPE" }),
+      formPost(null, { username: "bob", password: "Blue-Otter-4412", confirm: "Blue-Otter-4412", invite: "NOPE" }),
     );
     expect(badInvite.status).toBe(400);
     expect(await badInvite.text()).toContain("invite code is invalid");
@@ -51,31 +52,74 @@ describe("auth pages", () => {
     makeUser("taken");
     const conflict = await env.app.request(
       "/register",
-      formPost(null, { username: "taken", password: "hunter2hunter2", confirm: "hunter2hunter2", invite: createInvite().code }),
+      formPost(null, { username: "taken", password: "Blue-Otter-4412", confirm: "Blue-Otter-4412", invite: createInvite().code }),
     );
     expect(conflict.status).toBe(400);
     expect(await conflict.text()).toContain("username is taken");
 
     const badName = await env.app.request(
       "/register",
-      formPost(null, { username: "x!", password: "hunter2hunter2", confirm: "hunter2hunter2", invite: createInvite().code }),
+      formPost(null, { username: "x!", password: "Blue-Otter-4412", confirm: "Blue-Otter-4412", invite: createInvite().code }),
     );
     expect(badName.status).toBe(400);
     expect(await badName.text()).toContain("Username must be");
   });
 
+  test("register rejects a weak password, listing every problem and keeping the other fields", async () => {
+    const invite = createInvite();
+    const weak = "zedzedzed";
+    const res = await env.app.request(
+      "/register",
+      formPost(null, { username: "zed", password: weak, confirm: weak, invite: invite.code }),
+    );
+    expect(res.status).toBe(400);
+    const html = await res.text();
+    expect(html).toContain("at least 12 characters");
+    expect(html).toContain("at least 3 of");
+    expect(html).toContain("must not contain your username");
+    expect(html).toContain('class="error-list"');
+    expect(html).toContain('value="zed"');
+    expect(html).toContain(`value="${invite.code}"`);
+    expect(html).not.toContain(weak);
+    expect(getInviteByCode(invite.code)!.uses).toBe(0);
+
+    const common = await env.app.request(
+      "/register",
+      formPost(null, { username: "zed", password: "Qwerty123456", confirm: "Qwerty123456", invite: invite.code }),
+    );
+    expect(await common.text()).toContain("too common");
+  });
+
+  test("register page renders the rules checklist, eye toggles and policy length hints", async () => {
+    const html = await (await env.app.request("/register")).text();
+    expect(html).toContain('minlength="12"');
+    expect(html).toContain('data-policy="');
+    expect(html).toContain("12–128 characters");
+    expect(html.match(/class="input-btn password-toggle"/g)).toHaveLength(2);
+    expect(html).toContain('aria-label="Show password"');
+    const login = await (await env.app.request("/login")).text();
+    expect(login.match(/class="input-btn password-toggle"/g)).toHaveLength(1);
+    expect(login).not.toContain("minlength");
+  });
+
+  test("login accepts an existing password that predates the policy", async () => {
+    insertUser("oldtimer", await hashPassword("short1"));
+    const res = await env.app.request("/login", formPost(null, { username: "oldtimer", password: "short1", next: "/" }));
+    expect(res.status).toBe(302);
+  });
+
   test("login redirects to a safe next, rejects bad passwords, logout ends the session", async () => {
-    await createUser("carol", "correct-horse");
+    await createUser("carol", "Correct-Horse-7");
     const bad = await env.app.request("/login", formPost(null, { username: "carol", password: "wrong-pass", next: "/" }));
     expect(bad.status).toBe(401);
     expect(await bad.text()).toContain("Wrong username or password.");
 
-    const ok = await env.app.request("/login", formPost(null, { username: "Carol", password: "correct-horse", next: "/decks" }));
+    const ok = await env.app.request("/login", formPost(null, { username: "Carol", password: "Correct-Horse-7", next: "/decks" }));
     expect(ok.status).toBe(302);
     expect(ok.headers.get("location")).toBe("/decks");
     const cookie = responseCookies(ok);
 
-    const evil = await env.app.request("/login", formPost(null, { username: "carol", password: "correct-horse", next: "//evil.com" }));
+    const evil = await env.app.request("/login", formPost(null, { username: "carol", password: "Correct-Horse-7", next: "//evil.com" }));
     expect(evil.headers.get("location")).toBe("/");
 
     const loginWhileIn = await env.app.request("/login", { headers: { Cookie: cookie } });
@@ -107,10 +151,10 @@ describe("auth pages", () => {
   });
 
   test("login never redirects off-site via a whitespace-smuggled next", async () => {
-    await createUser("dave", "correct-horse");
+    await createUser("dave", "Correct-Horse-7");
     const page = await env.app.request("/login?next=/%09/evil.com");
     expect(await page.text()).not.toContain("evil.com");
-    const res = await env.app.request("/login", formPost(null, { username: "dave", password: "correct-horse", next: "/\t/evil.com" }));
+    const res = await env.app.request("/login", formPost(null, { username: "dave", password: "Correct-Horse-7", next: "/\t/evil.com" }));
     expect(res.status).toBe(302);
     expect(res.headers.get("location")).toBe("/");
   });
