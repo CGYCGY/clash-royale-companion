@@ -1,0 +1,24 @@
+{
+  "name": "clash-royale-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/server.ts",
+    "start": "bun src/server.ts",
+    "cli": "bun src/cli/index.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "mock-api": "bun scripts/mock-cr-api.ts",
+    "seed-dev": "bun scripts/seed-dev.ts"
+  },
+  "dependencies": {
+    "croner": "^10.0.1",
+    "hono": "^4.13.9",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.2",
+    "typescript": "^7.0.2"
+  }
+}
