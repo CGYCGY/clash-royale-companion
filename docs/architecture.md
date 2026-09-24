@@ -220,7 +220,7 @@ markdown note per player.
   errors. Chest failures are ignored.
 - `syncAll(client, { delayMs? }) -> { players, failed, skipped, battlesAdded, rateLimited }` skips players removed
   mid-run, continues past unexpected errors, and stops the run at the first 429.
-- `syncCards(client)`, and `startScheduler(client) -> { stop() }`. The scheduler runs `runHourlyJob` on
+- `syncCards(client)`, and `startScheduler(client) -> { stop() }`. The scheduler runs `runSyncJob` on
   `SYNC_CRON` (reloads the card catalog first if it is empty, then `syncAll`) and `runDailyJob` at 04:17
   (snapshot pruning, card catalog, session purge; each step runs even if another fails).
 
@@ -247,7 +247,7 @@ The scheduler is in-process, so run exactly one app instance per database.
 - **Battle times**: `battleTime` looks like `20240101T120000.000Z`. Convert it with `parseBattleTime`, which is
   already done in the battles table.
 - **Tags**: send tags URL-encoded (`%23...`). `CrClient` does this.
-- **Battle log size**: it only holds about 25 recent battles, so hourly sync matters for heavy players.
+- **Battle log size**: it only holds about 25 recent battles, so the default daily sync loses battles for anyone playing more than that per day; set `SYNC_CRON` hourly for them.
 - **Errors**: 403 usually means the IP is not on the key's allowlist. `CrApiError.status` is 0 for network failures.
 
 ## Database

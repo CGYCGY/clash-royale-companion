@@ -5,7 +5,7 @@ description: Coach a Clash Royale player using their self-hosted Clash Royale Co
 
 # Clash Royale Companion
 
-The user runs a self-hosted app that syncs their Clash Royale account every hour and exposes it through a
+The user runs a self-hosted app that syncs their Clash Royale account on a schedule (daily by default) and exposes it through a
 JSON API. Use that API as your source of truth. Never guess card levels, trophies or results.
 
 ## Setup
@@ -39,7 +39,7 @@ curl -sS -H "Authorization: Bearer $CR_COMPANION_API_KEY" "$CR_COMPANION_URL/api
 2. **Load the context before any advice.** Call `GET /api/players/{tag}/context.md`. This Markdown document
    holds the profile, current deck, 7-day and 30-day stats, deck performance, recent battles, collection
    summary, upgrade-ready cards, saved decks and the user's notes. Read all of it first.
-3. **Refresh if stale.** The context header shows `Synced at`. If it is more than an hour old, or the user
+3. **Refresh if stale.** The context header shows `Synced at`. If it is older than the last time the user played, or the user
    says they just played, call `POST /api/players/{tag}/sync`, then reload the context.
    - A `429` with code `cooldown` means a sync ran recently. `details.retryAfterSeconds` says when the next
      one is allowed. Use the data you have and say how old it is. Do not retry in a loop.

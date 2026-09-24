@@ -16,7 +16,8 @@ services:
       CR_API_TOKEN: ${CR_API_TOKEN:?set CR_API_TOKEN}
       APP_URL: ${APP_URL:-}
       CR_API_BASE: ${CR_API_BASE:-https://api.clashroyale.com/v1}
-      SYNC_CRON: ${SYNC_CRON:-0 * * * *}
+      SYNC_CRON: ${SYNC_CRON:-0 3 * * *}
+      TZ: ${TZ:-UTC}
       SYNC_COOLDOWN_SECONDS: ${SYNC_COOLDOWN_SECONDS:-300}
       SNAPSHOT_KEEP_ALL_DAYS: ${SNAPSHOT_KEEP_ALL_DAYS:-7}
       SNAPSHOT_KEEP_DAILY_DAYS: ${SNAPSHOT_KEEP_DAILY_DAYS:-90}

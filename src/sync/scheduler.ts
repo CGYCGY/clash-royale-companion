@@ -15,7 +15,7 @@ const errText = (err: unknown): string => (err instanceof Error ? err.message : 
  * Retries the card catalog when it is empty (a failed startup sync would otherwise leave deck
  * validation broken for everyone until the daily job), then syncs every player.
  */
-export async function runHourlyJob(client: CrApi, opts: { delayMs?: number } = {}): Promise<SyncAllResult> {
+export async function runSyncJob(client: CrApi, opts: { delayMs?: number } = {}): Promise<SyncAllResult> {
   if (countCards() === 0) {
     await syncCards(client).catch((err: unknown) => console.error(`[scheduler] card catalog retry failed: ${errText(err)}`));
   }
@@ -56,7 +56,7 @@ export function startScheduler(client: CrApi): { stop(): void } {
     config.SYNC_CRON,
     { name: "sync-players", protect: true, catch: onError("sync-players") },
     async () => {
-      await runHourlyJob(client);
+      await runSyncJob(client);
     },
   );
 

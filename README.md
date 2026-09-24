@@ -1,7 +1,7 @@
 # Clash Royale Companion
 
 A self-hosted companion app for Clash Royale. It links your player tags, pulls your profile and battle log
-from Supercell's official API every hour, and keeps the history in SQLite. The in-game battle log forgets
+from Supercell's official API once a day, and keeps the history in SQLite. The in-game battle log forgets
 anything older than about 25 matches, but this app does not. You get win rates by deck and mode, trophy
 history, a card collection view with upgrade progress, and a place to save decks.
 
@@ -148,7 +148,7 @@ Both use the same image.
    The code allows one sign-up and expires after 7 days. Pass `--days N` to change that, or `--no-expiry`.
    To add yourself without an invite, run `bun run cli user create <name> <password>` instead.
 4. Open `https://cr.example.com/register` and sign up with the invite code.
-5. On **Settings**, link your player tag. The first sync runs right away, and then it runs every hour.
+5. On **Settings**, link your player tag. The first sync runs right away, and then it runs daily (see `SYNC_CRON`).
 6. On **Settings**, create an API key for your AI assistant.
 
 The card catalog loads at startup. If `CR_API_TOKEN` is wrong or the IP is not allowlisted, the log shows
@@ -195,9 +195,10 @@ Any other agent can follow `.claude/skills/clash-royale-companion/SKILL.md` as p
 | `APP_URL` | unset | Public URL. When it starts with `https://`, session cookies are `Secure`, and its origin passes the CSRF check behind a proxy. |
 | `DATABASE_PATH` | `./data/app.db`, or `/data/app.db` in Docker | SQLite file. Its directory is created if missing. |
 | `PORT` | `3000` | HTTP port. Keep `3000` in Docker. |
-| `SYNC_CRON` | `0 * * * *` | Schedule for syncing all players, in the server's timezone. The container runs in UTC. |
+| `SYNC_CRON` | `0 3 * * *` | Schedule for syncing all players, in the server's timezone. Daily at 03:00 by default. Use hourly (`0 * * * *`) if someone plays more than about 25 battles a day, since the API only keeps the last 25. |
+| `TZ` | `UTC` | Timezone for the cron schedule, e.g. `Asia/Kuala_Lumpur`. |
 | `SYNC_COOLDOWN_SECONDS` | `300` | Minimum gap between manual syncs of one player. |
-| `SNAPSHOT_KEEP_ALL_DAYS` | `7` | Keep every hourly profile snapshot for this many days. |
+| `SNAPSHOT_KEEP_ALL_DAYS` | `7` | Keep every profile snapshot for this many days. |
 | `SNAPSHOT_KEEP_DAILY_DAYS` | `90` | After that, keep one snapshot per UTC day until this age, then delete. |
 
 Development only:

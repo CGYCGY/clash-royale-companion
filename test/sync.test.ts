@@ -8,7 +8,7 @@ import { countCards, getCardByName } from "../src/repos/cards";
 import { addPlayer, getLatestSnapshot, getPlayer, getTrophyHistory, listAllPlayers, removePlayer } from "../src/repos/players";
 import * as syncRuns from "../src/repos/syncRuns";
 import { listRecentSyncRuns } from "../src/repos/syncRuns";
-import { manualSync, runDailyJob, runHourlyJob, syncAll, syncCards, syncPlayer, trackPlayer } from "../src/sync";
+import { manualSync, runDailyJob, runSyncJob, syncAll, syncCards, syncPlayer, trackPlayer } from "../src/sync";
 import type { User } from "../src/types";
 import { FakeCrClient, FIXTURE_TAG, makeTestDb, makeUser, seedCards } from "./helpers";
 
@@ -173,23 +173,23 @@ describe("syncCards / syncAll / trackPlayer", () => {
     expect(single).toMatchObject({ errorStatus: 429, retryAfterSeconds: 30 });
   });
 
-  test("hourly job reloads an empty card catalog before syncing players", async () => {
+  test("sync job reloads an empty card catalog before syncing players", async () => {
     makeTestDb();
     const u = makeUser();
     addPlayer(u.id, FIXTURE_TAG);
     expect(countCards()).toBe(0);
-    const r = await runHourlyJob(client, { delayMs: 0 });
+    const r = await runSyncJob(client, { delayMs: 0 });
     expect(countCards()).toBe(42);
     expect(r.battlesAdded).toBe(10);
-    await runHourlyJob(client, { delayMs: 0 });
+    await runSyncJob(client, { delayMs: 0 });
     expect(client.calls.getCards).toBe(1);
   });
 
-  test("hourly job still syncs players when the catalog retry fails", async () => {
+  test("sync job still syncs players when the catalog retry fails", async () => {
     makeTestDb();
     addPlayer(makeUser().id, FIXTURE_TAG);
     client.fail.getCards = new CrApiError(503, "inMaintenance", "maintenance");
-    const r = await runHourlyJob(client, { delayMs: 0 });
+    const r = await runSyncJob(client, { delayMs: 0 });
     expect(r.battlesAdded).toBe(10);
   });
 
