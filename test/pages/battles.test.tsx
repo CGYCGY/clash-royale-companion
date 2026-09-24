@@ -22,7 +22,7 @@ const get = async (path: string) => {
   return { status: res.status, html: await res.text() };
 };
 
-const battleRows = (html: string) => (html.match(/<a href="\/battles\/9QJUGC2R\/\d+" class="row-link"/g) ?? []).length;
+const battleRows = (html: string) => (html.match(/<tr class="battle-row" data-href="\/battles\/9QJUGC2R\/\d+"/g) ?? []).length;
 
 describe("battles pages", () => {
   test("lists battles with stats, decks used, and filter options", async () => {

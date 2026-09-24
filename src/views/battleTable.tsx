@@ -12,12 +12,7 @@ function battleColumns(catalog: Map<string, CardRecord>): Column<BattleRecord>[]
   return [
     {
       label: "Time",
-      // The real link is the row's keyboard focus target and its no-JS fallback; app.js makes the whole row open it.
-      render: (b) => (
-        <a href={battleHref(b)} class="row-link" title={formatDateTime(b.battleTime)}>
-          {formatRelative(b.battleTime)}
-        </a>
-      ),
+      render: (b) => <span title={formatDateTime(b.battleTime)}>{formatRelative(b.battleTime)}</span>,
     },
     { label: "Mode", render: (b) => b.modeLabel },
     { label: "Result", render: (b) => <ResultBadge result={b.result} /> },

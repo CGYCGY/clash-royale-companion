@@ -350,7 +350,7 @@ if (modalTemplate && "HTMLDialogElement" in window) {
     if (href) {
       // Forward onto an entry we pushed earlier: reopen it without pushing again.
       ownsEntry = true;
-      open(href, document.querySelector(`.battle-row a.row-link[href="${CSS.escape(href)}"]`), { push: false });
+      open(href, document.querySelector(`.battle-row[data-href="${CSS.escape(href)}"]`), { push: false });
     } else if (dialog.open) {
       ownsEntry = false;
       dialog.close();
@@ -360,26 +360,29 @@ if (modalTemplate && "HTMLDialogElement" in window) {
   const modified = (e) => e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey;
   wireBattleRows = (root) => {
     for (const row of root.querySelectorAll("tr.battle-row[data-href]:not(.is-clickable)")) {
-      const link = row.querySelector("a.row-link");
-      if (!link) continue;
+      const href = row.dataset.href;
       row.classList.add("is-clickable");
+      // The row is the only way to open a battle, so it must be reachable and operable by keyboard.
+      row.tabIndex = 0;
+      row.setAttribute("aria-label", `Open battle: ${row.textContent.replace(/\s+/g, " ").trim().slice(0, 80)}`);
       row.addEventListener("click", (e) => {
-        const onLink = e.target.closest("a") === link;
         // Other controls in the row keep their own behaviour.
-        if (!onLink && e.target.closest("a, button, input, select, textarea, summary, label")) return;
+        if (e.target.closest("a, button, input, select, textarea, summary, label")) return;
         // Don't turn a text selection drag into a navigation.
-        if (!onLink && String(getSelection()).length > 0) return;
+        if (String(getSelection()).length > 0) return;
         if (modified(e)) {
-          if (!onLink && (e.ctrlKey || e.metaKey)) window.open(link.href, "_blank", "noopener");
+          if (e.ctrlKey || e.metaKey) window.open(href, "_blank", "noopener");
           return;
         }
-        e.preventDefault();
-        open(link.getAttribute("href"), link);
+        open(href, row);
       });
       row.addEventListener("auxclick", (e) => {
-        if (e.button === 1 && e.target.closest("a") !== link && !e.target.closest("a, button")) {
-          window.open(link.href, "_blank", "noopener");
-        }
+        if (e.button === 1 && !e.target.closest("a, button")) window.open(href, "_blank", "noopener");
+      });
+      row.addEventListener("keydown", (e) => {
+        if (e.target !== row || (e.key !== "Enter" && e.key !== " ")) return;
+        e.preventDefault();
+        open(href, row);
       });
     }
   };
