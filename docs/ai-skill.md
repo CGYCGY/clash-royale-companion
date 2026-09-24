@@ -42,4 +42,4 @@ Settings page if it leaks.
 
 - "How did my Hog deck do this week?"
 - "Which cards should I upgrade next with a limited gold budget?"
-- "Build me a Path of Legend deck from cards I have at level 14 or higher, and save it."
+- "Build me a Ranked deck from cards I have at level 14 or higher, and save it."

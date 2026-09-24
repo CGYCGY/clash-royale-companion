@@ -51,7 +51,7 @@ public/                Served at /static/* (app.css dark theme; app.js: copy but
                        spinner and cooldown countdown, player menu keyboard support, live filter forms, clickable
                        battle rows opening the detail in a <dialog>). Reference files with assetUrl("app.css"):
                        Cloudflare caches /static by URL, so only the ?v=<content hash> URL is sent as immutable.
-test/                  *.test.ts(x), helpers.ts, fixtures/{player,battlelog,chests,cards}.json.
+test/                  *.test.ts(x), helpers.ts, fixtures/{player,battlelog,battlelog-modes,cards,events}.json.
 ```
 
 ## Conventions
@@ -187,9 +187,10 @@ Codes are 12 chars, case-insensitive.
 - `assertPlayerOwnedBy(tag, userId) -> PlayerRecord` throws 404 (not 403) for other users' tags.
   Call this before any per-player read or write in a route.
 - `setSyncResult(tag, { ok: true, name? } | { ok: false, error })`
-- `insertSnapshot(tag, player, chests, fetchedAt?) -> { inserted, id }`. When the serialized `data` and
-  `chests` equal the player's newest row, it inserts nothing and advances that row's `last_seen_at` instead.
-- `getLatestSnapshot(tag) -> { player: Player, chests, fetchedAt, lastSeenAt } | null`. `fetchedAt` is when
+- `insertSnapshot(tag, player, fetchedAt?) -> { inserted, id }`. When the serialized `data` equals the
+  player's newest row, it inserts nothing and advances that row's `last_seen_at` instead. The legacy
+  `chests` column is neither compared nor written (new rows hold NULL); old rows keep their values.
+- `getLatestSnapshot(tag) -> { player: Player, fetchedAt, lastSeenAt } | null`. `fetchedAt` is when
   this state was first observed. `lastSeenAt` is the latest sync that confirmed it; use it for "synced at" and
   snapshot age.
 - `getTrophyHistory(tag, { sinceDays? }) -> { fetchedAt, lastSeenAt, trophies, bestTrophies, polTrophies, polLeague }[]`.
@@ -198,13 +199,20 @@ Codes are 12 chars, case-insensitive.
 **repos/battles**
 - `insertBattles(tag, entries: BattleLogEntry[]) -> added` (INSERT OR IGNORE on player_tag+battle_time+opponent_tag)
 - `listBattles(tag, { since?, until?, mode?, result?, limit? (50, max 500), offset? }) -> BattleRecord[]`, newest first.
-  `mode` matches either `type` ("pathOfLegend") or `gameModeName` ("Ladder").
+  `mode` matches a mode label ("Royale Shuffle"), a raw `type` ("pathOfLegend") or a raw `gameModeName` ("Ladder").
+- `BattleRecord` has `eventTag` (stored column) and `modeLabel`, computed at read time by
+  `battleModeLabel` in `src/domain/battleModes.ts`: the `/events` title for the eventTag, else a fixed map
+  (pathOfLegend → Ranked, PvP Ladder → Trophy Road, riverRace*/boatBattle → Clan War, TeamVsTeam → 2v2, …),
+  else the humanized game mode id. Because it's computed on read, fetching new titles relabels old battles.
+  A label filter becomes the OR of the raw type/mode/event combinations that carry it.
+- `modeLabelFor(tag, mode) -> label | null` maps an old raw `?mode=` value to its label (the Battles page uses it).
 - `countBattles(tag, filter)`, `getBattle(tag, id) -> BattleRecord & { raw }`
 - `getBattleStats(tag, { sinceDays?, mode? }) -> { sinceDays, total, wins, losses, draws, winRate, netTrophies, byMode[], byDeck[] }`.
-  Each byMode entry has `{ type, mode, games, wins, losses, draws, winRate }`. Each byDeck entry has
+  Each byMode entry has `{ type, mode, modeLabel, games, wins, losses, draws, winRate }`, one per label; `type`
+  and `mode` are the label's most-played raw combination. Each byDeck entry has
   `{ deckKey, cards, games, wins, losses, draws, winRate, avgElixir | null, lastPlayed }`. winRate is 0..1.
 - `BattleRecord.teamDeck` / `opponentDeck` are `DeckCard[] = { id, name, level, evolutionLevel }`.
-  `level` is already the in-game display level.
+  `level` is already the in-game display level; `evolutionLevel` is the Evo/Hero bitmask (see below).
 - 2v2: `teamDeck` holds 16 cards with the tracked player's 8 first. `isTwoVsTwo` comes from the stored
   `team_size` (not the deck length), and `deckKey` uses only the player's own 8 cards. `opponentName` joins
   both names with " & ".
@@ -214,6 +222,14 @@ Codes are 12 chars, case-insensitive.
 **repos/cards**: `upsertCards(items, kind)`, `listCards({ kind? })`, `countCards()`,
 `getCardByName(name)` (case-insensitive), `getCardById(id)`, `cardsMap() -> Map<name, CardRecord>`,
 `cardsById()`. `kind: "card" | "support"`, where support means tower troops. `elixirCost` is null for Mirror.
+`iconUrlEvo` / `iconUrlHero` hold the Evolution and Hero art.
+
+**repos/events**: `upsertEvents(events)` (never deletes, so titles of ended events survive), `countEvents()`,
+`eventTitles() -> Map<eventTag, title>`.
+
+**domain**: `evolution.ts` decodes the `evolutionLevel` / `maxEvolutionLevel` bitmask (`cardForms`,
+`formsLabel`, `formsOwnership`). `kingTower.ts` has Supercell's King Tower requirements and
+`nextKingTower(player) -> { level, cards, minLevel, have } | null`.
 
 **repos/decks**: `validateDeckCards(names) -> canonicalNames` throws `invalid_deck` with
 `details { unknown, duplicates, count }`. Also `createDeck(userId, { name, cards, notes?, source? })`,
@@ -235,12 +251,14 @@ markdown note per player.
 - `manualSync(tag, client?) -> { ok: true, battlesAdded } | { ok: false, retryAfterSeconds } | { ok: false, error }`.
   The cooldown of `SYNC_COOLDOWN_SECONDS` counts from the last sync attempt of any kind. Check ownership first.
 - `syncPlayer(tag, client) -> { battlesAdded, snapshotInserted, error?, errorStatus?, retryAfterSeconds? }` never
-  throws for API errors. Chest failures are ignored. `snapshotInserted` is false when the profile was unchanged.
+  throws for API errors. It fetches only the player and battle log (never `/upcomingchests`).
+  `snapshotInserted` is false when the profile was unchanged.
 - `syncAll(client, { delayMs? }) -> { players, failed, skipped, battlesAdded, snapshotsInserted, rateLimited }` skips players removed
   mid-run, continues past unexpected errors, and stops the run at the first 429.
-- `syncCards(client)`, and `startScheduler(client) -> { stop() }`. The scheduler runs `runSyncJob` on
-  `SYNC_CRON` (reloads the card catalog first if it is empty, then `syncAll`) and `runDailyJob` at 04:17
-  (opt-in snapshot thinning, card catalog, session purge; each step runs even if another fails).
+- `syncCards(client)`, `syncEvents(client)`, and `startScheduler(client) -> { stop() }`. The scheduler runs
+  `runSyncJob` on `SYNC_CRON` (reloads the card catalog and event titles first if either table is empty, then
+  `syncAll`) and `runDailyJob` at 04:17 (opt-in snapshot thinning, card catalog, event titles, session purge;
+  each step runs even if another fails). Startup also loads each of the two when its table is empty.
 
 `client` defaults to `getCrClient()`, built from config. In tests, pass `FakeCrClient` from `test/helpers.ts`.
 The scheduler is in-process, so run exactly one app instance per database.
@@ -284,10 +302,17 @@ The scheduler is in-process, so run exactly one app instance per database.
 - **Tags**: send tags URL-encoded (`%23...`). `CrClient` does this.
 - **Battle log size**: it only holds about 25 recent battles, so the default daily sync loses battles for anyone playing more than that per day; set `SYNC_CRON` hourly for them.
 - **Errors**: 403 usually means the IP is not on the key's allowlist. `CrApiError.status` is 0 for network failures.
+- **Evolutions and Heroes**: `evolutionLevel` / `maxEvolutionLevel` are a bitmask: 1 = Evo, 2 = Hero, 3 = both.
+  Never treat `> 0` as "evolved"; use `cardForms` from `src/domain/evolution.ts`.
+- **Dead fields**: `expLevel` has been frozen since XP was removed on 2026-05-26; show `kingTowerLevel`.
+  `/upcomingchests` returns a fake legacy chest cycle (chests were removed 2025-03-31). Both
+  `kingTowerLevel` and `collectionLevel` are missing from snapshots taken before that update.
+- **Modes**: battle `type`s include `trail` and `unknown` (Royale Shuffle, Princess Gambit, 2v2 events), and
+  `gameMode.name` is an internal id. Show `modeLabel`, never the raw values.
 
 ## Database
 
-The schema lives in `src/db/migrations/` (`0001_init.sql` through `0004_snapshot_last_seen.sql`). Add changes as the
+The schema lives in `src/db/migrations/` (`0001_init.sql` through `0006_cards_hero_icon.sql`). Add changes as the
 next `NNNN_*.sql` file and never edit an applied one. Foreign keys are on, and deleting a player cascades to its snapshots, battles, notes, and sync runs.
 Large payloads are stored as JSON text (`player_snapshots.data`, `battles.data`, `cards.data`). Query them with
 `json_extract` rather than parsing in JS when you need one field, as `getTrophyHistory` does.
@@ -315,5 +340,8 @@ beforeEach(() => {
   get the global middleware. See `test/app.test.tsx`.
 - `config` is a mutable object, so tests set fields such as `config.SYNC_COOLDOWN_SECONDS` directly.
 - Admin routes: `adminHeaders()` from `test/api/support.ts`, or `createAdminToken(name).raw` as the Bearer token.
-- The fixture player is `#9QJUGC2R` "Sparky". Its battle log has 10 battles: 5 ladder, 3 Path of Legend
-  (one draw), one 2v2, and one friendly. The catalog has 39 cards and 3 tower troops.
+- The fixture player is `#9QJUGC2R` "Sparky", King Tower 15, Collection Level 546, owning Musketeer as Evo +
+  Hero and Ice Golem as Hero. Its battle log has 10 battles: 5 ladder, 3 Ranked (one draw), one 2v2, and
+  one friendly. `battlelog-modes.json` adds 8 battles of the 2026 types (Royale Shuffle, Princess Gambit,
+  2v2 events, clan war) and `events.json` is a live `/events` sample; the mock API serves both. The catalog
+  has 39 cards and 3 tower troops.

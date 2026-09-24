@@ -16,9 +16,12 @@ process in one Docker container.
 
 - A player switcher in the header: with several linked tags, every page shows the one you picked. Next to
   it, a sync button and how long ago the current player last synced.
-- Dashboard with trophies, Path of Legend, recent form, and the current deck.
+- Dashboard with trophies, Ranked, recent form, the current deck, and King Tower and Collection Level with
+  what the next King Tower level needs.
 - Battle history, 10 per page, with filters that apply as you change them; click a battle to see both
-  decks in a dialog (or on its own page).
+  decks in a dialog (or on its own page). Modes show the in-game name ("Royale Shuffle", "Clan War",
+  "Trophy Road") instead of internal ids like `RR_Heist_Friendly`.
+- Evolutions and Heroes are told apart everywhere cards appear (EVO and HERO badges).
 - Card collection with levels, live search and filters, sorting, and the copies and gold needed for the next
   level and for max level. Upgrade-ready cards show how many levels the copies you hold cover right now.
 - Decks: your saved decks next to the decks the current player used in battles, with win rates, and the
@@ -246,7 +249,7 @@ sqlite3 /path/to/volume/app.db ".backup /backups/app-$(date +%F).db"
 `docker volume inspect <volume>`.
 
 **Snapshot history.** Profile snapshots of 20 to 100 KB each are kept forever by default. A sync stores a
-new snapshot only when the profile or upcoming chests changed. Otherwise it updates the latest snapshot's
+new snapshot only when the profile changed. Otherwise it updates the latest snapshot's
 `last_seen_at`, which records the most recent sync that confirmed that state, so an idle player adds no
 rows. If you run hourly syncs on a small disk, set the two `SNAPSHOT_KEEP_*` variables above to thin old
 snapshots in the daily 04:17 UTC job. The newest snapshot of each player is always kept. Run it by hand with
@@ -270,13 +273,19 @@ tag without `#`, because the shell treats `#` as the start of a comment.
 ## Limitations
 
 - **No account balances.** The app computes upgrade costs, but Supercell's API has no gold, gems, or wild
-  card balances, and no shop, Pass Royale, or chest contents. For spending advice, put your resources in the
+  card balances, and no shop, Pass Royale, or Lucky Chest contents. For spending advice, put your resources in the
   player notes.
 - **History starts when you link a tag.** Earlier battles can't be recovered. If the app is down long
   enough for more than about 25 battles to be played, the older ones are lost.
 - **One owner per tag.** A player tag can be linked to only one account.
 - **IP-bound keys.** Moving servers means updating the key's allowlist.
 - **No self-service password reset.** An admin runs `bun run cli user set-password <name> <password>`.
-- **Upcoming chests** use an endpoint that is sometimes unavailable. A failed chest fetch does not fail the
-  sync.
+- **No chests.** The chest cycle was removed from the game on 2025-03-31. The API's `/upcomingchests` still
+  answers with a fake legacy cycle, so the app no longer calls it. Daily Lucky Chests are not in the API.
+- **King level is gone.** XP was removed on 2026-05-26 and the API's `expLevel` is frozen. The app shows
+  `kingTowerLevel` instead; snapshots from before that update show "—".
+- **Merge Tactics** matches never appear in the battle log.
+- **Event names** come from the undocumented `GET /events`, fetched at startup and in the daily job. It lists
+  only running events, so a battle from an event that ended before the app first saw it shows a mapped
+  or tidied-up mode name instead.
 - **Unofficial.** This project is not affiliated with or endorsed by Supercell.

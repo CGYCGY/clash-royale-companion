@@ -55,7 +55,8 @@ curl -sS -H "Authorization: Bearer $CR_COMPANION_API_KEY" "$CR_COMPANION_URL/api
 4. **Drill down only when needed.**
    - `GET /api/players/{tag}/battles?since=...&mode=...&result=...` for specific matches.
    - `GET /api/players/{tag}/stats?days=N` for win rates by mode and by deck, plus trophy history. Add
-     `&mode=pathOfLegend` (or `Ladder`, etc.) to get deck win rates for one mode only.
+     `&mode=Ranked` (or any `modeLabel`, such as `Trophy Road` or `Royale Shuffle`) to get deck win rates
+     for one mode only.
    - `GET /api/players/{tag}/cards` for every card's level and upgrade cost. Each card has `countNeeded` and
      `goldNeeded` for its next level, `copiesToMax` and `goldToMax` for reaching `maxLevel`, and
      `upgradeReady`. Use these for upgrade priorities and gold budgets. Sum `goldNeeded` over the cards
@@ -99,8 +100,8 @@ Deck endpoints accept only exact catalog names. Matching ignores case but nothin
 
 More rules:
 
-- **Evolutions are not separate cards.** "Evo Knight" is `Knight`. Evolution is the `evolutionLevel` of the
-  player's card. A deck lists the base card, and the game decides which slots are evolved.
+- **Evolutions and Heroes are not separate cards.** "Evo Knight" and "Hero Knight" are both `Knight`. A deck
+  lists the base card, and the game decides which slots use the Evo or Hero form.
 - **Tower troops can't go in a deck.** Tower Princess, Cannoneer, Dagger Duchess and the others have
   `kind: "support"`.
 - **A deck has exactly 8 distinct cards.** A bad deck returns `400 invalid_deck` with
@@ -117,7 +118,7 @@ UTC. `{tag}` is a player tag without `#`.
 | GET | `/api/players` | | `{ players: Player[] }` |
 | POST | `/api/players` | `{ tag }` | `201 { player, battlesAdded, syncError? }`. Checks the tag upstream and runs the first sync |
 | DELETE | `/api/players/{tag}` | | `204`. Deletes the player with all stored battles, snapshots and notes. Confirm with the user first |
-| GET | `/api/players/{tag}` | | `{ player, snapshot: { fetchedAt, lastSeenAt, profile, currentDeck: DeckCard[], currentDeckSupportCards, chests } \| null }`. `lastSeenAt` is the latest sync that confirmed this data; `fetchedAt` is when it last changed |
+| GET | `/api/players/{tag}` | | `{ player, snapshot: { fetchedAt, lastSeenAt, profile, currentDeck: DeckCard[], currentDeckSupportCards } \| null }`. `lastSeenAt` is the latest sync that confirmed this data; `fetchedAt` is when it last changed. `profile` includes `kingTowerLevel`, `collectionLevel` and `currentWinLoseStreak` (absent on snapshots from before May 2026). Ignore `profile.expLevel`: it has been frozen since XP was removed |
 | GET | `/api/players/{tag}/battles` | `since`, `until` (ISO), `mode`, `result` (`win\|loss\|draw`), `limit` (1–500, default 50), `offset` | `{ battles: Battle[], total }`, newest first |
 | GET | `/api/players/{tag}/battles/{id}` | | `{ battle: Battle & { raw } }`. `raw` is the upstream battle JSON, whose card levels are rarity-relative. Never use `raw` for level reasoning; use `teamDeck` and `opponentDeck` |
 | GET | `/api/players/{tag}/stats` | `days` (1–365, default 30), `mode` (optional, same matching as the battles filter) | `{ stats: { sinceDays, total, wins, losses, draws, winRate, netTrophies, byMode[], byDeck[] }, trophyHistory[] }` |
@@ -133,20 +134,25 @@ UTC. `{tag}` is a player tag without `#`.
 | PATCH | `/api/decks/{id}` | any of `{ name, cards, notes }` | `{ deck }` |
 | DELETE | `/api/decks/{id}` | | `204` |
 | GET | `/api/decks/{id}/check` | `tag` | `{ fetchedAt, lastSeenAt, cards: [{ name, level, maxLevel, owned, evolutionLevel }], avgElixir, missing: string[] }`. If the player has no snapshot yet, `fetchedAt` and `lastSeenAt` are null, `owned`, `level` and `evolutionLevel` are null, `missing` is empty and `note` is `"no snapshot yet"`: ownership is unknown, so do not call the cards missing |
-| GET | `/api/cards` | `kind` (`card\|support`, optional) | `{ cards: [{ id, name, kind, rarity, elixirCost, maxLevel, maxEvolutionLevel, iconUrl, iconUrlEvo, updatedAt }] }` |
+| GET | `/api/cards` | `kind` (`card\|support`, optional) | `{ cards: [{ id, name, kind, rarity, elixirCost, maxLevel, maxEvolutionLevel, iconUrl, iconUrlEvo, iconUrlHero, updatedAt }] }` |
 
 Shapes:
 
 - **Player**: `{ tag, userId, name, addedAt, lastSyncedAt, lastSyncError }`.
 - **DeckCard**: `{ id, name, level, evolutionLevel, ... }`. `level` is the in-game display level.
-- **Battle**: `{ id, battleTime, type, gameModeName, arenaName, opponentTag, opponentName, result, teamCrowns,
-  opponentCrowns, teamDeck: DeckCard[], opponentDeck: DeckCard[], deckKey, trophyChange, isTwoVsTwo }`.
-  `type` is the upstream type, such as `PvP` or `pathOfLegend`. `gameModeName` is the display name, such as
-  `Ladder`. The `mode` filter matches either one. In 2v2, `teamDeck` has 16 cards with the player's 8 first.
-- **byMode entry**: `{ type, mode, games, wins, losses, draws, winRate }`.
+  `evolutionLevel` is a bitmask: 0 = none, 1 = Evo, 2 = Hero, 3 = both. It is not a count.
+- **Battle**: `{ id, battleTime, type, gameModeName, eventTag, modeLabel, arenaName, opponentTag, opponentName,
+  result, teamCrowns, opponentCrowns, teamDeck: DeckCard[], opponentDeck: DeckCard[], deckKey, trophyChange,
+  isTwoVsTwo }`. Name modes by `modeLabel` ("Ranked", "Trophy Road", "Clan War", "2v2", "Royale Shuffle",
+  …). `type` (`PvP`, `pathOfLegend`, `trail`, `unknown`, …) and `gameModeName` (`Ladder`,
+  `RR_Heist_Friendly`, …) are raw upstream ids. The `mode` filter accepts a `modeLabel` or either raw value.
+  In 2v2, `teamDeck` has 16 cards with the player's 8 first.
+- **byMode entry**: `{ type, mode, modeLabel, games, wins, losses, draws, winRate }`, one per `modeLabel`.
 - **byDeck entry**: `{ deckKey, cards, games, wins, losses, draws, winRate, avgElixir, lastPlayed }`. `winRate` is 0 to 1; `lastPlayed` is the newest battle time with the deck.
 - **CollectionEntry**: `{ name, rarity, elixirCost, owned, level, maxLevel, count, countNeeded, goldNeeded,
-  copiesToMax, goldToMax, upgradeReady, evolutionLevel, maxEvolutionLevel, kind }`. `level` is null for
+  copiesToMax, goldToMax, upgradeReady, evolutionLevel, maxEvolutionLevel, iconUrlHero, kind }`. Both
+  evolution fields are the Evo/Hero bitmask: `maxEvolutionLevel` is which forms the card has, `evolutionLevel`
+  which the player owns. `level` is null for
   unowned cards. `count` is the copies held. `countNeeded` and `goldNeeded` are the cost of the next level,
   and both are null when the card is unowned or maxed. `copiesToMax` is the copies still to collect beyond
   `count`. `goldToMax` is the gold from the current level to max, and it is 0 when the card is maxed.
@@ -176,10 +182,13 @@ Errors return `{ "error": { "code", "message", "details"? } }`.
 - **Upgrade costs.** Since the November 2025 economy update, every level from 1 to 16 costs copies plus
   gold, and the gold for a given level is the same for every rarity. Elite Wild Cards no longer exist, so
   never mention them. Take costs from the collection endpoint rather than from memory.
-- **Evolutions.** An evolution is a property of a card (`evolutionLevel`, up to `maxEvolutionLevel`), not a
-  separate card.
+- **Evolutions and Heroes.** Both are forms of a card, not separate cards. Decode `evolutionLevel` as a
+  bitmask (1 = Evo, 2 = Hero, 3 = both); a value of 2 is a Hero, not a second evolution.
+- **King level and chests are gone.** XP was removed on 2026-05-26: talk about King Tower level and
+  Collection Level from the context, never `expLevel`. The chest cycle was removed in March 2025, so don't
+  plan around chests. Merge Tactics matches are not in the battle log.
 - **No account balances.** The API shows what upgrades cost but not how much gold, gems or wild cards the
-  player has. It also has no shop offers, Pass Royale or chest contents. For budget advice, read the player
+  player has. It also has no shop offers, Pass Royale or Lucky Chest contents. For budget advice, read the player
   notes or ask the user. Offer to save the answer to the notes.
 - **Limited history.** Battles exist only from when the player was linked to the app. Supercell's battle
   log keeps about 25 matches, so gaps are possible if the app was down. Say so when a sample is small, for
@@ -204,8 +213,8 @@ curl -sS -H "$H" "$CR_COMPANION_URL/api/players/9QJUGC2R/context.md"
 # Refresh, which may return 429 cooldown
 curl -sS -X POST -H "$H" "$CR_COMPANION_URL/api/players/9QJUGC2R/sync"
 
-# Path of Legend losses in the last week
-curl -sS -H "$H" "$CR_COMPANION_URL/api/players/9QJUGC2R/battles?mode=pathOfLegend&result=loss&since=$(date -u -d '7 days ago' +%FT%TZ)"
+# Ranked losses in the last week
+curl -sS -H "$H" "$CR_COMPANION_URL/api/players/9QJUGC2R/battles?mode=Ranked&result=loss&since=$(date -u -d '7 days ago' +%FT%TZ)"
 
 # Save a deck, then check it against the player's levels
 curl -sS -X POST -H "$H" -H "Content-Type: application/json" "$CR_COMPANION_URL/api/decks" \
