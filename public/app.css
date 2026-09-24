@@ -1278,6 +1278,11 @@ details pre {
 .battle-row.is-clickable {
   cursor: pointer;
 }
+/* The link stays for keyboard and no-JS use; once the whole row is the target it needn't look like one. */
+.battle-row.is-clickable .row-link {
+  color: inherit;
+  text-decoration: none;
+}
 .battle-row:focus-within {
   background: var(--surface-2);
 }
