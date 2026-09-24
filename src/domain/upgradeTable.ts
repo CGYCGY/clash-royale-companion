@@ -56,3 +56,32 @@ export const goldToMax = (rarity: string, fromLevel: number, toLevel = MAX_DISPL
 /** Total copies from `fromLevel` up to `toLevel` (default 16), ignoring copies already held. */
 export const copiesToMax = (rarity: string, fromLevel: number, toLevel = MAX_DISPLAY_LEVEL): number | null =>
   sumSteps(rarity, fromLevel, toLevel, (level) => copiesForNextLevel(rarity, level));
+
+export interface UpgradeNow {
+  /** Levels the held copies pay for right now (0 when not even the next one). */
+  levels: number;
+  toLevel: number;
+  /** Gold for those levels; gold on hand isn't known, so it never limits `levels`. */
+  gold: number;
+  /** Copies left over after those upgrades, counting toward the level after `toLevel`. */
+  copiesLeft: number;
+}
+
+/**
+ * How far `count` copies go from `level`: each upgrade spends its step's copies and the rest carry
+ * over, so several levels can be ready at once. Stops at `maxLevel` or where the table ends.
+ */
+export function upgradableNow(rarity: string, level: number, count: number, maxLevel = MAX_DISPLAY_LEVEL): UpgradeNow {
+  let toLevel = level;
+  let copiesLeft = count;
+  let gold = 0;
+  while (toLevel < Math.min(maxLevel, MAX_DISPLAY_LEVEL)) {
+    const copies = copiesForNextLevel(rarity, toLevel);
+    const cost = goldForNextLevel(toLevel);
+    if (copies === null || cost === null || copies > copiesLeft) break;
+    copiesLeft -= copies;
+    gold += cost;
+    toLevel++;
+  }
+  return { levels: toLevel - level, toLevel, gold, copiesLeft };
+}

@@ -1,7 +1,7 @@
 import { displayLevel } from "../cr/levels";
 import type { Player, PlayerCard } from "../cr/types";
 import type { CardRecord } from "../repos/cards";
-import { copiesForNextLevel, copiesToMax, goldForNextLevel, goldToMax } from "./upgradeTable";
+import { copiesForNextLevel, copiesToMax, goldForNextLevel, goldToMax, upgradableNow } from "./upgradeTable";
 
 export interface CollectionEntry {
   id: number;
@@ -24,6 +24,12 @@ export interface CollectionEntry {
   /** Copies still to collect for maxLevel beyond `count` (never below 0); null like goldToMax. */
   copiesToMax: number | null;
   upgradeReady: boolean;
+  /** Levels the held copies pay for right now, carrying leftovers from one upgrade to the next. */
+  upgradableLevels: number;
+  /** Gold for those `upgradableLevels`; 0 when there are none. */
+  upgradableGold: number;
+  /** Levels between the current level and maxLevel; null when not owned. */
+  levelsToMax: number | null;
   evolutionLevel: number;
   maxEvolutionLevel: number;
   iconUrl: string | null;
@@ -61,6 +67,7 @@ function toEntry(card: CardRecord | null, owned: PlayerCard | undefined, kind: "
   const upgradable = level !== null && level < maxLevel;
   const countNeeded = upgradable ? copiesForNextLevel(rarity, level) : null;
   const copiesLeft = level === null ? null : copiesToMax(rarity, level, maxLevel);
+  const now = upgradable ? upgradableNow(rarity, level, count, maxLevel) : null;
   return {
     id: card?.id ?? owned!.id,
     name: card?.name ?? owned!.name,
@@ -75,6 +82,9 @@ function toEntry(card: CardRecord | null, owned: PlayerCard | undefined, kind: "
     goldToMax: level === null ? null : goldToMax(rarity, level, maxLevel),
     copiesToMax: copiesLeft === null ? null : Math.max(0, copiesLeft - count),
     upgradeReady: countNeeded !== null && count >= countNeeded,
+    upgradableLevels: now?.levels ?? 0,
+    upgradableGold: now?.gold ?? 0,
+    levelsToMax: level === null ? null : Math.max(0, maxLevel - level),
     evolutionLevel: owned?.evolutionLevel ?? 0,
     maxEvolutionLevel: card?.maxEvolutionLevel ?? owned?.maxEvolutionLevel ?? 0,
     iconUrl: card?.iconUrl ?? owned?.iconUrls.medium ?? null,
@@ -147,4 +157,51 @@ export function buildCollection(
         })),
     },
   };
+}
+
+export const COLLECTION_SORTS = ["rarity", "name", "level", "elixir", "progress", "upgradable"] as const;
+export type CollectionSort = (typeof COLLECTION_SORTS)[number];
+export type SortOrder = "asc" | "desc";
+
+/** The order a sort starts in when none was picked: "best first" for the level-ish sorts. */
+export const DEFAULT_ORDER: Record<CollectionSort, SortOrder> = {
+  rarity: "asc",
+  name: "asc",
+  elixir: "asc",
+  level: "desc",
+  progress: "desc",
+  upgradable: "desc",
+};
+
+const progressOf = (e: CollectionEntry): number | null => (e.countNeeded ? e.count / e.countNeeded : null);
+
+// null means "no value" (not owned, maxed, variable elixir) and always sorts last in either order.
+const SORT_KEYS: Record<CollectionSort, (e: CollectionEntry) => (number | string | null)[]> = {
+  rarity: (e) => [rarityRank(e.rarity)],
+  name: (e) => [e.name],
+  level: (e) => [e.level],
+  elixir: (e) => [e.elixirCost],
+  progress: (e) => [progressOf(e)],
+  upgradable: (e) => [e.countNeeded === null ? null : e.upgradableLevels, progressOf(e)],
+};
+
+/** A sorted copy; ties fall back to name A→Z whatever the order. */
+export function sortCollection(entries: CollectionEntry[], sort: CollectionSort, order: SortOrder): CollectionEntry[] {
+  const dir = order === "asc" ? 1 : -1;
+  const keysOf = SORT_KEYS[sort];
+  return entries
+    .map((e) => ({ e, keys: keysOf(e) }))
+    .sort((a, b) => {
+      for (let i = 0; i < a.keys.length; i++) {
+        const x = a.keys[i] ?? null;
+        const y = b.keys[i] ?? null;
+        if (x === y) continue;
+        if (x === null) return 1;
+        if (y === null) return -1;
+        const cmp = typeof x === "string" ? x.localeCompare(y as string) : x - (y as number);
+        if (cmp !== 0) return cmp * dir;
+      }
+      return a.e.name.localeCompare(b.e.name);
+    })
+    .map(({ e }) => e);
 }
