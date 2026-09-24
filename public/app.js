@@ -389,15 +389,65 @@ if (modalTemplate && "HTMLDialogElement" in window) {
   wireBattleRows(document);
 }
 
+// Live results: fetch a page and swap every [data-live-swap] element by id, so the rest of the page (a
+// filter form's focus, caret, half-typed text) is never replaced. A later call aborts an earlier one.
+// Any failure falls back to a real navigation, which also shows the login page if the session ended.
+let liveController;
+// The URL whose results are on screen, so popstate can tell a pager step apart from a closed battle dialog.
+let liveShown = location.pathname + location.search;
+const liveSwap = async (url, { push = false } = {}) => {
+  const regions = document.querySelectorAll(".live-results");
+  liveController?.abort();
+  const controller = (liveController = new AbortController());
+  for (const r of regions) r.setAttribute("aria-busy", "true");
+  try {
+    const res = await fetch(url, { signal: controller.signal, credentials: "same-origin", headers: { Accept: "text/html" } });
+    if (res.redirected || !res.ok) {
+      location.href = url.href;
+      return false;
+    }
+    const doc = new DOMParser().parseFromString(await res.text(), "text/html");
+    for (const el of document.querySelectorAll("[data-live-swap][id]")) {
+      const fresh = doc.getElementById(el.id);
+      if (fresh) el.replaceWith(document.adoptNode(fresh));
+    }
+    liveShown = url.pathname + url.search;
+    if (push) history.pushState({ live: true }, "", liveShown);
+    else history.replaceState(history.state, "", liveShown);
+    wireBattleRows(document);
+    return true;
+  } catch (err) {
+    if (err.name !== "AbortError") location.href = url.href;
+    return false;
+  } finally {
+    if (controller === liveController) for (const r of regions) r.removeAttribute("aria-busy");
+  }
+};
+
+// Pager links inside swapped results load in place. Each page gets its own history entry so Back steps
+// through pages; popstate restores them. Listens on document because the links are swapped out.
+if (document.querySelector("[data-live-swap]")) {
+  document.addEventListener("click", async (e) => {
+    const link = e.target.closest("[data-live-swap] .pager a[href]");
+    if (!link || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    if (!(await liveSwap(new URL(link.href), { push: true }))) return;
+    // The pager sits under the table; a long page would otherwise leave the new first rows off-screen.
+    const section = document.querySelector("[data-live-swap] .pager")?.closest("section");
+    if (section && section.getBoundingClientRect().top < 0) section.scrollIntoView({ block: "start" });
+  });
+  window.addEventListener("popstate", (e) => {
+    // A battle dialog entry is handled above; closing it lands back on the results already shown.
+    if (e.state?.battleModal || location.pathname + location.search === liveShown) return;
+    liveSwap(new URL(location.href));
+  });
+}
+
 // Live filters: a filter form with data-live-filter applies as soon as a select or checkbox changes, and
-// 500ms after typing stops in a text box. It fetches the same page with the new query and swaps every
-// [data-live-swap] element by id, so the form itself (focus, caret, half-typed text) is never replaced.
-// The URL is updated in place so reloads and bookmarks keep the filters. Without JS the form's
-// <noscript> Apply button submits it normally.
+// 500ms after typing stops in a text box, via liveSwap. The URL is updated in place so reloads and
+// bookmarks keep the filters. Without JS the form's <noscript> Apply button submits it normally.
 for (const form of document.querySelectorAll("form[data-live-filter]")) {
   let timer;
-  let controller;
-  const regions = () => document.querySelectorAll(".live-results");
 
   const urlFor = () => {
     const url = new URL(form.getAttribute("action") || location.pathname, location.href);
@@ -407,31 +457,9 @@ for (const form of document.querySelectorAll("form[data-live-filter]")) {
     return url;
   };
 
-  const apply = async () => {
+  const apply = () => {
     clearTimeout(timer);
-    const url = urlFor();
-    controller?.abort();
-    controller = new AbortController();
-    for (const r of regions()) r.setAttribute("aria-busy", "true");
-    try {
-      const res = await fetch(url, { signal: controller.signal, credentials: "same-origin", headers: { Accept: "text/html" } });
-      // Session ended (login redirect) or an error page: let a real navigation show it.
-      if (res.redirected || !res.ok) {
-        location.href = url.href;
-        return;
-      }
-      const doc = new DOMParser().parseFromString(await res.text(), "text/html");
-      for (const el of document.querySelectorAll("[data-live-swap][id]")) {
-        const fresh = doc.getElementById(el.id);
-        if (fresh) el.replaceWith(document.adoptNode(fresh));
-      }
-      history.replaceState(history.state, "", url.pathname + url.search);
-      wireBattleRows(document);
-    } catch (err) {
-      if (err.name !== "AbortError") location.href = url.href;
-    } finally {
-      for (const r of regions()) r.removeAttribute("aria-busy");
-    }
+    liveSwap(urlFor());
   };
 
   form.addEventListener("input", (e) => {
