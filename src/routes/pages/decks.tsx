@@ -3,18 +3,19 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { currentUser, requireUser } from "../../auth/middleware";
 import { buildCollection, type CollectionEntry } from "../../domain/collection";
+import { classifyDecks, type UsedDeckStats } from "../../domain/deckUsage";
 import { AppError, notFound } from "../../errors";
 import { resolvePlayer } from "../../http/currentPlayer";
 import { setFlash } from "../../http/flash";
 import { parseForm } from "../../http/validate";
-import { averageElixir } from "../../repos/battles";
+import { averageElixir, getBattleStats } from "../../repos/battles";
 import { cardsMap, listCards } from "../../repos/cards";
 import { createDeck, DECK_SIZE, type DeckRecord, deleteDeck, getDeck, listDecks, updateDeck } from "../../repos/decks";
 import { getLatestSnapshot, type PlayerRecord } from "../../repos/players";
 import type { AppEnv } from "../../types";
 import { formatElixir, namedCardViews } from "../../views/cardViews";
 import { DeckGrid, EmptyState } from "../../views/components";
-import { formatDateTime, formatRelative } from "../../views/format";
+import { formatDateTime, formatPercent, formatRelative } from "../../views/format";
 import { ArrowLeftIcon } from "../../views/icons";
 import { renderPage } from "../../views/render";
 import { formError, idParam } from "./shared";
@@ -33,6 +34,49 @@ interface DeckFormValues {
 
 function SourceBadge({ source }: { source: DeckRecord["source"] }) {
   return <span class={`badge badge-source-${source}`}>{source === "ai" ? "AI" : "manual"}</span>;
+}
+
+// Past this the page turns into a battle-log dump; the Battles page has the full history.
+const MAX_USED_DECKS = 12;
+
+const DECK_TAG_LABELS = { "in-use": "In Use", saved: "Saved", used: "Used" } as const;
+
+function DeckTag({ kind }: { kind: keyof typeof DECK_TAG_LABELS }) {
+  return <span class={`tag tag-${kind}`}>{DECK_TAG_LABELS[kind]}</span>;
+}
+
+function DeckStats({
+  stats,
+  avgElixir,
+  tracked,
+}: {
+  stats: UsedDeckStats | null;
+  avgElixir: number | null;
+  /** False when no player is linked, so "never played" would be meaningless. */
+  tracked: boolean;
+}) {
+  return (
+    <div class="row deck-meta">
+      <span>
+        <strong>{formatElixir(avgElixir)}</strong> elixir
+      </span>
+      {stats ? (
+        <>
+          <span>
+            <strong>{stats.games}</strong> game{stats.games === 1 ? "" : "s"}
+          </span>
+          <span>
+            <strong>{formatPercent(stats.winRate)}</strong> win
+          </span>
+          <span class="muted small">
+            {stats.wins}W {stats.losses}L {stats.draws}D
+          </span>
+        </>
+      ) : (
+        tracked && <span class="muted small">no stored battles with this deck</span>
+      )}
+    </div>
+  );
 }
 
 function Notes({ notes }: { notes: string }) {
@@ -155,12 +199,12 @@ function DeckForm({
       </div>
       {levels && (
         <div class="field">
-          <h3>Your levels</h3>
+          <h3>Your Levels</h3>
           <LevelCheck cards={values.cards.filter(Boolean)} levels={levels} />
         </div>
       )}
       <div class="row">
-        <button type="submit">Save deck</button>
+        <button type="submit">Save Deck</button>
         <a class="btn btn-secondary" href="/decks">
           Cancel
         </a>
@@ -197,7 +241,7 @@ function renderDeckForm(
   c: Context<AppEnv>,
   opts: { deck?: DeckRecord; values: DeckFormValues; error?: ReturnType<typeof deckFormError> },
 ) {
-  const title = opts.deck ? `Edit ${opts.deck.name}` : "New deck";
+  const title = opts.deck ? `Edit ${opts.deck.name}` : "New Deck";
   return renderPage(
     c,
     { title, active: "decks", status: opts.error ? 400 : 200 },
@@ -237,10 +281,14 @@ function loadDeck(c: Context<AppEnv>): DeckRecord {
 export const deckPages = new Hono<AppEnv>()
   .use("/decks/*", requireUser)
   .get("/decks", (c) => {
-    // Only for the header here, but it keeps old /decks?tag= links selecting their player.
-    resolvePlayer(c);
-    const decks = listDecks(currentUser(c).id);
+    // Also keeps old /decks?tag= links selecting their player.
+    const player = resolvePlayer(c).current;
     const catalog = cardsMap();
+    const snapshot = player ? getLatestSnapshot(player.tag) : null;
+    const equipped = snapshot?.player.currentDeck?.map((card) => card.name) ?? null;
+    const usage = classifyDecks(listDecks(currentUser(c).id), player ? getBattleStats(player.tag).byDeck : [], equipped);
+    const used = usage.used.slice(0, MAX_USED_DECKS);
+    const playerName = player ? player.name || player.tag : null;
     return renderPage(
       c,
       { title: "Decks", active: "decks" },
@@ -249,53 +297,112 @@ export const deckPages = new Hono<AppEnv>()
           <h1>Decks</h1>
           <div class="spacer" />
           <a class="btn" href="/decks/new">
-            New deck
+            New Deck
           </a>
         </div>
-        {decks.length ? (
-          <div class="grid">
-            {decks.map((d) => (
-              <article class="card deck-card">
-                <div class="row">
-                  <h2 class="deck-name">
-                    <a href={`/decks/${d.id}`}>{d.name}</a>
-                  </h2>
-                  <div class="spacer" />
-                  <SourceBadge source={d.source} />
-                </div>
-                <DeckGrid cards={namedCardViews(d.cards, catalog)} size="sm" />
-                <div class="row deck-meta">
-                  <span>
-                    Avg elixir <strong>{formatElixir(averageElixir(d.cards, catalog))}</strong>
-                  </span>
-                  <span class="muted small">updated {formatRelative(d.updatedAt)}</span>
-                </div>
-                {d.notes && <p class="muted excerpt">{d.notes.length > 140 ? `${d.notes.slice(0, 140)}…` : d.notes}</p>}
-                <div class="row deck-actions">
-                  <a class="btn btn-secondary btn-small" href={`/decks/${d.id}/edit`}>
-                    Edit
-                  </a>
-                  <form
-                    method="post"
-                    action={`/decks/${d.id}/delete`}
-                    class="inline"
-                    onsubmit="return confirm('Delete this deck?')"
-                  >
-                    <button type="submit" class="btn-danger btn-small">
-                      Delete
-                    </button>
-                  </form>
-                </div>
-              </article>
-            ))}
-          </div>
-        ) : (
-          <EmptyState title="No decks yet">
-            <p class="muted">Save decks here, or let your AI assistant save them through the API.</p>
-            <a class="btn" href="/decks/new">
-              New deck
-            </a>
-          </EmptyState>
+        <ul class="deck-legend" aria-label="Legend">
+          {playerName && (
+            <li>
+              <DeckTag kind="in-use" /> equipped by {playerName} now
+            </li>
+          )}
+          <li>
+            <DeckTag kind="saved" /> saved in this app
+          </li>
+          {playerName && (
+            <li>
+              <DeckTag kind="used" /> played in {`${playerName}'s`} stored battles
+            </li>
+          )}
+        </ul>
+
+        <section class="stack-tight">
+          <h2>Saved Decks</h2>
+          {usage.saved.length ? (
+            <div class="grid">
+              {usage.saved.map(({ deck: d, stats, inUse }) => (
+                <article class={`card deck-card deck-saved${inUse ? " in-use" : ""}`}>
+                  <div class="row deck-card-head">
+                    <h3 class="deck-name">
+                      <a href={`/decks/${d.id}`}>{d.name}</a>
+                    </h3>
+                    <div class="spacer" />
+                    <span class="deck-tags">
+                      {inUse && <DeckTag kind="in-use" />}
+                      <DeckTag kind="saved" />
+                      <SourceBadge source={d.source} />
+                    </span>
+                  </div>
+                  <DeckGrid cards={namedCardViews(d.cards, catalog)} size="sm" />
+                  <DeckStats stats={stats} avgElixir={averageElixir(d.cards, catalog)} tracked={player !== null} />
+                  {d.notes && <p class="muted excerpt">{d.notes.length > 140 ? `${d.notes.slice(0, 140)}…` : d.notes}</p>}
+                  <div class="row deck-actions">
+                    <a class="btn btn-secondary btn-small" href={`/decks/${d.id}/edit`}>
+                      Edit
+                    </a>
+                    <form
+                      method="post"
+                      action={`/decks/${d.id}/delete`}
+                      class="inline"
+                      onsubmit="return confirm('Delete this deck?')"
+                    >
+                      <button type="submit" class="btn-danger btn-small">
+                        Delete
+                      </button>
+                    </form>
+                    <div class="spacer" />
+                    <span class="muted small">updated {formatRelative(d.updatedAt)}</span>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <EmptyState title="No Saved Decks Yet">
+              <p class="muted">Save decks here, or let your AI assistant save them through the API.</p>
+              <a class="btn" href="/decks/new">
+                New Deck
+              </a>
+            </EmptyState>
+          )}
+        </section>
+
+        {player && (
+          <section class="stack-tight">
+            <h2>
+              Used in Battles <span class="muted small">{playerName}</span>
+            </h2>
+            {used.length ? (
+              <div class="grid">
+                {used.map(({ cards, stats, inUse }) => (
+                  <article class={`card deck-card deck-used${inUse ? " in-use" : ""}`}>
+                    <div class="row deck-card-head">
+                      <span class="deck-tags">
+                        {inUse && <DeckTag kind="in-use" />}
+                        <DeckTag kind="used" />
+                      </span>
+                      <div class="spacer" />
+                      {stats && (
+                        <span class="muted small" title={formatDateTime(stats.lastPlayed)}>
+                          played {formatRelative(stats.lastPlayed)}
+                        </span>
+                      )}
+                    </div>
+                    <DeckGrid cards={namedCardViews(cards, catalog)} size="sm" />
+                    <DeckStats stats={stats} avgElixir={averageElixir(cards, catalog)} tracked />
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p class="muted">
+                {usage.saved.length ? "Every deck played in stored battles is saved above." : "No battles stored yet."}
+              </p>
+            )}
+            {usage.used.length > used.length && (
+              <p class="muted small">
+                Showing the {used.length} most recently played of {usage.used.length}.
+              </p>
+            )}
+          </section>
         )}
       </div>,
     );
@@ -312,7 +419,7 @@ export const deckPages = new Hono<AppEnv>()
       <div class="stack">
         <p>
           <a class="btn btn-ghost btn-small" href="/decks">
-            <ArrowLeftIcon /> Back to decks
+            <ArrowLeftIcon /> Back to Decks
           </a>
         </p>
         <section class="card">
@@ -339,7 +446,7 @@ export const deckPages = new Hono<AppEnv>()
           <Notes notes={deck.notes} />
         </section>
         <section class="card">
-          <h2>Level check</h2>
+          <h2>Level Check</h2>
           <LevelCheck cards={deck.cards} levels={levels} />
         </section>
       </div>,

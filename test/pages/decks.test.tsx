@@ -29,7 +29,7 @@ describe("deck pages", () => {
     expect(detail).toContain('Saved &quot;Hog 2.6&quot;.');
     expect(detail).toContain("<p>Cycle fast.</p>");
     expect(detail).toContain("&lt;b&gt;Not bold&lt;/b&gt;");
-    expect(detail).toContain("Level check");
+    expect(detail).toContain("Level Check");
     expect(detail).toContain("Sparky");
 
     const list = await (await env.app.request("/decks", { headers: { Cookie: cookie } })).text();
@@ -75,5 +75,47 @@ describe("deck pages", () => {
     expect((await env.app.request(`/decks/${deck!.id}`, { headers: { Cookie: mallory } })).status).toBe(404);
     expect((await env.app.request(`/decks/${deck!.id}/delete`, formPost(mallory, {}))).status).toBe(404);
     expect(listDecks(user.id)).toHaveLength(1);
+  });
+
+  test("list shows saved and used decks, tagged, with the equipped one marked in use", async () => {
+    await linkFixturePlayer(user, env.client);
+    // The fixture player's current deck, which it also played in 8 of the 10 stored battles, in another order.
+    const equipped = ["The Log", "Fireball", "Cannon", "Skeletons", "Ice Spirit", "Ice Golem", "Musketeer", "Hog Rider"];
+    await env.app.request("/decks", formPost(cookie, { name: "Hog 2.6", cards: equipped }));
+    await env.app.request("/decks", formPost(cookie, { name: "Unplayed", cards: HOG }));
+    const html = await (await env.app.request("/decks", { headers: { Cookie: cookie } })).text();
+
+    expect(html).toContain('<ul class="deck-legend" aria-label="Legend">');
+    const saved = /<h2>Saved Decks<\/h2>.*?<\/section>/.exec(html)?.[0] ?? "";
+    const used = /<h2>Used in Battles.*?<\/section>/.exec(html)?.[0] ?? "";
+    const cards = (section: string) => section.split("<article ").slice(1);
+
+    const [first, second] = cards(saved);
+    expect(first).toStartWith('class="card deck-card deck-saved in-use"');
+    expect(first).toContain(">Hog 2.6</a>");
+    expect(first).toContain('<span class="tag tag-in-use">In Use</span><span class="tag tag-saved">Saved</span>');
+    expect(first).toContain("<strong>8</strong> games");
+    expect(first).toContain("<strong>63%</strong> win");
+    expect(second).toStartWith('class="card deck-card deck-saved"');
+    expect(second).toContain("no stored battles with this deck");
+
+    // The matched deck isn't repeated under Used; the fixture's other deck is, as not in use.
+    const usedCards = cards(used);
+    expect(usedCards).toHaveLength(1);
+    expect(usedCards[0]).toStartWith('class="card deck-card deck-used"');
+    expect(usedCards[0]).toContain('<span class="tag tag-used">Used</span>');
+    expect(usedCards[0]).not.toContain("tag-in-use");
+    expect(usedCards[0]).toContain("<strong>2</strong> games");
+  });
+
+  test("without a saved match the equipped deck shows in use under Used", async () => {
+    await linkFixturePlayer(user, env.client);
+    const html = await (await env.app.request("/decks", { headers: { Cookie: cookie } })).text();
+    expect(html).toContain("No Saved Decks Yet");
+    const used = /<h2>Used in Battles.*?<\/section>/.exec(html)?.[0] ?? "";
+    const [first, second] = used.split("<article ").slice(1);
+    expect(first).toStartWith('class="card deck-card deck-used in-use"');
+    expect(first).toContain("<strong>8</strong> games");
+    expect(second).toStartWith('class="card deck-card deck-used"');
   });
 });
