@@ -1,4 +1,4 @@
-import type { Player, UpcomingChests } from "../cr/types";
+import type { Player } from "../cr/types";
 import { getDb } from "../db";
 import { AppError, notFound } from "../errors";
 import { daysAgoIso, nowIso } from "../util";
@@ -103,7 +103,6 @@ export function setSyncResult(
 
 export interface Snapshot {
   player: Player;
-  chests: UpcomingChests | null;
   /** When this exact state was first observed. */
   fetchedAt: string;
   /** The most recent sync that returned this same state; use this for "synced at" / snapshot age. */
@@ -111,25 +110,25 @@ export interface Snapshot {
 }
 
 /**
- * Stores a snapshot unless it is byte-identical (data and chests) to the player's newest one, in
- * which case only that row's last_seen_at advances. The official payloads carry no per-request
- * fields (timestamps, request ids), so an idle player serializes identically between syncs.
+ * Stores a snapshot unless its data is byte-identical to the player's newest one, in which case
+ * only that row's last_seen_at advances. The official payloads carry no per-request fields
+ * (timestamps, request ids), so an idle player serializes identically between syncs.
+ * The legacy `chests` column is ignored here and left NULL on new rows: comparing it would make
+ * the first sync after chests were dropped store a duplicate of an older row that still has them.
  */
 export function insertSnapshot(
   tag: string,
   player: Player,
-  chests: UpcomingChests | null,
   fetchedAt: string = nowIso(),
 ): { inserted: boolean; id: number } {
   const db = getDb();
   const data = JSON.stringify(player);
-  const chestsJson = chests ? JSON.stringify(chests) : null;
   const latest = db
-    .query<{ id: number; data: string; chests: string | null }, [string]>(
-      "SELECT id, data, chests FROM player_snapshots WHERE player_tag = ? ORDER BY fetched_at DESC, id DESC LIMIT 1",
+    .query<{ id: number; data: string }, [string]>(
+      "SELECT id, data FROM player_snapshots WHERE player_tag = ? ORDER BY fetched_at DESC, id DESC LIMIT 1",
     )
     .get(tag);
-  if (latest && latest.data === data && latest.chests === chestsJson) {
+  if (latest && latest.data === data) {
     // MAX keeps last_seen_at from moving backwards if an older fetch is recorded late.
     db.query("UPDATE player_snapshots SET last_seen_at = MAX(COALESCE(last_seen_at, fetched_at), ?) WHERE id = ?").run(
       fetchedAt,
@@ -138,23 +137,22 @@ export function insertSnapshot(
     return { inserted: false, id: latest.id };
   }
   const row = db
-    .query<{ id: number }, [string, string, string, string, string | null]>(
-      "INSERT INTO player_snapshots (player_tag, fetched_at, last_seen_at, data, chests) VALUES (?, ?, ?, ?, ?) RETURNING id",
+    .query<{ id: number }, [string, string, string, string]>(
+      "INSERT INTO player_snapshots (player_tag, fetched_at, last_seen_at, data) VALUES (?, ?, ?, ?) RETURNING id",
     )
-    .get(tag, fetchedAt, fetchedAt, data, chestsJson)!;
+    .get(tag, fetchedAt, fetchedAt, data)!;
   return { inserted: true, id: row.id };
 }
 
 export function getLatestSnapshot(tag: string): Snapshot | null {
   const row = getDb()
-    .query<{ data: string; chests: string | null; fetched_at: string; last_seen_at: string | null }, [string]>(
-      "SELECT data, chests, fetched_at, last_seen_at FROM player_snapshots WHERE player_tag = ? ORDER BY fetched_at DESC, id DESC LIMIT 1",
+    .query<{ data: string; fetched_at: string; last_seen_at: string | null }, [string]>(
+      "SELECT data, fetched_at, last_seen_at FROM player_snapshots WHERE player_tag = ? ORDER BY fetched_at DESC, id DESC LIMIT 1",
     )
     .get(tag);
   if (!row) return null;
   return {
     player: JSON.parse(row.data) as Player,
-    chests: row.chests ? (JSON.parse(row.chests) as UpcomingChests) : null,
     fetchedAt: row.fetched_at,
     lastSeenAt: row.last_seen_at ?? row.fetched_at,
   };

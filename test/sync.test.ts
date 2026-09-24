@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, spyOn, test } from "bun:test";
 import { createSession, getUserBySessionToken } from "../src/auth/sessions";
 import { config } from "../src/config";
-import { CrApiError } from "../src/cr/client";
-import { getDb } from "../src/db";
+import { CrApiError, CrClient } from "../src/cr/client";
+import { getDb, migrate, openDatabase } from "../src/db";
 import { countBattles } from "../src/repos/battles";
 import { countCards, getCardByName } from "../src/repos/cards";
+import { countEvents, eventTitles } from "../src/repos/events";
 import {
   addPlayer,
   getLatestSnapshot,
@@ -16,7 +17,7 @@ import {
 } from "../src/repos/players";
 import * as syncRuns from "../src/repos/syncRuns";
 import { listRecentSyncRuns } from "../src/repos/syncRuns";
-import { manualSync, runDailyJob, runSyncJob, syncAll, syncCards, syncPlayer, trackPlayer } from "../src/sync";
+import { manualSync, runDailyJob, runSyncJob, syncAll, syncCards, syncEvents, syncPlayer, trackPlayer } from "../src/sync";
 import type { User } from "../src/types";
 import { FakeCrClient, FIXTURE_TAG, makeTestDb, makeUser, seedCards } from "./helpers";
 
@@ -42,7 +43,7 @@ describe("syncPlayer", () => {
     expect(countBattles(FIXTURE_TAG)).toBe(10);
     const snap = getLatestSnapshot(FIXTURE_TAG)!;
     expect(snap.player.name).toBe("Sparky");
-    expect(snap.chests?.items.length).toBeGreaterThan(0);
+    expect(snap).not.toHaveProperty("chests");
     const p = getPlayer(FIXTURE_TAG)!;
     expect(p.name).toBe("Sparky");
     expect(p.lastSyncedAt).not.toBeNull();
@@ -78,20 +79,30 @@ describe("syncPlayer", () => {
     expect(getLatestSnapshot(FIXTURE_TAG)!.player.trophies).toBe(client.player.trophies);
   });
 
-  test("a chests-only change stores a new snapshot", async () => {
+  test("never requests the dead upcoming chests endpoint and stores NULL chests", async () => {
     addPlayer(user.id, FIXTURE_TAG);
-    await syncPlayer(FIXTURE_TAG, client);
-    client.chests = { items: client.chests.items.slice(1) };
-    expect((await syncPlayer(FIXTURE_TAG, client)).snapshotInserted).toBe(true);
-    expect(snapshotCount()).toBe(2);
+    const paths: string[] = [];
+    const fetchSpy = (async (url: string | URL | Request) => {
+      paths.push(new URL(String(url)).pathname);
+      return Response.json(new URL(String(url)).pathname.endsWith("/battlelog") ? client.battleLog : client.player);
+    }) as unknown as typeof fetch;
+    const real = new CrClient("token", "https://cr.test/v1", fetchSpy);
+    expect(await syncPlayer(FIXTURE_TAG, real)).toMatchObject({ snapshotInserted: true });
+    expect(paths.sort()).toEqual(["/v1/players/%239QJUGC2R", "/v1/players/%239QJUGC2R/battlelog"]);
+    expect(getDb().query("SELECT chests FROM player_snapshots").all()).toEqual([{ chests: null }]);
   });
 
-  test("chest endpoint failure is non-fatal", async () => {
+  test("an unchanged profile dedupes against an older row that still holds legacy chests", async () => {
     addPlayer(user.id, FIXTURE_TAG);
-    client.fail.getUpcomingChests = new CrApiError(500, "unknown", "boom");
-    const r = await syncPlayer(FIXTURE_TAG, client);
-    expect(r.error).toBeUndefined();
-    expect(getLatestSnapshot(FIXTURE_TAG)!.chests).toBeNull();
+    await syncPlayer(FIXTURE_TAG, client);
+    getDb().query("UPDATE player_snapshots SET chests = ?").run('{"items":[{"index":0,"name":"Silver Chest"}]}');
+    expect((await syncPlayer(FIXTURE_TAG, client)).snapshotInserted).toBe(false);
+    expect(snapshotCount()).toBe(1);
+    client.player = { ...client.player, trophies: client.player.trophies + 1 };
+    expect((await syncPlayer(FIXTURE_TAG, client)).snapshotInserted).toBe(true);
+    expect(
+      getDb().query("SELECT chests FROM player_snapshots ORDER BY id").all().map((r) => (r as { chests: unknown }).chests),
+    ).toEqual(['{"items":[{"index":0,"name":"Silver Chest"}]}', null]);
   });
 
   test("a malformed battle entry doesn't roll back the snapshot or the other battles", async () => {
@@ -126,27 +137,27 @@ describe("insertSnapshot", () => {
 
   test("returns inserted/id and exposes fetchedAt and lastSeenAt separately", () => {
     addPlayer(user.id, FIXTURE_TAG);
-    const first = insertSnapshot(FIXTURE_TAG, client.player, client.chests, T1);
+    const first = insertSnapshot(FIXTURE_TAG, client.player, T1);
     expect(first.inserted).toBe(true);
     expect(getLatestSnapshot(FIXTURE_TAG)).toMatchObject({ fetchedAt: T1, lastSeenAt: T1 });
-    expect(insertSnapshot(FIXTURE_TAG, client.player, client.chests, T2)).toEqual({ inserted: false, id: first.id });
+    expect(insertSnapshot(FIXTURE_TAG, client.player, T2)).toEqual({ inserted: false, id: first.id });
     expect(getLatestSnapshot(FIXTURE_TAG)).toMatchObject({ fetchedAt: T1, lastSeenAt: T2 });
     expect(snapshotCount()).toBe(1);
   });
 
   test("an out-of-order older fetch does not move last_seen_at backwards", () => {
     addPlayer(user.id, FIXTURE_TAG);
-    insertSnapshot(FIXTURE_TAG, client.player, null, T1);
-    insertSnapshot(FIXTURE_TAG, client.player, null, T3);
-    insertSnapshot(FIXTURE_TAG, client.player, null, T2);
+    insertSnapshot(FIXTURE_TAG, client.player, T1);
+    insertSnapshot(FIXTURE_TAG, client.player, T3);
+    insertSnapshot(FIXTURE_TAG, client.player, T2);
     expect(getLatestSnapshot(FIXTURE_TAG)!.lastSeenAt).toBe(T3);
   });
 
   test("trophy history keeps points at fetched_at and carries lastSeenAt", () => {
     addPlayer(user.id, FIXTURE_TAG);
-    insertSnapshot(FIXTURE_TAG, client.player, null, T1);
-    insertSnapshot(FIXTURE_TAG, client.player, null, T2);
-    insertSnapshot(FIXTURE_TAG, { ...client.player, trophies: 7600 }, null, T3);
+    insertSnapshot(FIXTURE_TAG, client.player, T1);
+    insertSnapshot(FIXTURE_TAG, client.player, T2);
+    insertSnapshot(FIXTURE_TAG, { ...client.player, trophies: 7600 }, T3);
     expect(getTrophyHistory(FIXTURE_TAG)).toEqual([
       expect.objectContaining({ fetchedAt: T1, lastSeenAt: T2, trophies: 7584 }),
       expect.objectContaining({ fetchedAt: T3, lastSeenAt: T3, trophies: 7600 }),
@@ -189,6 +200,8 @@ describe("syncCards / syncAll / trackPlayer", () => {
     expect(await syncCards(client)).toBe(42);
     expect(getCardByName("tower princess")?.kind).toBe("support");
     expect(getCardByName("Knight")?.iconUrlEvo).toBeTruthy();
+    expect(getCardByName("Knight")?.iconUrlHero).toContain("/cardheroes/");
+    expect(getCardByName("Archers")?.iconUrlHero).toBeNull();
     expect(getCardByName("Mirror")?.elixirCost).toBeNull();
   });
 
@@ -256,6 +269,41 @@ describe("syncCards / syncAll / trackPlayer", () => {
     client.fail.getCards = new CrApiError(503, "inMaintenance", "maintenance");
     const r = await runSyncJob(client, { delayMs: 0 });
     expect(r.battlesAdded).toBe(10);
+  });
+
+  test("migration 0006 backfills hero icons from the stored catalog JSON", () => {
+    const db = openDatabase(":memory:");
+    db.exec("CREATE TABLE schema_migrations (name TEXT PRIMARY KEY, applied_at TEXT NOT NULL)");
+    db.query("INSERT INTO schema_migrations VALUES ('0006_cards_hero_icon.sql', 'x')").run();
+    migrate(db);
+    const knight = client.cards.items.find((c) => c.name === "Knight")!;
+    db.query(
+      "INSERT INTO cards (id, name, rarity, max_level, data, updated_at) VALUES (?, ?, 'common', 16, ?, 'x')",
+    ).run(knight.id, knight.name, JSON.stringify(knight));
+    db.query("DELETE FROM schema_migrations WHERE name = '0006_cards_hero_icon.sql'").run();
+    expect(migrate(db)).toEqual(["0006_cards_hero_icon.sql"]);
+    expect(db.query("SELECT icon_url_hero AS u FROM cards").get()).toEqual({ u: knight.iconUrls.heroMedium! });
+  });
+
+  test("daily job refreshes event titles and keeps going when that fails", async () => {
+    const r = await runDailyJob(client);
+    expect(r).toMatchObject({ events: 9 });
+    expect(eventTitles().get("#2C9J8QUU")).toBe("Royale Shuffle");
+    client.fail.getEvents = new CrApiError(500, "unknown", "boom");
+    expect(await runDailyJob(client)).toMatchObject({ events: null, cards: 42 });
+  });
+
+  test("sync job loads event titles only while the table is empty", async () => {
+    addPlayer(user.id, FIXTURE_TAG);
+    await runSyncJob(client, { delayMs: 0 });
+    await runSyncJob(client, { delayMs: 0 });
+    expect(client.calls.getEvents).toBe(1);
+    expect(countEvents()).toBe(9);
+  });
+
+  test("syncEvents rejects a payload that isn't a list", async () => {
+    client.events = { items: [] } as never;
+    expect(syncEvents(client)).rejects.toThrow("Unexpected /events response");
   });
 
   test("daily job purges sessions even when the card refresh fails", async () => {

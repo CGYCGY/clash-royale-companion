@@ -15,15 +15,15 @@ const apiError = (status: number, reason: string, message: string) =>
 
 function route(path: string): Response {
   if (path === "/v1/cards") return Response.json(load("cards"));
-  const m = /^\/v1\/players\/([^/]+)(?:\/(battlelog|upcomingchests))?\/?$/.exec(path);
+  if (path === "/v1/events") return Response.json(load("events"));
+  const m = /^\/v1\/players\/([^/]+)(?:\/(battlelog))?\/?$/.exec(path);
   if (!m) return apiError(404, "notFound", `No mock for ${path}`);
   const tag = decodeURIComponent(m[1]!).toUpperCase();
   if (!tag.startsWith("#")) return apiError(404, "notFound", "Tag must be URL-encoded with %23");
   switch (m[2]) {
     case "battlelog":
-      return Response.json(load("battlelog"));
-    case "upcomingchests":
-      return Response.json(load("chests"));
+      // battlelog-modes holds the 2026 battle types (Royale Shuffle, Princess Gambit, 2v2, clan war).
+      return Response.json([...(load("battlelog-modes") as unknown[]), ...(load("battlelog") as unknown[])]);
     default:
       return Response.json({ ...(load("player") as object), tag });
   }

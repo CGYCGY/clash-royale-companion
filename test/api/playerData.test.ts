@@ -208,7 +208,6 @@ describe("context", () => {
     for (const heading of [
       "## Profile",
       "## Current deck",
-      "## Upcoming chests",
       "## Recent performance",
       "## Last battles",
       "## Collection",
@@ -218,6 +217,7 @@ describe("context", () => {
     ]) {
       expect(md).toContain(heading);
     }
+    expect(md).not.toContain("## Upcoming chests");
     expect(md).toContain("Sparky (#9QJUGC2R)");
     expect(md).toContain("Goal: reach league 8.");
     expect(md).toContain("**Hog 2.6** (ai)");

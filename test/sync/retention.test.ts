@@ -27,7 +27,7 @@ const fetchedTimes = (tag: string): string[] =>
 
 // Identical payloads would be deduped on insert, so each snapshot gets its own trophy count.
 let seq = 0;
-const snap = (tag: string, at: string) => insertSnapshot(tag, { ...player, tag, trophies: ++seq }, null, at);
+const snap = (tag: string, at: string) => insertSnapshot(tag, { ...player, tag, trophies: ++seq }, at);
 
 beforeEach(() => {
   makeTestDb();

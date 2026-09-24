@@ -1,6 +1,6 @@
 import { config, requireEnv } from "../config";
 import { encodeTag } from "./tag";
-import type { BattleLogEntry, CardsResponse, Player, UpcomingChests } from "./types";
+import type { BattleLogEntry, CardsResponse, GameEvent, Player } from "./types";
 
 export class CrApiError extends Error {
   constructor(
@@ -19,8 +19,8 @@ export class CrApiError extends Error {
 export interface CrApi {
   getPlayer(tag: string): Promise<Player>;
   getPlayerBattleLog(tag: string): Promise<BattleLogEntry[]>;
-  getUpcomingChests(tag: string): Promise<UpcomingChests>;
   getCards(): Promise<CardsResponse>;
+  getEvents(): Promise<GameEvent[]>;
 }
 
 const TIMEOUT_MS = 15_000;
@@ -40,12 +40,13 @@ export class CrClient implements CrApi {
     return this.request(`/players/${encodeTag(tag)}/battlelog`);
   }
 
-  getUpcomingChests(tag: string): Promise<UpcomingChests> {
-    return this.request(`/players/${encodeTag(tag)}/upcomingchests`);
-  }
-
   getCards(): Promise<CardsResponse> {
     return this.request("/cards");
+  }
+
+  // Undocumented; returns a bare array, not the usual { items } wrapper.
+  getEvents(): Promise<GameEvent[]> {
+    return this.request("/events");
   }
 
   private async request<T>(path: string): Promise<T> {

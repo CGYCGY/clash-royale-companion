@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { insertUser } from "../src/auth/users";
 import { CrApiError, type CrApi } from "../src/cr/client";
-import type { BattleLogEntry, CardsResponse, Player, UpcomingChests } from "../src/cr/types";
+import type { BattleLogEntry, CardsResponse, GameEvent, Player } from "../src/cr/types";
 import { migrate, openDatabase, setDatabase } from "../src/db";
 import { upsertCards } from "../src/repos/cards";
 import type { User } from "../src/types";
@@ -16,7 +16,7 @@ export function makeTestDb(): Database {
   return db;
 }
 
-export function loadFixture<T>(name: "player" | "battlelog" | "chests" | "cards"): T {
+export function loadFixture<T>(name: "player" | "battlelog" | "battlelog-modes" | "cards" | "events"): T {
   return JSON.parse(readFileSync(join(import.meta.dir, "fixtures", `${name}.json`), "utf8")) as T;
 }
 
@@ -35,12 +35,12 @@ export function seedCards(): void {
 
 /** Serves fixtures. Set `fail` to make a method throw, and inspect `calls` for request counts. */
 export class FakeCrClient implements CrApi {
-  calls = { getPlayer: 0, getPlayerBattleLog: 0, getUpcomingChests: 0, getCards: 0 };
+  calls = { getPlayer: 0, getPlayerBattleLog: 0, getCards: 0, getEvents: 0 };
   fail: Partial<Record<keyof FakeCrClient["calls"], CrApiError>> = {};
   player = loadFixture<Player>("player");
   battleLog = loadFixture<BattleLogEntry[]>("battlelog");
-  chests = loadFixture<UpcomingChests>("chests");
   cards = loadFixture<CardsResponse>("cards");
+  events = loadFixture<GameEvent[]>("events");
 
   private guard(name: keyof FakeCrClient["calls"]) {
     this.calls[name]++;
@@ -55,12 +55,12 @@ export class FakeCrClient implements CrApi {
     this.guard("getPlayerBattleLog");
     return this.battleLog;
   }
-  async getUpcomingChests(): Promise<UpcomingChests> {
-    this.guard("getUpcomingChests");
-    return this.chests;
-  }
   async getCards(): Promise<CardsResponse> {
     this.guard("getCards");
     return this.cards;
+  }
+  async getEvents(): Promise<GameEvent[]> {
+    this.guard("getEvents");
+    return this.events;
   }
 }

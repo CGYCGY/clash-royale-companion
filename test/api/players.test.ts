@@ -85,9 +85,15 @@ describe("player detail", () => {
         fetchedAt: string;
         lastSeenAt: string;
         profile: Record<string, unknown>;
-        currentDeck: { name: string; level: number; iconUrl: string | null; elixirCost: number | null }[];
+        currentDeck: {
+          name: string;
+          level: number;
+          evolutionLevel: number;
+          iconUrl: string | null;
+          iconUrlHero: string | null;
+          elixirCost: number | null;
+        }[];
         currentDeckSupportCards: { name: string; level: number }[];
-        chests: { index: number; name: string }[];
       };
     };
     expect(body.player.name).toBe("Sparky");
@@ -102,7 +108,10 @@ describe("player detail", () => {
     expect(currentDeck.find((c) => c.name === "The Log")).toMatchObject({ level: 13, elixirCost: 2 });
     expect(currentDeck.every((c) => c.iconUrl?.startsWith("https://"))).toBe(true);
     expect(body.snapshot.currentDeckSupportCards[0]).toMatchObject({ name: "Tower Princess", level: 14 });
-    expect(body.snapshot.chests[0]).toEqual({ index: 0, name: "Silver Chest" });
+    expect(body.snapshot).not.toHaveProperty("chests");
+    expect(profile).toMatchObject({ kingTowerLevel: 15, collectionLevel: 546, currentWinLoseStreak: 3 });
+    expect(currentDeck.find((c) => c.name === "Ice Golem")).toMatchObject({ evolutionLevel: 2 });
+    expect(currentDeck.find((c) => c.name === "Ice Golem")!.iconUrlHero).toContain("/cardheroes/");
     // Rare Hog Rider: API maxLevel 14 is display level 16, like every other level in the response.
     expect(profile.currentFavouriteCard).toMatchObject({ name: "Hog Rider", maxLevel: 16 });
   });

@@ -37,6 +37,7 @@ function toDeckCardView(card: PlayerCard, catalog: Map<number, CardRecord>) {
     elixirCost: card.elixirCost ?? known?.elixirCost ?? null,
     iconUrl: known?.iconUrl ?? card.iconUrls?.medium ?? null,
     iconUrlEvo: known?.iconUrlEvo ?? card.iconUrls?.evolutionMedium ?? null,
+    iconUrlHero: known?.iconUrlHero ?? card.iconUrls?.heroMedium ?? null,
   };
 }
 
@@ -104,7 +105,6 @@ export const playerRoutes = new Hono<AppEnv>()
         profile,
         currentDeck: currentDeck.map((card) => toDeckCardView(card, catalog)),
         currentDeckSupportCards: (currentDeckSupportCards ?? []).map((card) => toDeckCardView(card, catalog)),
-        chests: snap.chests?.items ?? null,
       },
     });
   })
