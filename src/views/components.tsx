@@ -70,7 +70,17 @@ export interface Column<T> {
   render: (row: T) => Child;
 }
 
-export function Table<T>({ columns, rows, empty = "Nothing here yet." }: { columns: Column<T>[]; rows: T[]; empty?: Child }) {
+export function Table<T>({
+  columns,
+  rows,
+  empty = "Nothing here yet.",
+  rowAttrs,
+}: {
+  columns: Column<T>[];
+  rows: T[];
+  empty?: Child;
+  rowAttrs?: (row: T) => Record<string, string>;
+}) {
   if (rows.length === 0) return <p class="muted empty">{empty}</p>;
   return (
     <div class="table-wrap">
@@ -84,7 +94,7 @@ export function Table<T>({ columns, rows, empty = "Nothing here yet." }: { colum
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr>
+            <tr {...rowAttrs?.(row)}>
               {columns.map((col) => (
                 <td class={col.align ? `align-${col.align}` : undefined}>{col.render(row)}</td>
               ))}

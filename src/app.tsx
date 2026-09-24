@@ -32,7 +32,9 @@ export function createApp(): Hono<AppEnv> {
       <div class="card">
         <h1>Not found</h1>
         <p class="muted">That page doesn't exist.</p>
-        <a href="/">Back to dashboard</a>
+        <a class="btn btn-secondary" href="/">
+          Back to dashboard
+        </a>
       </div>,
     );
   });
@@ -61,7 +63,9 @@ export function createApp(): Hono<AppEnv> {
       <div class="card">
         <h1>{status >= 500 ? "Something went wrong" : "Request failed"}</h1>
         <p>{message}</p>
-        <a href="/">Back to dashboard</a>
+        <a class="btn btn-secondary" href="/">
+          Back to dashboard
+        </a>
       </div>,
     );
   });
