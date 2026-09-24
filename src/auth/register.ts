@@ -2,8 +2,9 @@ import { getDb } from "../db";
 import { AppError } from "../errors";
 import type { User } from "../types";
 import { consumeInvite } from "./invites";
+import { assertPasswordPolicy } from "./passwordPolicy";
 import { hashPassword } from "./passwords";
-import { insertUser, normalizeUsername, validatePassword } from "./users";
+import { insertUser, normalizeUsername } from "./users";
 
 /**
  * Invite-gated signup. The invite use and the user insert share one transaction, so a taken
@@ -16,7 +17,7 @@ export async function registerWithInvite(input: {
   inviteCode: string;
 }): Promise<User> {
   const username = normalizeUsername(input.username);
-  validatePassword(input.password);
+  assertPasswordPolicy(input.password, username);
   const hash = await hashPassword(input.password);
   const db = getDb();
   return db.transaction(() => {

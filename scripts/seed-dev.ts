@@ -1,10 +1,10 @@
-// Creates the dev login (dev / devdevdev) and a fresh invite in DATABASE_PATH. Safe to re-run.
+// Creates the dev login (dev / Local-Tester-2026) and a fresh invite in DATABASE_PATH. Safe to re-run.
 import { createInvite } from "../src/auth/invites";
 import { createUser, getUserByUsername } from "../src/auth/users";
 import { getDb, migrate } from "../src/db";
 
 const USERNAME = "dev";
-const PASSWORD = "devdevdev";
+const PASSWORD = "Local-Tester-2026";
 
 migrate(getDb());
 

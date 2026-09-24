@@ -1,5 +1,6 @@
 import { existsSync, statSync } from "node:fs";
 import { parseArgs } from "node:util";
+import { PasswordPolicyError } from "../auth/passwordPolicy";
 import { createAdminToken, listAdminTokens, revokeAdminToken } from "../auth/adminTokens";
 import { createInvite, listInvites, revokeInvite } from "../auth/invites";
 import { createUser, listUsers, setPassword, getUserByUsername } from "../auth/users";
@@ -225,7 +226,11 @@ async function main(argv: string[]): Promise<number> {
 main(process.argv.slice(2)).then(
   (code) => process.exit(code),
   (err: unknown) => {
-    console.error(err instanceof Error ? err.message : err);
+    if (err instanceof PasswordPolicyError) {
+      console.error(["Password rejected:", ...err.problems.map((p) => `  - ${p.message}`)].join("\n"));
+    } else {
+      console.error(err instanceof Error ? err.message : err);
+    }
     process.exit(1);
   },
 );

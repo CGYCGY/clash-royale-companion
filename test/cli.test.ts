@@ -55,3 +55,19 @@ describe("cli admin-token", () => {
     expect(cli("admin-token", "revoke").code).toBe(1);
   });
 });
+
+describe("cli user", () => {
+  test("create and set-password enforce the password policy, listing every problem", () => {
+    const weak = cli("user", "create", "frank", "frank");
+    expect(weak.code).toBe(1);
+    expect(weak.stderr).toContain("Password rejected:");
+    expect(weak.stderr).toContain("at least 12 characters");
+    expect(weak.stderr).toContain("must not contain your username");
+
+    expect(cli("user", "create", "frank", "Blue-Otter-4412").code).toBe(0);
+    const reset = cli("user", "set-password", "frank", "Password123!");
+    expect(reset.code).toBe(1);
+    expect(reset.stderr).toContain("too common");
+    expect(cli("user", "set-password", "frank", "Green-Heron-5523").code).toBe(0);
+  });
+});

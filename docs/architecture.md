@@ -136,7 +136,11 @@ Building blocks for login/register/logout pages (not yet implemented as routes):
 - `startSession(c, userId)` sets the cookie; `endSession(c)` deletes the session and clears it.
   The Layout's logout button POSTs to `/logout`.
 - `setFlash(c, "success" | "error" | "info", msg)` before a redirect; the next `renderPage` shows it.
-- Username rules: 3–32 of `[a-z0-9_]`, stored lowercased; password 8–256 chars.
+- Username rules: 3–32 of `[a-z0-9_]`, stored lowercased.
+- Password policy (`auth/passwordPolicy`, applied when a password is set, never at login): 12–128 code points,
+  at least 3 of lowercase / uppercase / digit / symbol, must not contain the username, not in
+  `auth/commonPasswords`, not mostly one repeated character. `validatePassword(pw, username?)` returns every
+  broken rule; `assertPasswordPolicy` throws `PasswordPolicyError` (`validation_error`, `details.problems`).
 
 CSRF: `src/http/csrf.ts` rejects cross-site form POSTs (Origin / Sec-Fetch-Site check). It is skipped only for
 `Authorization: Bearer` requests, which never use the cookie. Keep those two rules in sync (`isBearer`). Forms need no token. `APP_URL`'s origin is accepted so it works
@@ -148,7 +152,7 @@ All repos use `getDb()` and are synchronous. `tag` arguments are normalized tags
 
 **auth/users**: `createUser(username, password): Promise<User>`, `insertUser(username, hash): User`,
 `getUserByUsername(name)`, `getUserById(id)`, `listUsers()`, `verifyCredentials(u, p)`,
-`setPassword(userId, pw)`, `normalizeUsername(s)`, `validatePassword(s)`.
+`setPassword(userId, pw)`, `normalizeUsername(s)`. Both password setters enforce the policy.
 
 **auth/sessions**: `createSession(userId, now?) -> rawToken`, `getUserBySessionToken(token, now?)`,
 `deleteSession(token)`, `deleteSessionsForUser(userId)`, `purgeExpiredSessions(now?)`,

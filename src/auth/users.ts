@@ -2,6 +2,7 @@ import { getDb } from "../db";
 import { AppError } from "../errors";
 import type { User } from "../types";
 import { nowIso } from "../util";
+import { assertPasswordPolicy } from "./passwordPolicy";
 import { hashPassword, verifyPassword } from "./passwords";
 
 interface UserRow {
@@ -12,8 +13,6 @@ interface UserRow {
 }
 
 export const USERNAME_RE = /^[a-z0-9_]{3,32}$/;
-export const PASSWORD_MIN = 8;
-export const PASSWORD_MAX = 256;
 
 const toUser = (r: UserRow): User => ({ id: r.id, username: r.username, createdAt: r.created_at });
 
@@ -27,15 +26,6 @@ export function normalizeUsername(input: string): string {
     );
   }
   return username;
-}
-
-export function validatePassword(password: string): void {
-  if (password.length < PASSWORD_MIN || password.length > PASSWORD_MAX) {
-    throw new AppError(
-      "validation_error",
-      `Password must be ${PASSWORD_MIN}–${PASSWORD_MAX} characters`,
-    );
-  }
 }
 
 /** Inserts a user whose password is already hashed. Throws AppError("conflict") if the name is taken. */
@@ -54,7 +44,7 @@ export function insertUser(username: string, passwordHash: string): User {
 
 export async function createUser(usernameInput: string, password: string): Promise<User> {
   const username = normalizeUsername(usernameInput);
-  validatePassword(password);
+  assertPasswordPolicy(password, username);
   return insertUser(username, await hashPassword(password));
 }
 
@@ -90,7 +80,9 @@ export async function verifyCredentials(username: string, password: string): Pro
 }
 
 export async function setPassword(userId: number, password: string): Promise<void> {
-  validatePassword(password);
+  const user = getUserById(userId);
+  if (!user) throw new AppError("not_found", "User not found", 404);
+  assertPasswordPolicy(password, user.username);
   const hash = await hashPassword(password);
   getDb().query("UPDATE users SET password_hash = ? WHERE id = ?").run(hash, userId);
 }

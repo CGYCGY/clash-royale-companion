@@ -57,10 +57,10 @@ describe("invites", () => {
 describe("registerWithInvite", () => {
   test("creates a user and consumes the invite", async () => {
     const { code } = createInvite();
-    const user = await registerWithInvite({ username: "Alice_1", password: "hunter2hunter2", inviteCode: code });
+    const user = await registerWithInvite({ username: "Alice_1", password: "Blue-Otter-4412", inviteCode: code });
     expect(user.username).toBe("alice_1");
     expect(getInviteByCode(code)!.uses).toBe(1);
-    expect(await verifyCredentials("alice_1", "hunter2hunter2")).toMatchObject({ id: user.id });
+    expect(await verifyCredentials("alice_1", "Blue-Otter-4412")).toMatchObject({ id: user.id });
     expect(await verifyCredentials("alice_1", "wrong-password")).toBeNull();
     expect(await verifyCredentials("nobody", "whatever1")).toBeNull();
   });
@@ -68,17 +68,17 @@ describe("registerWithInvite", () => {
   test("taken username rolls back the invite use", async () => {
     makeUser("bob");
     const { code } = createInvite();
-    const err = await registerWithInvite({ username: "BOB", password: "longenough", inviteCode: code }).catch((e) => e);
+    const err = await registerWithInvite({ username: "BOB", password: "Blue-Otter-4412", inviteCode: code }).catch((e) => e);
     expect(err).toBeInstanceOf(AppError);
     expect(err.code).toBe("conflict");
     expect(getInviteByCode(code)!.uses).toBe(0);
   });
 
   test("bad invite and bad input are rejected", async () => {
-    const bad = await registerWithInvite({ username: "carol", password: "longenough", inviteCode: "XXXX" }).catch((e) => e);
+    const bad = await registerWithInvite({ username: "carol", password: "Blue-Otter-4412", inviteCode: "XXXX" }).catch((e) => e);
     expect(bad.code).toBe("invalid_invite");
     const { code } = createInvite();
-    const shortName = await registerWithInvite({ username: "ab", password: "longenough", inviteCode: code }).catch((e) => e);
+    const shortName = await registerWithInvite({ username: "ab", password: "Blue-Otter-4412", inviteCode: code }).catch((e) => e);
     expect(shortName.code).toBe("validation_error");
     const shortPw = await registerWithInvite({ username: "carol", password: "short", inviteCode: code }).catch((e) => e);
     expect(shortPw.code).toBe("validation_error");
@@ -86,7 +86,7 @@ describe("registerWithInvite", () => {
   });
 
   test("usernames are unique case-insensitively", async () => {
-    await createUser("dave", "longenough");
+    await createUser("dave", "Blue-Otter-4412");
     expect(getUserByUsername("DAVE")?.username).toBe("dave");
   });
 });

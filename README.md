@@ -54,7 +54,7 @@ bun install
 cp .env.example .env              # no changes needed for the mock API
 bun run mock-api                  # terminal 1: fake Clash Royale API on :8787
 CR_API_BASE=http://localhost:8787/v1 CR_API_TOKEN=dev bun run dev   # terminal 2
-bun run seed-dev                  # creates user dev / devdevdev and prints an invite code
+bun run seed-dev                  # creates user dev / Local-Tester-2026 and prints an invite code
 ```
 
 Open http://localhost:3000, log in as `dev`, and link any valid tag such as `#9QJUGC2R` on the Settings page.
@@ -160,6 +160,8 @@ building from Git.
 
    The code allows one sign-up and expires after 7 days. Pass `--days N` to change that, or `--no-expiry`.
    To add yourself without an invite, run `bun run cli user create <name> <password>` instead.
+   Passwords need 12–128 characters mixing at least 3 of lowercase, uppercase, digits and symbols, must not
+   contain the username, and can't be a well-known common password.
 4. Open `https://cr.example.com/register` and sign up with the invite code.
 5. On **Settings**, link your player tag. The first sync runs right away, and then it runs daily (see `SYNC_CRON`).
 6. On **Settings**, create an API key for your AI assistant.
