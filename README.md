@@ -102,7 +102,8 @@ Both use the same image.
 
 1. In your project, choose **New Resource**, then your Git source: a public repository, the GitHub App, or a
    deploy key.
-2. Pick the branch and set **Build Pack** to **Dockerfile**.
+2. Pick the branch, set **Build Pack** to **Dockerfile**, and set **Dockerfile Location** to
+   `/deploy/Dockerfile`.
 3. Under **General**:
    - Set **Ports Exposes** to `3000`.
    - Set **Domains** to your URL, for example `https://cr.example.com`.
@@ -113,8 +114,9 @@ Both use the same image.
    - `PORT`: `3000`. Leave it at the default.
 5. Under **Persistent Storage**, add a volume mount with destination path `/data`. The database lives at
    `/data/app.db`. Without this volume, every redeploy wipes all data.
-6. Under **Health Checks**, enable the check with path `/api/health` and port `3000`. The image also has
-   its own Docker `HEALTHCHECK` on that path.
+6. Leave Coolify's **Health Checks** disabled. Coolify probes with curl or wget, which the slim Bun image
+   doesn't ship, so the app gets marked unhealthy and restarted. The image's own Docker `HEALTHCHECK`
+   already probes `/api/health` using Bun.
 7. Click **Deploy**.
 
 ### Option B: Docker Compose build pack
@@ -128,6 +130,17 @@ Both use the same image.
 4. Remove the `ports:` mapping from `docker-compose.yml` if you don't want port 3000 open on the host.
    The proxy doesn't need it.
 5. The `cr-data` named volume is created and kept across deploys automatically. Deploy.
+
+### Option C: Prebuilt image with `deploy/deploy.sh`
+
+This is how the maintainer's instance runs. Coolify pulls `ghcr.io/cgycgy/clash-royale-agent` instead of
+building from Git.
+
+1. Copy `deploy/.env.deploy.example` to `deploy/.env.deploy` and fill in the Coolify URL, API token,
+   and the app UUID and webhook URL of a **Docker Image** application.
+2. Attach a persistent volume at `/data` to that application and set the environment variables above.
+3. Run `bash deploy/deploy.sh`. It builds `deploy/Dockerfile`, pushes the image to GHCR and asks Coolify
+   to redeploy. You need `docker login ghcr.io` first.
 
 ### First run
 
