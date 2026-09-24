@@ -1,5 +1,6 @@
 import { existsSync, statSync } from "node:fs";
 import { parseArgs } from "node:util";
+import { createAdminToken, listAdminTokens, revokeAdminToken } from "../auth/adminTokens";
 import { createInvite, listInvites, revokeInvite } from "../auth/invites";
 import { createUser, listUsers, setPassword, getUserByUsername } from "../auth/users";
 import { config } from "../config";
@@ -21,6 +22,9 @@ Commands:
   user list                                 List users
   user create <username> <password>         Create a user without an invite
   user set-password <username> <password>   Reset a user's password
+  admin-token create [--name <name>]        Create a token for /api/admin/* (printed once)
+  admin-token list                          List admin tokens, including revoked ones
+  admin-token revoke <id>                   Revoke an admin token
   player list                               List tracked players with owner and last sync
   sync <tag>                                Sync one tracked player now (ignores the cooldown)
   sync --all                                Sync every tracked player now
@@ -72,6 +76,7 @@ async function main(argv: string[]): Promise<number> {
       days: { type: "string" },
       "no-expiry": { type: "boolean" },
       all: { type: "boolean" },
+      name: { type: "string" },
       help: { type: "boolean", short: "h" },
     },
   });
@@ -125,6 +130,37 @@ async function main(argv: string[]): Promise<number> {
       if (!user) throw new Error(`No user named ${username}`);
       await setPassword(user.id, password);
       console.log(`Password updated for ${user.username}.`);
+      return 0;
+    }
+    case "admin-token create": {
+      const name = values.name?.trim() || "admin";
+      const { raw, record } = createAdminToken(name);
+      console.log(raw);
+      console.error(`Admin token "${record.name}" (id ${record.id}). Store it now: it cannot be shown again.`);
+      return 0;
+    }
+    case "admin-token list": {
+      const tokens = listAdminTokens({ includeRevoked: true });
+      if (!tokens.length) {
+        console.log("No admin tokens yet.");
+        return 0;
+      }
+      console.table(
+        tokens.map((t) => ({
+          id: t.id,
+          name: t.name,
+          prefix: t.tokenPrefix,
+          createdAt: t.createdAt,
+          lastUsedAt: t.lastUsedAt ?? "never",
+          revokedAt: t.revokedAt ?? "",
+        })),
+      );
+      return 0;
+    }
+    case "admin-token revoke": {
+      const id = Number(rest[0]);
+      if (!Number.isInteger(id)) throw new Error("admin-token revoke <id>");
+      console.log(revokeAdminToken(id) ? "Revoked." : "No active admin token with that id.");
       return 0;
     }
     case "player list": {

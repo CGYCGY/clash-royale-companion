@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import type { User } from "../../src/types";
 import { makeUser } from "../helpers";
-import { ADMIN_TOKEN, type ApiTestEnv, apiKeyHeaders, type ErrorJson, sessionHeaders, setupApi } from "./support";
+import { adminHeaders, type ApiTestEnv, apiKeyHeaders, type ErrorJson, sessionHeaders, setupApi } from "./support";
 
 let env: ApiTestEnv;
 let user: User;
@@ -31,7 +31,7 @@ describe("api auth", () => {
     expect((await env.app.request("/api/admin/invites", { headers: apiKeyHeaders(user) })).status).toBe(401);
     const wrong = await env.app.request("/api/admin/users", { headers: { Authorization: "Bearer wrong-token" } });
     expect(wrong.status).toBe(401);
-    const ok = await env.app.request("/api/admin/users", { headers: { Authorization: `Bearer ${ADMIN_TOKEN}` } });
+    const ok = await env.app.request("/api/admin/users", { headers: adminHeaders() });
     expect(ok.status).toBe(200);
   });
 

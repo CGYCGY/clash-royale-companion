@@ -14,7 +14,6 @@ services:
         required: false
     environment:
       CR_API_TOKEN: ${CR_API_TOKEN:?set CR_API_TOKEN}
-      ADMIN_TOKEN: ${ADMIN_TOKEN:?set ADMIN_TOKEN}
       APP_URL: ${APP_URL:-}
       CR_API_BASE: ${CR_API_BASE:-https://api.clashroyale.com/v1}
       SYNC_CRON: ${SYNC_CRON:-0 * * * *}

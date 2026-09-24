@@ -25,7 +25,7 @@ process in one Docker container.
 
 - Players, battles, stats, cards, notes, decks, and on-demand sync.
 - `GET /api/players/{tag}/context.md` returns one Markdown document with everything an assistant needs.
-- Admin endpoints for invites and users, protected by `ADMIN_TOKEN`.
+- Admin endpoints for invites and users, protected by admin tokens created with the CLI.
 
 **AI skill** in [`.claude/skills/`](docs/ai-skill.md)
 
@@ -51,7 +51,7 @@ The mock server replays the fixtures in `test/fixtures` for any player tag.
 
 ```sh
 bun install
-cp .env.example .env              # then set ADMIN_TOKEN to any string of 16+ characters
+cp .env.example .env              # no changes needed for the mock API
 bun run mock-api                  # terminal 1: fake Clash Royale API on :8787
 CR_API_BASE=http://localhost:8787/v1 CR_API_TOKEN=dev bun run dev   # terminal 2
 bun run seed-dev                  # creates user dev / devdevdev and prints an invite code
@@ -63,7 +63,7 @@ Open http://localhost:3000, log in as `dev`, and link any valid tag such as `#9Q
 
 ```sh
 bun install
-cp .env.example .env              # set CR_API_TOKEN and ADMIN_TOKEN
+cp .env.example .env              # set CR_API_TOKEN
 bun run cli invite create         # prints an invite code (1 use, expires in 7 days)
 bun run dev
 ```
@@ -75,7 +75,7 @@ Other useful commands:
 ```sh
 bun test                # all tests, in-memory database
 bun run typecheck
-bun run cli --help      # admin CLI: invites, users, sync, retention, stats
+bun run cli --help      # admin CLI: invites, users, admin tokens, sync, retention, stats
 ```
 
 ## Getting a Supercell API key
@@ -108,7 +108,6 @@ Both use the same image.
    - Set **Domains** to your URL, for example `https://cr.example.com`.
 4. Under **Environment Variables**, add:
    - `CR_API_TOKEN`: your Supercell key, allowlisted for the server's public IP.
-   - `ADMIN_TOKEN`: output of `openssl rand -hex 32`.
    - `APP_URL`: the same URL as the domain. This turns on secure cookies and the CSRF origin check behind
      Coolify's TLS proxy.
    - `PORT`: `3000`. Leave it at the default.
@@ -122,8 +121,8 @@ Both use the same image.
 
 1. Choose **New Resource** and your Git source, then set **Build Pack** to **Docker Compose**. The compose
    file is `/docker-compose.yml`.
-2. Coolify lists every variable the compose file references. Fill in `CR_API_TOKEN`, `ADMIN_TOKEN`, and
-   `APP_URL`. The rest have defaults.
+2. Coolify lists every variable the compose file references. Fill in `CR_API_TOKEN` and `APP_URL`.
+   The rest have defaults.
 3. Set the domain of the `app` service to `https://cr.example.com:3000`. The `:3000` suffix tells Coolify's
    proxy which container port to use, and the public URL stays on 443.
 4. Remove the `ports:` mapping from `docker-compose.yml` if you don't want port 3000 open on the host.
@@ -133,7 +132,14 @@ Both use the same image.
 ### First run
 
 1. In Coolify, open the application's **Terminal** tab and connect to the container.
-2. Create an invite:
+2. If you want to use the [admin API](#admin-api) from outside the container, create an admin token and
+   store it somewhere safe. It is printed once.
+
+   ```sh
+   bun run cli admin-token create --name laptop
+   ```
+
+3. Invite yourself:
 
    ```sh
    bun run cli invite create
@@ -141,9 +147,9 @@ Both use the same image.
 
    The code allows one sign-up and expires after 7 days. Pass `--days N` to change that, or `--no-expiry`.
    To add yourself without an invite, run `bun run cli user create <name> <password>` instead.
-3. Open `https://cr.example.com/register` and sign up with the invite code.
-4. On **Settings**, link your player tag. The first sync runs right away, and then it runs every hour.
-5. On **Settings**, create an API key for your AI assistant.
+4. Open `https://cr.example.com/register` and sign up with the invite code.
+5. On **Settings**, link your player tag. The first sync runs right away, and then it runs every hour.
+6. On **Settings**, create an API key for your AI assistant.
 
 The card catalog loads at startup. If `CR_API_TOKEN` is wrong or the IP is not allowlisted, the log shows
 `card catalog sync failed ... denied access`. The app still starts, and the catalog is retried daily at
@@ -151,11 +157,14 @@ The card catalog loads at startup. If `CR_API_TOKEN` is wrong or the IP is not a
 
 ## Admin API
 
-Admin endpoints authenticate with `Authorization: Bearer $ADMIN_TOKEN`, not a user key.
+Admin endpoints authenticate with an admin token (`cra_...`) in `Authorization: Bearer`. Admin tokens are
+separate from user API keys (`crk_...`): a user key gets 401 on `/api/admin/*`, and an admin token gets 401
+on user endpoints. Create one in the container terminal with `bun run cli admin-token create [--name <name>]`.
+It is shown once and only its hash is stored. Revoke it with `bun run cli admin-token revoke <id>`.
 
 ```sh
 URL=https://cr.example.com
-A="Authorization: Bearer $ADMIN_TOKEN"
+A="Authorization: Bearer cra_..."
 
 # Create an invite. Defaults: 1 use, expires in 7 days.
 curl -sS -X POST -H "$A" -H "Content-Type: application/json" "$URL/api/admin/invites" \
@@ -182,7 +191,6 @@ Any other agent can follow `.claude/skills/clash-royale-companion/SKILL.md` as p
 | Variable | Default | Description |
 |---|---|---|
 | `CR_API_TOKEN` | none, required by the server | Supercell API token, bound to an IP allowlist. The CLI needs it only for `sync`. |
-| `ADMIN_TOKEN` | none, required by the server | Bearer token for `/api/admin/*`, at least 16 characters. |
 | `CR_API_BASE` | `https://api.clashroyale.com/v1` | API base URL. Use `https://proxy.royaleapi.dev/v1` or the local mock. |
 | `APP_URL` | unset | Public URL. When it starts with `https://`, session cookies are `Secure`, and its origin passes the CSRF check behind a proxy. |
 | `DATABASE_PATH` | `./data/app.db`, or `/data/app.db` in Docker | SQLite file. Its directory is created if missing. |
@@ -229,6 +237,9 @@ player's last sync and error.
 **One instance per database.** The scheduler runs inside the app process. Two containers on the same
 volume would sync twice and contend for SQLite locks. Keep the replica count at 1. Coolify's rolling update
 briefly runs the old and new container together. That is harmless, because battles are de-duplicated.
+
+**Admin tokens.** `bun run cli admin-token list` shows each token's id, name, prefix, creation time, last use,
+and revocation. Revoke one with `bun run cli admin-token revoke <id>`.
 
 **Manual sync.** `bun run cli sync <tag>` and `bun run cli sync --all` sync without the cooldown. Write the
 tag without `#`, because the shell treats `#` as the start of a comment.

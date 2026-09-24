@@ -5,7 +5,6 @@ const envSchema = z.object({
   CR_API_BASE: z.url().default("https://api.clashroyale.com/v1"),
   DATABASE_PATH: z.string().default("./data/app.db"),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
-  ADMIN_TOKEN: z.string().min(16, "ADMIN_TOKEN must be at least 16 characters").optional(),
   SYNC_CRON: z.string().default("0 * * * *"),
   SYNC_COOLDOWN_SECONDS: z.coerce.number().int().min(0).default(300),
   APP_URL: z.url().optional(),
@@ -14,7 +13,7 @@ const envSchema = z.object({
 });
 
 export type Config = z.infer<typeof envSchema>;
-export type RequiredEnvKey = "CR_API_TOKEN" | "ADMIN_TOKEN";
+export type RequiredEnvKey = "CR_API_TOKEN";
 
 export function loadConfig(env: Record<string, string | undefined>): Config {
   // `KEY=` in a .env file yields "", which should mean "unset" rather than fail validation.

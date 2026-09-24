@@ -35,3 +35,23 @@ describe("cli invite create", () => {
     expect(cli("invite", "create", "--days", "-1").code).toBe(1);
   });
 });
+
+describe("cli admin-token", () => {
+  test("create prints the raw token once; list and revoke", () => {
+    const created = cli("admin-token", "create", "--name", "laptop");
+    expect(created.code).toBe(0);
+    const raw = created.stdout.trim();
+    expect(raw).toMatch(/^cra_[\w-]{43}$/);
+    expect(created.stderr).toContain("cannot be shown again");
+    const id = /\(id (\d+)\)/.exec(created.stderr)![1]!;
+
+    const listed = cli("admin-token", "list");
+    expect(listed.stdout).toContain("laptop");
+    expect(listed.stdout).toContain(raw.slice(0, 8));
+    expect(listed.stdout).not.toContain(raw);
+
+    expect(cli("admin-token", "revoke", id).stdout).toContain("Revoked.");
+    expect(cli("admin-token", "revoke", id).stdout).toContain("No active admin token");
+    expect(cli("admin-token", "revoke").code).toBe(1);
+  });
+});

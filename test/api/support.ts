@@ -1,5 +1,6 @@
 import type { Hono } from "hono";
 import { createApp } from "../../src/app";
+import { createAdminToken } from "../../src/auth/adminTokens";
 import { createApiKey } from "../../src/auth/apiKeys";
 import { createSession, SESSION_COOKIE } from "../../src/auth/sessions";
 import { config } from "../../src/config";
@@ -8,8 +9,6 @@ import { addPlayer } from "../../src/repos/players";
 import { syncPlayer } from "../../src/sync";
 import type { AppEnv, User } from "../../src/types";
 import { FakeCrClient, FIXTURE_TAG, makeTestDb, seedCards } from "../helpers";
-
-export const ADMIN_TOKEN = "admin-token-for-tests-0123456789";
 
 const toCompact = (iso: string): string => iso.replace(/[-:]/g, "");
 
@@ -35,7 +34,6 @@ export interface ApiTestEnv {
 export function setupApi(): ApiTestEnv {
   makeTestDb();
   seedCards();
-  config.ADMIN_TOKEN = ADMIN_TOKEN;
   config.SYNC_COOLDOWN_SECONDS = 300;
   const client = new FakeCrClient();
   freshenBattleLog(client);
@@ -47,6 +45,10 @@ export function setupApi(): ApiTestEnv {
 export const sessionHeaders = (u: User): Record<string, string> => ({
   Cookie: `${SESSION_COOKIE}=${createSession(u.id)}`,
   Origin: "http://localhost",
+});
+
+export const adminHeaders = (): Record<string, string> => ({
+  Authorization: `Bearer ${createAdminToken("test").raw}`,
 });
 
 export const apiKeyHeaders = (u: User): Record<string, string> => ({

@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { Hono } from "hono";
 import { createApp } from "../src/app";
+import { createAdminToken } from "../src/auth/adminTokens";
 import { createApiKey } from "../src/auth/apiKeys";
 import { currentUser, requireAdmin, requireSession, requireUser } from "../src/auth/middleware";
 import { createSession, SESSION_COOKIE } from "../src/auth/sessions";
-import { config } from "../src/config";
 import { AppError } from "../src/errors";
 import { setFlash } from "../src/http/flash";
 import type { AppEnv, User } from "../src/types";
@@ -17,7 +17,6 @@ let user: User;
 beforeEach(() => {
   makeTestDb();
   user = makeUser();
-  config.ADMIN_TOKEN = "admin-token-for-tests-0123456789";
   app = createApp();
   // Routes added after createApp still get the global middleware and handlers.
   app.get("/api/test/whoami", requireUser, (c) => c.json({ user: currentUser(c), via: c.var.authMethod }));
@@ -118,7 +117,7 @@ describe("authentication", () => {
     expect(bad.status).toBe(401);
     const good = await app.request("/api/admin/ping", {
       method: "POST",
-      headers: { Authorization: `Bearer ${config.ADMIN_TOKEN}` },
+      headers: { Authorization: `Bearer ${createAdminToken("test").raw}` },
     });
     expect(good.status).toBe(200);
   });
@@ -145,7 +144,7 @@ describe("csrf and pages", () => {
   test("bodyless API-key POSTs are not blocked by csrf", async () => {
     const res = await app.request("/api/admin/ping", {
       method: "POST",
-      headers: { Authorization: `Bearer ${config.ADMIN_TOKEN}` },
+      headers: { Authorization: `Bearer ${createAdminToken("test").raw}` },
     });
     expect(res.status).toBe(200);
   });

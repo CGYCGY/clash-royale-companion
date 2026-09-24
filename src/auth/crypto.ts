@@ -1,16 +1,8 @@
-import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 
 export const sha256Hex = (input: string): string => createHash("sha256").update(input).digest("hex");
 
 export const randomToken = (bytes = 32): string => randomBytes(bytes).toString("base64url");
-
-/** Constant-time string compare; hashing first makes unequal lengths safe for timingSafeEqual. */
-export function safeEqual(a: string, b: string): boolean {
-  return timingSafeEqual(
-    createHash("sha256").update(a).digest(),
-    createHash("sha256").update(b).digest(),
-  );
-}
 
 /** Uniform random string from `alphabet`. Alphabet length must divide 256 to avoid modulo bias. */
 export function randomString(length: number, alphabet: string): string {

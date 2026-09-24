@@ -10,7 +10,7 @@ framework), `bun:sqlite` (WAL), Zod 4, croner. No ORM.
 ## Run locally
 
 ```sh
-cp .env.example .env        # set CR_API_TOKEN and ADMIN_TOKEN (the CLI needs neither)
+cp .env.example .env        # set CR_API_TOKEN (the CLI needs it only for sync)
 bun install
 bun run cli invite create   # prints an invite code for /register (or: bun run cli user create <name> <pw>)
 bun run dev                 # http://localhost:3000, restarts on change
@@ -27,7 +27,7 @@ The CR API key is bound to an IP allowlist. From a dev machine, create a key for
 src/
   server.ts            Entry: requires env, migrate(), card sync if empty, scheduler, Bun.serve, SIGTERM.
   app.tsx              createApp(): static, csrf, authenticate, flash, registerRoutes, 404 + error handlers.
-  config.ts            `config` (zod-parsed env), requireEnv("CR_API_TOKEN" | "ADMIN_TOKEN").
+  config.ts            `config` (zod-parsed env), requireEnv("CR_API_TOKEN").
   errors.ts            AppError(code, message, status, details?) + errorBody().
   types.ts             User, AuthMethod, Flash, AppEnv (use `new Hono<AppEnv>()` everywhere).
   util.ts              nowIso, daysAgoIso, sleep, ratio.
@@ -35,7 +35,7 @@ src/
   db/migrations/       NNNN_name.sql, applied in order at startup, tracked in schema_migrations.
   cr/                  Clash Royale API: client.ts (CrClient, CrApi, CrApiError, getCrClient),
                        types.ts (response types, parseBattleTime), tag.ts, levels.ts.
-  auth/                passwords, users, register, sessions, apiKeys, invites, middleware, crypto.
+  auth/                passwords, users, register, sessions, apiKeys, adminTokens, invites, middleware, crypto.
   repos/               Typed queries: players, battles, cards, decks, notes, syncRuns.
   sync/                syncPlayer, syncCards, syncAll, manualSync, trackPlayer, scheduler (index.ts re-exports).
   http/                validate.ts (zod helpers), flash.ts, csrf.ts.
@@ -43,7 +43,7 @@ src/
   routes/api/*.ts      JSON routers, mounted under /api.
   routes/pages/*.tsx   HTML routers, mounted under /.
   views/               Layout.tsx, render.tsx (renderPage), components.tsx, format.ts.
-  cli/index.ts         bun run cli: migrate, invite create|list|revoke, user list|create|set-password.
+  cli/index.ts         bun run cli: migrate, invite, user, admin-token create|list|revoke, player, sync, stats.
 public/                Served at /static/* (app.css dark theme; app.js: copy buttons, card image fallback, sync countdown).
 test/                  *.test.ts(x), helpers.ts, fixtures/{player,battlelog,chests,cards}.json.
 ```
@@ -102,7 +102,7 @@ export const deckPages = new Hono<AppEnv>()
 
 **Always scope middleware to your own paths.** An unscoped `.use(requireUser)` in a sub-app mounted at
 `/api` also runs for every *other* router mounted at `/api` after it. For example, it would 401 the admin
-endpoints, which authenticate with ADMIN_TOKEN rather than a user. Use `.use("/decks/*", guard)` or
+endpoints, which authenticate with an admin token rather than a user. Use `.use("/decks/*", guard)` or
 per-route `.get("/x", guard, handler)`. The same applies to page routers mounted at `/`, where a leak would
 force login on `/login`.
 
@@ -114,7 +114,8 @@ Global `authenticate` sets, for every request:
 - `c.var.authMethod: "session" | "apikey" | null`
 
 Resolution: any `Authorization: Bearer ...` request authenticates only by API key (`crk_...`) and never
-falls back to the cookie, even when the key is invalid. Requests without a Bearer header (including Basic from
+falls back to the cookie, even when the key is invalid. An admin token (`cra_...`) leaves `user` null, so it
+gets 401 on user routes; only `requireAdmin` accepts it. Requests without a Bearer header (including Basic from
 an auth proxy) use the `cr_session` cookie.
 
 Route guards in `src/auth/middleware.ts`:
@@ -123,7 +124,7 @@ Route guards in `src/auth/middleware.ts`:
 |---|---|---|
 | `requireUser` | session or API key | 401 JSON under /api, else 302 `/login?next=...` |
 | `requireSession` | browser session only (API key management, account settings) | 403/401 JSON, or login redirect |
-| `requireAdmin` | `Authorization: Bearer <ADMIN_TOKEN>` (constant-time compare) | 401 JSON |
+| `requireAdmin` | `Authorization: Bearer cra_...`, an unrevoked admin token from the DB | 401 JSON |
 
 `currentUser(c)` returns the non-null `User` inside guarded handlers.
 
@@ -157,6 +158,10 @@ Constants `SESSION_COOKIE = "cr_session"`, `SESSION_TTL_SECONDS` (30 days, fixed
 **auth/apiKeys**: `createApiKey(userId, name) -> { raw, record }` (show `raw` once),
 `getUserByApiKey(raw, now?)` (stamps last_used_at), `listApiKeys(userId, { includeRevoked? })`,
 `revokeApiKey(userId, keyId) -> boolean`. `ApiKeyRecord.keyPrefix` is the first 8 chars (`crk_XXXX`).
+
+**auth/adminTokens**: `createAdminToken(name) -> { raw, record }` (show `raw` once), `verifyAdminToken(raw, now?)
+-> AdminTokenRecord | null` (stamps last_used_at), `listAdminTokens({ includeRevoked? })`, `revokeAdminToken(id) -> boolean`.
+Created only from the CLI (`admin-token create|list|revoke`). Not tied to a user.
 
 **auth/invites**: `createInvite({ maxUses?, expiresInDays? }) -> InviteRecord`, `consumeInvite(code, now?) -> boolean`
 (atomic), `getInviteByCode(code)`, `isInviteUsable(invite)`, `listInvites()`, `revokeInvite(id)`.
@@ -247,7 +252,7 @@ The scheduler is in-process, so run exactly one app instance per database.
 
 ## Database
 
-The schema lives in `src/db/migrations/` (`0001_init.sql`, then `0002_battles_team_size.sql`). Add changes as the
+The schema lives in `src/db/migrations/` (`0001_init.sql`, `0002_battles_team_size.sql`, `0003_admin_tokens.sql`). Add changes as the
 next `NNNN_*.sql` file and never edit an applied one. Foreign keys are on, and deleting a player cascades to its snapshots, battles, notes, and sync runs.
 Large payloads are stored as JSON text (`player_snapshots.data`, `battles.data`, `cards.data`). Query them with
 `json_extract` rather than parsing in JS when you need one field, as `getTrophyHistory` does.
@@ -268,6 +273,7 @@ beforeEach(() => {
   test needs a real password.
 - For HTTP tests, call `createApp()` and then `app.request(path, init)`. Routes you add after `createApp()` still
   get the global middleware. See `test/app.test.tsx`.
-- `config` is a mutable object, so tests set `config.ADMIN_TOKEN` or `config.SYNC_COOLDOWN_SECONDS` directly.
+- `config` is a mutable object, so tests set fields such as `config.SYNC_COOLDOWN_SECONDS` directly.
+- Admin routes: `adminHeaders()` from `test/api/support.ts`, or `createAdminToken(name).raw` as the Bearer token.
 - The fixture player is `#9QJUGC2R` "Sparky". Its battle log has 10 battles: 5 ladder, 3 Path of Legend
   (one draw), one 2v2, and one friendly. The catalog has 39 cards and 3 tower troops.

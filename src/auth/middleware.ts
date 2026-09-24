@@ -1,10 +1,9 @@
 import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
-import { requireEnv } from "../config";
 import { errorBody } from "../errors";
 import type { AppEnv, User } from "../types";
+import { verifyAdminToken } from "./adminTokens";
 import { API_KEY_PREFIX, getUserByApiKey } from "./apiKeys";
-import { safeEqual } from "./crypto";
 import { getSessionToken, getUserBySessionToken } from "./sessions";
 
 export const isApiRequest = (c: Context): boolean =>
@@ -24,7 +23,8 @@ function bearerToken(c: Context): string | null {
  * session cookie; never rejects. A Bearer request never falls back to the cookie: csrfProtection
  * skips exactly those requests, so a fallback would let one ride the session past the CSRF check.
  * Other schemes (e.g. Basic from an auth proxy, which browsers attach cross-site) keep the cookie
- * and stay CSRF-checked.
+ * and stay CSRF-checked. Admin tokens (`cra_...`) leave `user` null: admin is not a user, and only
+ * requireAdmin accepts them.
  */
 export const authenticate = createMiddleware<AppEnv>(async (c, next) => {
   c.set("user", null);
@@ -81,10 +81,10 @@ export const requireSession = createMiddleware<AppEnv>(async (c, next) => {
   await next();
 });
 
-/** `Authorization: Bearer <ADMIN_TOKEN>`. Independent of user auth. */
+/** `Authorization: Bearer cra_...`, an admin token created with the CLI. Independent of user auth. */
 export const requireAdmin = createMiddleware<AppEnv>(async (c, next) => {
   const token = bearerToken(c);
-  if (!token || !safeEqual(token, requireEnv("ADMIN_TOKEN"))) {
+  if (!token || !verifyAdminToken(token)) {
     return c.json(errorBody("unauthorized", "Invalid admin token"), 401);
   }
   await next();

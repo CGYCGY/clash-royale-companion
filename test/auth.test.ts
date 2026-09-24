@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, test } from "bun:test";
+import { createAdminToken, listAdminTokens, revokeAdminToken, verifyAdminToken } from "../src/auth/adminTokens";
 import { createApiKey, getUserByApiKey, listApiKeys, revokeApiKey } from "../src/auth/apiKeys";
 import { consumeInvite, createInvite, getInviteByCode, revokeInvite } from "../src/auth/invites";
 import { registerWithInvite } from "../src/auth/register";
@@ -135,5 +136,32 @@ describe("api keys", () => {
     expect(getUserByApiKey(raw)).toBeNull();
     expect(listApiKeys(alice.id)).toHaveLength(0);
     expect(listApiKeys(alice.id, { includeRevoked: true })).toHaveLength(1);
+  });
+});
+
+describe("admin tokens", () => {
+  test("create returns raw once; verify stamps last_used_at", () => {
+    const { raw, record } = createAdminToken("  laptop ");
+    expect(raw.startsWith("cra_")).toBe(true);
+    expect(record).toMatchObject({ name: "laptop", tokenPrefix: raw.slice(0, 8), lastUsedAt: null, revokedAt: null });
+    const when = new Date("2026-01-02T03:04:05.000Z");
+    expect(verifyAdminToken(raw, when)?.id).toBe(record.id);
+    expect(listAdminTokens()[0]!.lastUsedAt).toBe(when.toISOString());
+    expect(verifyAdminToken("cra_wrong")).toBeNull();
+    expect(verifyAdminToken(raw.replace(/^cra_/, "crk_"))).toBeNull();
+  });
+
+  test("user API keys never verify as admin tokens", () => {
+    expect(verifyAdminToken(createApiKey(makeUser().id, "k").raw)).toBeNull();
+  });
+
+  test("revoke disables the token and is idempotent", () => {
+    const { raw, record } = createAdminToken("t");
+    expect(revokeAdminToken(record.id)).toBe(true);
+    expect(revokeAdminToken(record.id)).toBe(false);
+    expect(revokeAdminToken(9999)).toBe(false);
+    expect(verifyAdminToken(raw)).toBeNull();
+    expect(listAdminTokens()).toHaveLength(0);
+    expect(listAdminTokens({ includeRevoked: true })[0]!.revokedAt).not.toBeNull();
   });
 });

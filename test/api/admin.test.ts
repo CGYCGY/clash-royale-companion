@@ -1,17 +1,48 @@
 import { beforeEach, describe, expect, test } from "bun:test";
+import { createAdminToken, listAdminTokens, revokeAdminToken } from "../../src/auth/adminTokens";
 import type { InviteRecord } from "../../src/auth/invites";
 import { currentAdminSync } from "../../src/routes/api/admin";
 import type { SyncRunRecord } from "../../src/repos/syncRuns";
 import { FIXTURE_TAG, makeUser } from "../helpers";
-import { ADMIN_TOKEN, type ApiTestEnv, type ErrorJson, jsonInit, linkFixturePlayer, setupApi } from "./support";
+import { type ApiTestEnv, apiKeyHeaders, type ErrorJson, jsonInit, linkFixturePlayer, setupApi } from "./support";
 
 type InviteJson = InviteRecord & { usable: boolean };
 
 let env: ApiTestEnv;
-const admin = { Authorization: `Bearer ${ADMIN_TOKEN}` };
+let admin: Record<string, string>;
 
 beforeEach(() => {
   env = setupApi();
+  admin = { Authorization: `Bearer ${createAdminToken("test").raw}` };
+});
+
+describe("admin token auth", () => {
+  test("a revoked token is rejected", async () => {
+    const { raw, record } = createAdminToken("temp");
+    const headers = { Authorization: `Bearer ${raw}` };
+    expect((await env.app.request("/api/admin/invites", { method: "POST", headers })).status).toBe(201);
+    expect(revokeAdminToken(record.id)).toBe(true);
+    const res = await env.app.request("/api/admin/invites", { method: "POST", headers });
+    expect(res.status).toBe(401);
+    expect(((await res.json()) as ErrorJson).error.code).toBe("unauthorized");
+  });
+
+  test("a user API key is not an admin token", async () => {
+    const res = await env.app.request("/api/admin/users", { headers: apiKeyHeaders(makeUser()) });
+    expect(res.status).toBe(401);
+  });
+
+  test("an admin token is not a user", async () => {
+    const res = await env.app.request("/api/me", { headers: admin });
+    expect(res.status).toBe(401);
+    expect(((await res.json()) as ErrorJson).error.code).toBe("unauthorized");
+  });
+
+  test("use stamps last_used_at", async () => {
+    expect(listAdminTokens()[0]!.lastUsedAt).toBeNull();
+    expect((await env.app.request("/api/admin/users", { headers: admin })).status).toBe(200);
+    expect(listAdminTokens()[0]!.lastUsedAt).not.toBeNull();
+  });
 });
 
 describe("admin invites", () => {

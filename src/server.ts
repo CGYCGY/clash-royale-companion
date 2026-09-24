@@ -6,7 +6,6 @@ import { countCards } from "./repos/cards";
 import { startScheduler, syncCards } from "./sync";
 
 requireEnv("CR_API_TOKEN");
-requireEnv("ADMIN_TOKEN");
 
 const applied = migrate(getDb());
 if (applied.length) console.log(`[db] applied migrations: ${applied.join(", ")}`);
