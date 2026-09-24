@@ -140,6 +140,31 @@ describe("renderContextMarkdown", () => {
     expect(md.length).toBeLessThan(20_000);
   });
 
+  test("snapshot time and age come from the last confirming sync", () => {
+    const user = makeUser();
+    const player = addPlayer(user.id, FIXTURE_TAG, "Sparky");
+    const empty = getBattleStats(FIXTURE_TAG, { sinceDays: 7 });
+    const now = new Date("2026-09-25T12:00:00.000Z");
+    const md = renderContextMarkdown({
+      player,
+      snapshot: {
+        player: loadFixture<Player>("player"),
+        chests: null,
+        fetchedAt: "2026-09-01T08:00:00.000Z",
+        lastSeenAt: "2026-09-25T11:50:00.000Z",
+      },
+      stats7: empty,
+      stats30: empty,
+      recentBattles: [],
+      collection: buildCollection(null, listCards()),
+      notes: null,
+      decks: [],
+      now,
+    });
+    expect(md).toContain("snapshot: 2026-09-25 11:50 UTC (unchanged since 2026-09-01 08:00 UTC)");
+    expect(md).toContain("Snapshot age: 10 min");
+  });
+
   test("handles a player that has never synced", () => {
     const user = makeUser();
     const player = addPlayer(user.id, FIXTURE_TAG, "Sparky");

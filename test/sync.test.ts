@@ -5,7 +5,15 @@ import { CrApiError } from "../src/cr/client";
 import { getDb } from "../src/db";
 import { countBattles } from "../src/repos/battles";
 import { countCards, getCardByName } from "../src/repos/cards";
-import { addPlayer, getLatestSnapshot, getPlayer, getTrophyHistory, listAllPlayers, removePlayer } from "../src/repos/players";
+import {
+  addPlayer,
+  getLatestSnapshot,
+  getPlayer,
+  getTrophyHistory,
+  insertSnapshot,
+  listAllPlayers,
+  removePlayer,
+} from "../src/repos/players";
 import * as syncRuns from "../src/repos/syncRuns";
 import { listRecentSyncRuns } from "../src/repos/syncRuns";
 import { manualSync, runDailyJob, runSyncJob, syncAll, syncCards, syncPlayer, trackPlayer } from "../src/sync";
@@ -30,7 +38,7 @@ describe("syncPlayer", () => {
   test("stores snapshot, battles, player name, and an ok sync run", async () => {
     addPlayer(user.id, FIXTURE_TAG);
     const r = await syncPlayer(FIXTURE_TAG, client);
-    expect(r).toEqual({ battlesAdded: 10 });
+    expect(r).toEqual({ battlesAdded: 10, snapshotInserted: true });
     expect(countBattles(FIXTURE_TAG)).toBe(10);
     const snap = getLatestSnapshot(FIXTURE_TAG)!;
     expect(snap.player.name).toBe("Sparky");
@@ -47,12 +55,34 @@ describe("syncPlayer", () => {
     ]);
   });
 
-  test("second run de-duplicates battles but keeps every snapshot", async () => {
+  test("an unchanged second sync de-duplicates battles and the snapshot, advancing last_seen_at", async () => {
     addPlayer(user.id, FIXTURE_TAG);
     await syncPlayer(FIXTURE_TAG, client);
+    const old = "2026-01-01T00:00:00.000Z";
+    getDb().query("UPDATE player_snapshots SET fetched_at = ?, last_seen_at = ?").run(old, old);
     const second = await syncPlayer(FIXTURE_TAG, client);
-    expect(second.battlesAdded).toBe(0);
+    expect(second).toEqual({ battlesAdded: 0, snapshotInserted: false });
     expect(countBattles(FIXTURE_TAG)).toBe(10);
+    expect(snapshotCount()).toBe(1);
+    const snap = getLatestSnapshot(FIXTURE_TAG)!;
+    expect(snap.fetchedAt).toBe(old);
+    expect(snap.lastSeenAt > old).toBe(true);
+  });
+
+  test("a trophy change stores a new snapshot", async () => {
+    addPlayer(user.id, FIXTURE_TAG);
+    await syncPlayer(FIXTURE_TAG, client);
+    client.player = { ...client.player, trophies: client.player.trophies + 30 };
+    expect((await syncPlayer(FIXTURE_TAG, client)).snapshotInserted).toBe(true);
+    expect(snapshotCount()).toBe(2);
+    expect(getLatestSnapshot(FIXTURE_TAG)!.player.trophies).toBe(client.player.trophies);
+  });
+
+  test("a chests-only change stores a new snapshot", async () => {
+    addPlayer(user.id, FIXTURE_TAG);
+    await syncPlayer(FIXTURE_TAG, client);
+    client.chests = { items: client.chests.items.slice(1) };
+    expect((await syncPlayer(FIXTURE_TAG, client)).snapshotInserted).toBe(true);
     expect(snapshotCount()).toBe(2);
   });
 
@@ -72,7 +102,7 @@ describe("syncPlayer", () => {
     delete (noCards.team[0] as { cards?: unknown }).cards;
     client.battleLog = [broken, noCards, ...client.battleLog.slice(2)];
     const r = await syncPlayer(FIXTURE_TAG, client);
-    expect(r).toEqual({ battlesAdded: 9 });
+    expect(r).toEqual({ battlesAdded: 9, snapshotInserted: true });
     expect(snapshotCount()).toBe(1);
     expect(getPlayer(FIXTURE_TAG)!.lastSyncError).toBeNull();
   });
@@ -81,11 +111,46 @@ describe("syncPlayer", () => {
     addPlayer(user.id, FIXTURE_TAG);
     client.fail.getPlayer = new CrApiError(403, "accessDenied", "denied: check allowlist");
     const r = await syncPlayer(FIXTURE_TAG, client);
-    expect(r).toEqual({ battlesAdded: 0, error: "denied: check allowlist", errorStatus: 403 });
+    expect(r).toEqual({ battlesAdded: 0, snapshotInserted: false, error: "denied: check allowlist", errorStatus: 403 });
     expect(getPlayer(FIXTURE_TAG)!.lastSyncError).toBe("denied: check allowlist");
     expect(getPlayer(FIXTURE_TAG)!.lastSyncedAt).toBeNull();
     expect(listRecentSyncRuns({ tag: FIXTURE_TAG })[0]).toMatchObject({ status: "error" });
     expect(snapshotCount()).toBe(0);
+  });
+});
+
+describe("insertSnapshot", () => {
+  const T1 = "2026-09-01T10:00:00.000Z";
+  const T2 = "2026-09-01T11:00:00.000Z";
+  const T3 = "2026-09-01T12:00:00.000Z";
+
+  test("returns inserted/id and exposes fetchedAt and lastSeenAt separately", () => {
+    addPlayer(user.id, FIXTURE_TAG);
+    const first = insertSnapshot(FIXTURE_TAG, client.player, client.chests, T1);
+    expect(first.inserted).toBe(true);
+    expect(getLatestSnapshot(FIXTURE_TAG)).toMatchObject({ fetchedAt: T1, lastSeenAt: T1 });
+    expect(insertSnapshot(FIXTURE_TAG, client.player, client.chests, T2)).toEqual({ inserted: false, id: first.id });
+    expect(getLatestSnapshot(FIXTURE_TAG)).toMatchObject({ fetchedAt: T1, lastSeenAt: T2 });
+    expect(snapshotCount()).toBe(1);
+  });
+
+  test("an out-of-order older fetch does not move last_seen_at backwards", () => {
+    addPlayer(user.id, FIXTURE_TAG);
+    insertSnapshot(FIXTURE_TAG, client.player, null, T1);
+    insertSnapshot(FIXTURE_TAG, client.player, null, T3);
+    insertSnapshot(FIXTURE_TAG, client.player, null, T2);
+    expect(getLatestSnapshot(FIXTURE_TAG)!.lastSeenAt).toBe(T3);
+  });
+
+  test("trophy history keeps points at fetched_at and carries lastSeenAt", () => {
+    addPlayer(user.id, FIXTURE_TAG);
+    insertSnapshot(FIXTURE_TAG, client.player, null, T1);
+    insertSnapshot(FIXTURE_TAG, client.player, null, T2);
+    insertSnapshot(FIXTURE_TAG, { ...client.player, trophies: 7600 }, null, T3);
+    expect(getTrophyHistory(FIXTURE_TAG)).toEqual([
+      expect.objectContaining({ fetchedAt: T1, lastSeenAt: T2, trophies: 7584 }),
+      expect.objectContaining({ fetchedAt: T3, lastSeenAt: T3, trophies: 7600 }),
+    ]);
   });
 });
 
@@ -132,7 +197,7 @@ describe("syncCards / syncAll / trackPlayer", () => {
     addPlayer(user.id, "#PYVJ98G2");
     const r = await syncAll(client, { delayMs: 0 });
     // Both players get the same fixture battle log, but battles are keyed per player tag.
-    expect(r).toEqual({ players: 2, failed: 0, skipped: 0, battlesAdded: 20, rateLimited: false });
+    expect(r).toEqual({ players: 2, failed: 0, skipped: 0, battlesAdded: 20, snapshotsInserted: 2, rateLimited: false });
   });
 
   test("syncAll skips a player removed mid-run and keeps going", async () => {
@@ -144,7 +209,7 @@ describe("syncCards / syncAll / trackPlayer", () => {
       return realGetPlayer(tag);
     };
     const r = await syncAll(client, { delayMs: 0 });
-    expect(r).toEqual({ players: 3, failed: 0, skipped: 1, battlesAdded: 20, rateLimited: false });
+    expect(r).toEqual({ players: 3, failed: 0, skipped: 1, battlesAdded: 20, snapshotsInserted: 2, rateLimited: false });
     expect(countBattles(first!)).toBe(10);
     expect(countBattles(third!)).toBe(10);
   });
@@ -167,7 +232,7 @@ describe("syncCards / syncAll / trackPlayer", () => {
     for (const tag of [FIXTURE_TAG, "#PYVJ98G2", "#8LQ2R0YCP"]) addPlayer(user.id, tag);
     client.fail.getPlayer = new CrApiError(429, "requestThrottled", "rate limited", 30);
     const r = await syncAll(client, { delayMs: 0 });
-    expect(r).toEqual({ players: 3, failed: 1, skipped: 2, battlesAdded: 0, rateLimited: true });
+    expect(r).toEqual({ players: 3, failed: 1, skipped: 2, battlesAdded: 0, snapshotsInserted: 0, rateLimited: true });
     expect(client.calls.getPlayer).toBe(1);
     const single = await syncPlayer(FIXTURE_TAG, client);
     expect(single).toMatchObject({ errorStatus: 429, retryAfterSeconds: 30 });

@@ -13,10 +13,12 @@ export interface PruneResult {
 }
 
 /**
- * Thins player_snapshots: everything newer than keepAllDays stays, then only the last snapshot of
- * each UTC day until keepDailyDays, then nothing. The newest snapshot per player always survives
- * so the profile and context still render for players whose sync has been failing for months.
- * Trophy history reads snapshots, so this lowers its resolution for old data rather than losing it.
+ * Opt-in thinning of player_snapshots; with both windows at 0 (the default) nothing is deleted.
+ * keepAllDays > 0: rows older than that are thinned to the last snapshot of each UTC day.
+ * keepDailyDays > 0: rows older than that are deleted. A 0 for either disables that tier.
+ * The newest snapshot per player always survives so the profile and context still render for
+ * players whose sync has been failing for months. Trophy history reads snapshots, so thinning
+ * lowers its resolution for old data.
  */
 export function pruneSnapshots(
   {
@@ -25,10 +27,14 @@ export function pruneSnapshots(
   }: Partial<RetentionPolicy> = {},
   now: Date = new Date(),
 ): PruneResult {
-  const allCutoff = daysAgoIso(keepAllDays, now);
-  // A daily window shorter than the keep-all window would mean "no daily tier", not "delete recent data".
-  const dailyCutoff = daysAgoIso(Math.max(keepDailyDays, keepAllDays), now);
   const db = getDb();
+  const count = () => db.query<{ n: number }, []>("SELECT COUNT(*) AS n FROM player_snapshots").get()!.n;
+  if (keepAllDays <= 0 && keepDailyDays <= 0) return { deleted: 0, remaining: count() };
+  // "" sorts before every timestamp, so a disabled daily tier deletes nothing by age; a disabled
+  // keep-all tier reuses the daily cutoff, which leaves only the age rule.
+  // A daily window shorter than the keep-all window would mean "no daily tier", not "delete recent data".
+  const dailyCutoff = keepDailyDays > 0 ? daysAgoIso(Math.max(keepDailyDays, keepAllDays), now) : "";
+  const allCutoff = keepAllDays > 0 ? daysAgoIso(keepAllDays, now) : dailyCutoff;
   // fetched_at is ISO 8601 UTC, so its first 10 chars are the UTC day.
   const deleted = db
     .query(
@@ -46,6 +52,5 @@ export function pruneSnapshots(
        )`,
     )
     .run({ allCutoff, dailyCutoff }).changes;
-  const remaining = db.query<{ n: number }, []>("SELECT COUNT(*) AS n FROM player_snapshots").get()!.n;
-  return { deleted, remaining };
+  return { deleted, remaining: count() };
 }

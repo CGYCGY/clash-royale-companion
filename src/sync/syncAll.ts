@@ -9,6 +9,7 @@ export interface SyncAllResult {
   /** Not attempted: removed mid-run, or left over after a rate limit stopped the run. */
   skipped: number;
   battlesAdded: number;
+  snapshotsInserted: number;
   rateLimited: boolean;
 }
 
@@ -18,7 +19,7 @@ export interface SyncAllResult {
  */
 export async function syncAll(client: CrApi, { delayMs = 300 }: { delayMs?: number } = {}): Promise<SyncAllResult> {
   const players = listAllPlayers();
-  const summary: SyncAllResult = { players: players.length, failed: 0, skipped: 0, battlesAdded: 0, rateLimited: false };
+  const summary: SyncAllResult = { players: players.length, failed: 0, skipped: 0, battlesAdded: 0, snapshotsInserted: 0, rateLimited: false };
   for (const [i, p] of players.entries()) {
     if (i > 0 && delayMs > 0) await sleep(delayMs);
     // The list is read once up front and users can remove players during the run's awaits.
@@ -29,6 +30,7 @@ export async function syncAll(client: CrApi, { delayMs = 300 }: { delayMs?: numb
     try {
       const r = await syncPlayer(p.tag, client);
       summary.battlesAdded += r.battlesAdded;
+      if (r.snapshotInserted) summary.snapshotsInserted++;
       if (r.error) {
         summary.failed++;
         console.warn(`[sync] ${p.tag}: ${r.error}`);

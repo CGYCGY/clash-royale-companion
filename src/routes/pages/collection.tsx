@@ -122,7 +122,7 @@ export const collectionPages = new Hono<AppEnv>().use("/collection/*", requireUs
         <h1>Collection</h1>
         <div class="spacer" />
         <span class="muted small">
-          {snapshot.player.name} · snapshot {formatRelative(snapshot.fetchedAt)}
+          {snapshot.player.name} · snapshot {formatRelative(snapshot.lastSeenAt)}
         </span>
       </div>
       <div class="stats">

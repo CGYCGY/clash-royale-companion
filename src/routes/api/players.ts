@@ -100,6 +100,7 @@ export const playerRoutes = new Hono<AppEnv>()
       player,
       snapshot: {
         fetchedAt: snap.fetchedAt,
+        lastSeenAt: snap.lastSeenAt,
         profile,
         currentDeck: currentDeck.map((card) => toDeckCardView(card, catalog)),
         currentDeckSupportCards: (currentDeckSupportCards ?? []).map((card) => toDeckCardView(card, catalog)),
@@ -135,7 +136,7 @@ export const playerRoutes = new Hono<AppEnv>()
     const player = ownedPlayer(c);
     const snap = getLatestSnapshot(player.tag);
     const { entries, summary } = buildCollection(snap?.player ?? null, listCards());
-    return c.json({ summary, cards: entries, fetchedAt: snap?.fetchedAt ?? null });
+    return c.json({ summary, cards: entries, fetchedAt: snap?.fetchedAt ?? null, lastSeenAt: snap?.lastSeenAt ?? null });
   })
   .get("/players/:tag/notes", (c) => c.json({ notes: getNotes(ownedPlayer(c).tag) }))
   .put("/players/:tag/notes", async (c) => {

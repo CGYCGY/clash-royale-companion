@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import type { Player } from "../../src/cr/types";
+import { loadConfig } from "../../src/config";
 import { getDb } from "../../src/db";
 import { addPlayer, getLatestSnapshot, insertSnapshot } from "../../src/repos/players";
 import { pruneSnapshots } from "../../src/sync/retention";
@@ -24,7 +25,9 @@ const fetchedTimes = (tag: string): string[] =>
     .all(tag)
     .map((r) => r.fetched_at);
 
-const snap = (tag: string, at: string) => insertSnapshot(tag, { ...player, tag }, null, at);
+// Identical payloads would be deduped on insert, so each snapshot gets its own trophy count.
+let seq = 0;
+const snap = (tag: string, at: string) => insertSnapshot(tag, { ...player, tag, trophies: ++seq }, null, at);
 
 beforeEach(() => {
   makeTestDb();
@@ -34,6 +37,31 @@ beforeEach(() => {
 });
 
 describe("pruneSnapshots", () => {
+  test("the default config keeps everything forever", () => {
+    // The live `config` may come from a developer's .env, so read the schema defaults directly.
+    const defaults = loadConfig({});
+    snap(FIXTURE_TAG, hoursAgo(1));
+    for (const hour of [0, 6, 23]) snap(FIXTURE_TAG, daysAgo(10, hour));
+    snap(FIXTURE_TAG, daysAgo(400));
+    const policy = { keepAllDays: defaults.SNAPSHOT_KEEP_ALL_DAYS, keepDailyDays: defaults.SNAPSHOT_KEEP_DAILY_DAYS };
+    expect(pruneSnapshots(policy, NOW)).toEqual({ deleted: 0, remaining: 5 });
+  });
+
+  test("keepAllDays 0 never thins; keepDailyDays still deletes by age", () => {
+    snap(FIXTURE_TAG, hoursAgo(1));
+    for (const hour of [0, 6]) snap(FIXTURE_TAG, daysAgo(30, hour));
+    snap(FIXTURE_TAG, daysAgo(91));
+    expect(pruneSnapshots({ keepAllDays: 0, keepDailyDays: 90 }, NOW)).toEqual({ deleted: 1, remaining: 3 });
+  });
+
+  test("keepDailyDays 0 never deletes by age; keepAllDays still thins", () => {
+    snap(FIXTURE_TAG, hoursAgo(1));
+    for (const hour of [0, 6]) snap(FIXTURE_TAG, daysAgo(400, hour));
+    const r = pruneSnapshots({ keepAllDays: 7, keepDailyDays: 0 }, NOW);
+    expect(r).toEqual({ deleted: 1, remaining: 2 });
+    expect(fetchedTimes(FIXTURE_TAG)).toEqual([daysAgo(400, 6), hoursAgo(1)]);
+  });
+
   test("keeps everything inside the keep-all window", () => {
     for (let h = 0; h < 24 * 6; h += 3) snap(FIXTURE_TAG, hoursAgo(h));
     const before = fetchedTimes(FIXTURE_TAG).length;

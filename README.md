@@ -198,8 +198,8 @@ Any other agent can follow `.claude/skills/clash-royale-companion/SKILL.md` as p
 | `SYNC_CRON` | `0 3 * * *` | Schedule for syncing all players, in the server's timezone. Daily at 03:00 by default. Use hourly (`0 * * * *`) if someone plays more than about 25 battles a day, since the API only keeps the last 25. |
 | `TZ` | `UTC` | Timezone for the cron schedule, e.g. `Asia/Kuala_Lumpur`. |
 | `SYNC_COOLDOWN_SECONDS` | `60` | Minimum gap between manual syncs of one player, from the dashboard button or the API. |
-| `SNAPSHOT_KEEP_ALL_DAYS` | `7` | Keep every profile snapshot for this many days. |
-| `SNAPSHOT_KEEP_DAILY_DAYS` | `90` | After that, keep one snapshot per UTC day until this age, then delete. |
+| `SNAPSHOT_KEEP_ALL_DAYS` | `0` (off) | Opt-in thinning. When above 0, snapshots older than this many days are reduced to one per UTC day. |
+| `SNAPSHOT_KEEP_DAILY_DAYS` | `0` (off) | Opt-in deletion. When above 0, snapshots older than this many days are deleted. |
 
 Development only:
 
@@ -226,10 +226,13 @@ sqlite3 /path/to/volume/app.db ".backup /backups/app-$(date +%F).db"
 `VACUUM INTO` fails if the target file already exists. Copy the backup off the server afterwards. The volume path on the host is shown by
 `docker volume inspect <volume>`.
 
-**Snapshot retention.** A profile snapshot of 20 to 100 KB is stored per player per hour. The daily
-04:17 UTC job thins them using the retention settings above. The newest snapshot of each player is always
-kept. Run it by hand with `bun run cli snapshot prune`. SQLite reuses freed pages, but the file does not
-shrink until you run `VACUUM`. Battles are never pruned.
+**Snapshot history.** Profile snapshots of 20 to 100 KB each are kept forever by default. A sync stores a
+new snapshot only when the profile or upcoming chests changed. Otherwise it updates the latest snapshot's
+`last_seen_at`, which records the most recent sync that confirmed that state, so an idle player adds no
+rows. If you run hourly syncs on a small disk, set the two `SNAPSHOT_KEEP_*` variables above to thin old
+snapshots in the daily 04:17 UTC job. The newest snapshot of each player is always kept. Run it by hand with
+`bun run cli snapshot prune`. SQLite reuses freed pages, but the file does not shrink until you run `VACUUM`.
+Battles are never pruned.
 
 **Monitoring.** `GET /api/health` returns `{ ok, version, dbOk }`, with 503 when the database is
 unavailable. Run `bun run cli stats` for row counts and file size, and `bun run cli player list` for each

@@ -28,7 +28,7 @@ function PlayerHeader({ player, snapshot }: { player: PlayerRecord; snapshot: Sn
           </div>
         </div>
         <div class="spacer" />
-        <div class="muted small">Snapshot {formatRelative(snapshot.fetchedAt)}</div>
+        <div class="muted small">Snapshot {formatRelative(snapshot.lastSeenAt)}</div>
       </div>
       <dl class="facts">
         <div>

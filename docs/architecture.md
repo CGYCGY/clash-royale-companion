@@ -174,8 +174,13 @@ Codes are 12 chars, case-insensitive.
 - `assertPlayerOwnedBy(tag, userId) -> PlayerRecord` throws 404 (not 403) for other users' tags.
   Call this before any per-player read or write in a route.
 - `setSyncResult(tag, { ok: true, name? } | { ok: false, error })`
-- `insertSnapshot(tag, player, chests, fetchedAt?)`, `getLatestSnapshot(tag) -> { player: Player, chests, fetchedAt } | null`
-- `getTrophyHistory(tag, { sinceDays? }) -> { fetchedAt, trophies, bestTrophies, polTrophies, polLeague }[]`
+- `insertSnapshot(tag, player, chests, fetchedAt?) -> { inserted, id }`. When the serialized `data` and
+  `chests` equal the player's newest row, it inserts nothing and advances that row's `last_seen_at` instead.
+- `getLatestSnapshot(tag) -> { player: Player, chests, fetchedAt, lastSeenAt } | null`. `fetchedAt` is when
+  this state was first observed. `lastSeenAt` is the latest sync that confirmed it; use it for "synced at" and
+  snapshot age.
+- `getTrophyHistory(tag, { sinceDays? }) -> { fetchedAt, lastSeenAt, trophies, bestTrophies, polTrophies, polLeague }[]`.
+  Points sit at `fetchedAt`; `lastSeenAt` marks the end of a plateau.
 
 **repos/battles**
 - `insertBattles(tag, entries: BattleLogEntry[]) -> added` (INSERT OR IGNORE on player_tag+battle_time+opponent_tag)
@@ -216,13 +221,13 @@ markdown note per player.
   upstream, adds it, and runs the first sync. It throws `invalid_tag`, `not_found`, `conflict`, or `upstream_error`.
 - `manualSync(tag, client?) -> { ok: true, battlesAdded } | { ok: false, retryAfterSeconds } | { ok: false, error }`.
   The cooldown of `SYNC_COOLDOWN_SECONDS` counts from the last sync attempt of any kind. Check ownership first.
-- `syncPlayer(tag, client) -> { battlesAdded, error?, errorStatus?, retryAfterSeconds? }` never throws for API
-  errors. Chest failures are ignored.
-- `syncAll(client, { delayMs? }) -> { players, failed, skipped, battlesAdded, rateLimited }` skips players removed
+- `syncPlayer(tag, client) -> { battlesAdded, snapshotInserted, error?, errorStatus?, retryAfterSeconds? }` never
+  throws for API errors. Chest failures are ignored. `snapshotInserted` is false when the profile was unchanged.
+- `syncAll(client, { delayMs? }) -> { players, failed, skipped, battlesAdded, snapshotsInserted, rateLimited }` skips players removed
   mid-run, continues past unexpected errors, and stops the run at the first 429.
 - `syncCards(client)`, and `startScheduler(client) -> { stop() }`. The scheduler runs `runSyncJob` on
   `SYNC_CRON` (reloads the card catalog first if it is empty, then `syncAll`) and `runDailyJob` at 04:17
-  (snapshot pruning, card catalog, session purge; each step runs even if another fails).
+  (opt-in snapshot thinning, card catalog, session purge; each step runs even if another fails).
 
 `client` defaults to `getCrClient()`, built from config. In tests, pass `FakeCrClient` from `test/helpers.ts`.
 The scheduler is in-process, so run exactly one app instance per database.
@@ -252,10 +257,15 @@ The scheduler is in-process, so run exactly one app instance per database.
 
 ## Database
 
-The schema lives in `src/db/migrations/` (`0001_init.sql`, `0002_battles_team_size.sql`, `0003_admin_tokens.sql`). Add changes as the
+The schema lives in `src/db/migrations/` (`0001_init.sql` through `0004_snapshot_last_seen.sql`). Add changes as the
 next `NNNN_*.sql` file and never edit an applied one. Foreign keys are on, and deleting a player cascades to its snapshots, battles, notes, and sync runs.
 Large payloads are stored as JSON text (`player_snapshots.data`, `battles.data`, `cards.data`). Query them with
 `json_extract` rather than parsing in JS when you need one field, as `getTrophyHistory` does.
+
+Snapshots are kept forever and deduplicated on insert, so a row is a distinct state spanning
+`fetched_at`..`last_seen_at`. `pruneSnapshots` in `src/sync/retention.ts` is opt-in: `SNAPSHOT_KEEP_ALL_DAYS`
+thins older rows to one per UTC day and `SNAPSHOT_KEEP_DAILY_DAYS` deletes older rows. Both default to 0,
+which turns them off.
 
 ## Tests
 

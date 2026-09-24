@@ -28,7 +28,7 @@ Commands:
   player list                               List tracked players with owner and last sync
   sync <tag>                                Sync one tracked player now (ignores the cooldown)
   sync --all                                Sync every tracked player now
-  snapshot prune                            Apply snapshot retention now and print counts
+  snapshot prune                            Apply opt-in snapshot thinning (SNAPSHOT_KEEP_*; 0 = off)
   stats                                     Row counts per table and database file size
 
 Options:
@@ -185,7 +185,7 @@ async function main(argv: string[]): Promise<number> {
       if (values.all) {
         const r = await syncAll(getCrClient());
         console.log(
-          `Synced ${r.players} players: ${r.failed} failed, ${r.skipped} skipped, ${r.battlesAdded} new battles.` +
+          `Synced ${r.players} players: ${r.failed} failed, ${r.skipped} skipped, ${r.battlesAdded} new battles, ${r.snapshotsInserted} changed snapshots.` +
             (r.rateLimited ? " Stopped early: rate limited." : ""),
         );
         return r.failed || r.rateLimited ? 1 : 0;
@@ -198,15 +198,18 @@ async function main(argv: string[]): Promise<number> {
         console.error(`Sync failed for ${tag}: ${r.error}`);
         return 1;
       }
-      console.log(`Synced ${tag}: ${r.battlesAdded} new battles.`);
+      console.log(`Synced ${tag}: ${r.battlesAdded} new battles, ${r.snapshotInserted ? "new snapshot" : "snapshot unchanged"}.`);
       return 0;
     }
     case "snapshot prune": {
       const policy = { keepAllDays: config.SNAPSHOT_KEEP_ALL_DAYS, keepDailyDays: config.SNAPSHOT_KEEP_DAILY_DAYS };
       const r = pruneSnapshots(policy);
+      const days = (n: number) => (n > 0 ? `${n} days` : "off");
       console.log(
-        `Deleted ${r.deleted} snapshots, ${r.remaining} remain ` +
-          `(keep all ${policy.keepAllDays} days, daily ${policy.keepDailyDays} days).`,
+        policy.keepAllDays > 0 || policy.keepDailyDays > 0
+          ? `Deleted ${r.deleted} snapshots, ${r.remaining} remain ` +
+              `(keep all ${days(policy.keepAllDays)}, daily ${days(policy.keepDailyDays)}).`
+          : `Snapshot thinning is off (SNAPSHOT_KEEP_* are 0); kept all ${r.remaining} snapshots.`,
       );
       return 0;
     }

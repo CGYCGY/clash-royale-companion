@@ -83,6 +83,7 @@ describe("player detail", () => {
       player: PlayerRecord;
       snapshot: {
         fetchedAt: string;
+        lastSeenAt: string;
         profile: Record<string, unknown>;
         currentDeck: { name: string; level: number; iconUrl: string | null; elixirCost: number | null }[];
         currentDeckSupportCards: { name: string; level: number }[];
@@ -90,6 +91,7 @@ describe("player detail", () => {
       };
     };
     expect(body.player.name).toBe("Sparky");
+    expect(body.snapshot.lastSeenAt).toBe(body.snapshot.fetchedAt);
     const { profile, currentDeck } = body.snapshot;
     expect(profile.trophies).toBe(env.client.player.trophies);
     for (const key of ["cards", "achievements", "badges", "supportCards", "currentDeck"]) {

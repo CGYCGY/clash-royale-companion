@@ -96,7 +96,7 @@ export const deckRoutes = new Hono<AppEnv>()
         owned: null,
         evolutionLevel: null,
       }));
-      return c.json({ fetchedAt: null, cards, avgElixir, missing: [], note: "no snapshot yet" });
+      return c.json({ fetchedAt: null, lastSeenAt: null, cards, avgElixir, missing: [], note: "no snapshot yet" });
     }
     const cards = deck.cards.map((name) => {
       const e = byName.get(name);
@@ -110,6 +110,7 @@ export const deckRoutes = new Hono<AppEnv>()
     });
     return c.json({
       fetchedAt: snap.fetchedAt,
+      lastSeenAt: snap.lastSeenAt,
       cards,
       avgElixir,
       missing: cards.filter((card) => !card.owned).map((card) => card.name),

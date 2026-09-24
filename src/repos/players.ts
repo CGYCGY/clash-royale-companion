@@ -104,24 +104,51 @@ export function setSyncResult(
 export interface Snapshot {
   player: Player;
   chests: UpcomingChests | null;
+  /** When this exact state was first observed. */
   fetchedAt: string;
+  /** The most recent sync that returned this same state; use this for "synced at" / snapshot age. */
+  lastSeenAt: string;
 }
 
+/**
+ * Stores a snapshot unless it is byte-identical (data and chests) to the player's newest one, in
+ * which case only that row's last_seen_at advances. The official payloads carry no per-request
+ * fields (timestamps, request ids), so an idle player serializes identically between syncs.
+ */
 export function insertSnapshot(
   tag: string,
   player: Player,
   chests: UpcomingChests | null,
   fetchedAt: string = nowIso(),
-): void {
-  getDb()
-    .query("INSERT INTO player_snapshots (player_tag, fetched_at, data, chests) VALUES (?, ?, ?, ?)")
-    .run(tag, fetchedAt, JSON.stringify(player), chests ? JSON.stringify(chests) : null);
+): { inserted: boolean; id: number } {
+  const db = getDb();
+  const data = JSON.stringify(player);
+  const chestsJson = chests ? JSON.stringify(chests) : null;
+  const latest = db
+    .query<{ id: number; data: string; chests: string | null }, [string]>(
+      "SELECT id, data, chests FROM player_snapshots WHERE player_tag = ? ORDER BY fetched_at DESC, id DESC LIMIT 1",
+    )
+    .get(tag);
+  if (latest && latest.data === data && latest.chests === chestsJson) {
+    // MAX keeps last_seen_at from moving backwards if an older fetch is recorded late.
+    db.query("UPDATE player_snapshots SET last_seen_at = MAX(COALESCE(last_seen_at, fetched_at), ?) WHERE id = ?").run(
+      fetchedAt,
+      latest.id,
+    );
+    return { inserted: false, id: latest.id };
+  }
+  const row = db
+    .query<{ id: number }, [string, string, string, string, string | null]>(
+      "INSERT INTO player_snapshots (player_tag, fetched_at, last_seen_at, data, chests) VALUES (?, ?, ?, ?, ?) RETURNING id",
+    )
+    .get(tag, fetchedAt, fetchedAt, data, chestsJson)!;
+  return { inserted: true, id: row.id };
 }
 
 export function getLatestSnapshot(tag: string): Snapshot | null {
   const row = getDb()
-    .query<{ data: string; chests: string | null; fetched_at: string }, [string]>(
-      "SELECT data, chests, fetched_at FROM player_snapshots WHERE player_tag = ? ORDER BY fetched_at DESC, id DESC LIMIT 1",
+    .query<{ data: string; chests: string | null; fetched_at: string; last_seen_at: string | null }, [string]>(
+      "SELECT data, chests, fetched_at, last_seen_at FROM player_snapshots WHERE player_tag = ? ORDER BY fetched_at DESC, id DESC LIMIT 1",
     )
     .get(tag);
   if (!row) return null;
@@ -129,11 +156,14 @@ export function getLatestSnapshot(tag: string): Snapshot | null {
     player: JSON.parse(row.data) as Player,
     chests: row.chests ? (JSON.parse(row.chests) as UpcomingChests) : null,
     fetchedAt: row.fetched_at,
+    lastSeenAt: row.last_seen_at ?? row.fetched_at,
   };
 }
 
 export interface TrophyPoint {
   fetchedAt: string;
+  /** Last sync that still saw these values; with fetchedAt it bounds a plateau. */
+  lastSeenAt: string;
   trophies: number;
   bestTrophies: number;
   /** Path of Legend current season trophies, null when not in a league. */
@@ -148,6 +178,7 @@ export function getTrophyHistory(tag: string, { sinceDays }: { sinceDays?: numbe
     .query<
       {
         fetched_at: string;
+        last_seen_at: string | null;
         trophies: number;
         best_trophies: number;
         pol_trophies: number | null;
@@ -155,7 +186,7 @@ export function getTrophyHistory(tag: string, { sinceDays }: { sinceDays?: numbe
       },
       [string, string]
     >(
-      `SELECT fetched_at,
+      `SELECT fetched_at, last_seen_at,
               json_extract(data, '$.trophies') AS trophies,
               json_extract(data, '$.bestTrophies') AS best_trophies,
               json_extract(data, '$.currentPathOfLegendSeasonResult.trophies') AS pol_trophies,
@@ -165,6 +196,7 @@ export function getTrophyHistory(tag: string, { sinceDays }: { sinceDays?: numbe
     .all(tag, since)
     .map((r) => ({
       fetchedAt: r.fetched_at,
+      lastSeenAt: r.last_seen_at ?? r.fetched_at,
       trophies: r.trophies,
       bestTrophies: r.best_trophies,
       polTrophies: r.pol_trophies,

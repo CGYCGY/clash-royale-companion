@@ -122,12 +122,14 @@ describe("deck check", () => {
       avgElixir: number | null;
       missing: string[];
       fetchedAt: string | null;
+      lastSeenAt: string | null;
     };
     expect(body.missing).toEqual(["Archer Queen"]);
     expect(body.cards[0]).toEqual({ name: "Archer Queen", level: null, maxLevel: 16, owned: false, evolutionLevel: 0 });
     expect(body.cards.find((c) => c.name === "The Log")).toMatchObject({ level: 13, owned: true });
     expect(body.avgElixir).toBe(2.75);
     expect(body.fetchedAt).toBeString();
+    expect(body.lastSeenAt).toBeString();
   });
 
   test("without a snapshot, ownership is unknown rather than missing", async () => {
@@ -142,7 +144,7 @@ describe("deck check", () => {
       missing: string[];
       note?: string;
     };
-    expect(body).toMatchObject({ fetchedAt: null, missing: [], note: "no snapshot yet" });
+    expect(body).toMatchObject({ fetchedAt: null, lastSeenAt: null, missing: [], note: "no snapshot yet" });
     expect(body.cards).toHaveLength(8);
     expect(body.cards.every((c) => c.owned === null && c.level === null && c.maxLevel === 16)).toBe(true);
   });

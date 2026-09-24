@@ -22,7 +22,7 @@ export async function runSyncJob(client: CrApi, opts: { delayMs?: number } = {})
   const started = Date.now();
   const r = await syncAll(client, opts);
   console.log(
-    `[scheduler] synced ${r.players} players (${r.failed} failed, ${r.skipped} skipped, ${r.battlesAdded} battles)` +
+    `[scheduler] synced ${r.players} players (${r.failed} failed, ${r.skipped} skipped, ${r.battlesAdded} battles, ${r.snapshotsInserted} changed snapshots)` +
       `${r.rateLimited ? " [rate limited]" : ""} in ${Date.now() - started}ms`,
   );
   return r;

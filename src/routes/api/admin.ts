@@ -69,7 +69,7 @@ export const adminRoutes = new Hono<AppEnv>()
     if (adminSync) throw new AppError("conflict", "A sync is already running", 409);
     const client = getCrClient();
     adminSync = syncAll(client)
-      .then((r) => console.log(`[admin] synced ${r.players} players (${r.failed} failed, ${r.skipped} skipped, ${r.battlesAdded} battles)`))
+      .then((r) => console.log(`[admin] synced ${r.players} players (${r.failed} failed, ${r.skipped} skipped, ${r.battlesAdded} battles, ${r.snapshotsInserted} changed snapshots)`))
       .catch((err: unknown) => console.error("[admin] sync failed:", err))
       .finally(() => {
         adminSync = null;

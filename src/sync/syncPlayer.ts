@@ -7,6 +7,8 @@ import { finishSyncRun, startSyncRun } from "../repos/syncRuns";
 
 export interface SyncResult {
   battlesAdded: number;
+  /** False when the profile was unchanged since the last snapshot (or the sync failed). */
+  snapshotInserted: boolean;
   error?: string;
   /** Upstream HTTP status when the failure came from the CR API (0 for network errors). */
   errorStatus?: number;
@@ -32,13 +34,14 @@ export async function syncPlayer(tag: string, client: CrApi): Promise<SyncResult
       client.getUpcomingChests(tag).catch((): UpcomingChests | null => null),
     ]);
     let battlesAdded = 0;
+    let snapshotInserted = false;
     getDb().transaction(() => {
-      insertSnapshot(tag, player, chests);
+      snapshotInserted = insertSnapshot(tag, player, chests).inserted;
       battlesAdded = insertBattles(tag, battleLog);
       setSyncResult(tag, { ok: true, name: player.name });
       finishSyncRun(runId, { status: "ok", battlesAdded });
     })();
-    return { battlesAdded };
+    return { battlesAdded, snapshotInserted };
   } catch (err) {
     const error = errorMessage(err);
     try {
@@ -47,7 +50,7 @@ export async function syncPlayer(tag: string, client: CrApi): Promise<SyncResult
     } catch (dbErr) {
       console.error(`[sync] failed to record error for ${tag}:`, dbErr);
     }
-    const result: SyncResult = { battlesAdded: 0, error };
+    const result: SyncResult = { battlesAdded: 0, snapshotInserted: false, error };
     if (err instanceof CrApiError) {
       result.errorStatus = err.status;
       if (err.retryAfterSeconds !== undefined) result.retryAfterSeconds = err.retryAfterSeconds;

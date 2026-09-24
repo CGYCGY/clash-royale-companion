@@ -56,7 +56,10 @@ function header({ player, snapshot, appUrl }: ContextInput): string {
     `# Clash Royale context: ${player.name || player.tag} (${player.tag})`,
     "",
     `Synced at: ${player.lastSyncedAt ? utc(player.lastSyncedAt) : "never"}` +
-      (snapshot ? ` · snapshot: ${utc(snapshot.fetchedAt)}` : ""),
+      (snapshot
+        ? ` · snapshot: ${utc(snapshot.lastSeenAt)}` +
+          (snapshot.fetchedAt === snapshot.lastSeenAt ? "" : ` (unchanged since ${utc(snapshot.fetchedAt)})`)
+        : ""),
   ];
   if (player.lastSyncError) lines.push(`Last sync error: ${player.lastSyncError}`);
   if (appUrl) lines.push(`App: ${appUrl.replace(/\/$/, "")}/?tag=${tagSlug(player.tag)}`);
@@ -265,7 +268,7 @@ function limitations({ snapshot, now = new Date() }: ContextInput): string {
     "- The official API exposes no gold, gems, shop offers, or Pass Royale status; see Player notes for those.",
     "- Card levels cap at 16. Elite Wild Cards no longer exist (removed November 2025); every level costs copies plus gold.",
     "- The API battle log keeps only about 25 battles, so history covers what this app has stored since tracking began.",
-    `- Snapshot age: ${snapshot ? ageText(snapshot.fetchedAt, now) : "no snapshot"}.`,
+    `- Snapshot age: ${snapshot ? ageText(snapshot.lastSeenAt, now) : "no snapshot"}.`,
   ].join("\n");
 }
 

@@ -110,11 +110,11 @@ UTC. `{tag}` is a player tag without `#`.
 | GET | `/api/players` | | `{ players: Player[] }` |
 | POST | `/api/players` | `{ tag }` | `201 { player, battlesAdded, syncError? }`. Checks the tag upstream and runs the first sync |
 | DELETE | `/api/players/{tag}` | | `204`. Deletes the player with all stored battles, snapshots and notes. Confirm with the user first |
-| GET | `/api/players/{tag}` | | `{ player, snapshot: { fetchedAt, profile, currentDeck: DeckCard[], currentDeckSupportCards, chests } \| null }` |
+| GET | `/api/players/{tag}` | | `{ player, snapshot: { fetchedAt, lastSeenAt, profile, currentDeck: DeckCard[], currentDeckSupportCards, chests } \| null }`. `lastSeenAt` is the latest sync that confirmed this data; `fetchedAt` is when it last changed |
 | GET | `/api/players/{tag}/battles` | `since`, `until` (ISO), `mode`, `result` (`win\|loss\|draw`), `limit` (1–500, default 50), `offset` | `{ battles: Battle[], total }`, newest first |
 | GET | `/api/players/{tag}/battles/{id}` | | `{ battle: Battle & { raw } }`. `raw` is the upstream battle JSON, whose card levels are rarity-relative. Never use `raw` for level reasoning; use `teamDeck` and `opponentDeck` |
 | GET | `/api/players/{tag}/stats` | `days` (1–365, default 30), `mode` (optional, same matching as the battles filter) | `{ stats: { sinceDays, total, wins, losses, draws, winRate, netTrophies, byMode[], byDeck[] }, trophyHistory[] }` |
-| GET | `/api/players/{tag}/cards` | | `{ summary, cards: CollectionEntry[], fetchedAt }` |
+| GET | `/api/players/{tag}/cards` | | `{ summary, cards: CollectionEntry[], fetchedAt, lastSeenAt }` |
 | GET | `/api/players/{tag}/notes` | | `{ notes: { content, updatedAt } \| null }` |
 | PUT | `/api/players/{tag}/notes` | `{ content }` (Markdown, max 20,000 chars) | `{ notes: { content, updatedAt } }`. Replaces the whole note |
 | POST | `/api/players/{tag}/sync` | | `{ ok: true, battlesAdded }`, or `429 cooldown`, or `502 upstream_error` |
@@ -125,7 +125,7 @@ UTC. `{tag}` is a player tag without `#`.
 | GET | `/api/decks/{id}` | | `{ deck }` |
 | PATCH | `/api/decks/{id}` | any of `{ name, cards, notes }` | `{ deck }` |
 | DELETE | `/api/decks/{id}` | | `204` |
-| GET | `/api/decks/{id}/check` | `tag` | `{ fetchedAt, cards: [{ name, level, maxLevel, owned, evolutionLevel }], avgElixir, missing: string[] }`. If the player has no snapshot yet, `fetchedAt` is null, `owned`, `level` and `evolutionLevel` are null, `missing` is empty and `note` is `"no snapshot yet"`: ownership is unknown, so do not call the cards missing |
+| GET | `/api/decks/{id}/check` | `tag` | `{ fetchedAt, lastSeenAt, cards: [{ name, level, maxLevel, owned, evolutionLevel }], avgElixir, missing: string[] }`. If the player has no snapshot yet, `fetchedAt` and `lastSeenAt` are null, `owned`, `level` and `evolutionLevel` are null, `missing` is empty and `note` is `"no snapshot yet"`: ownership is unknown, so do not call the cards missing |
 | GET | `/api/cards` | `kind` (`card\|support`, optional) | `{ cards: [{ id, name, kind, rarity, elixirCost, maxLevel, maxEvolutionLevel, iconUrl, iconUrlEvo, updatedAt }] }` |
 
 Shapes:

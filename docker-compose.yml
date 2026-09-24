@@ -19,8 +19,8 @@ services:
       SYNC_CRON: ${SYNC_CRON:-0 3 * * *}
       TZ: ${TZ:-UTC}
       SYNC_COOLDOWN_SECONDS: ${SYNC_COOLDOWN_SECONDS:-60}
-      SNAPSHOT_KEEP_ALL_DAYS: ${SNAPSHOT_KEEP_ALL_DAYS:-7}
-      SNAPSHOT_KEEP_DAILY_DAYS: ${SNAPSHOT_KEEP_DAILY_DAYS:-90}
+      SNAPSHOT_KEEP_ALL_DAYS: ${SNAPSHOT_KEEP_ALL_DAYS:-0}
+      SNAPSHOT_KEEP_DAILY_DAYS: ${SNAPSHOT_KEEP_DAILY_DAYS:-0}
       # Fixed inside the container: the port mapping, healthcheck and volume depend on them.
       PORT: "3000"
       DATABASE_PATH: /data/app.db

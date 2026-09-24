@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { config } from "../../src/config";
+import { getDb } from "../../src/db";
 import { addPlayer } from "../../src/repos/players";
 import type { User } from "../../src/types";
 import { makeUser } from "../helpers";
@@ -35,6 +36,13 @@ describe("dashboard", () => {
     expect(html).toContain("/battles/9QJUGC2R/");
     expect(html).toContain("Try again in");
     expect(html).toMatch(/<button type="submit" disabled="" data-retry-after="(29\d|300)" data-ready-label="Sync now">/);
+  });
+
+  test("the snapshot header shows the last confirming sync, not when the state first appeared", async () => {
+    await linkFixturePlayer(user, env.client);
+    getDb().query("UPDATE player_snapshots SET fetched_at = ?, last_seen_at = ?").run("2026-01-01T00:00:00.000Z", new Date().toISOString());
+    const html = await (await env.app.request("/", { headers: { Cookie: cookie } })).text();
+    expect(html).toContain("Snapshot just now");
   });
 
   test("player without a successful sync shows a notice", async () => {
