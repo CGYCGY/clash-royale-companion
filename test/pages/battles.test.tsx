@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, test } from "bun:test";
+import type { BattleLogEntry, GameEvent } from "../../src/cr/types";
 import { insertBattles, listBattles } from "../../src/repos/battles";
+import { upsertEvents } from "../../src/repos/events";
 import { pageList } from "../../src/routes/pages/battles";
 import type { User } from "../../src/types";
-import { FIXTURE_TAG, makeUser } from "../helpers";
+import { FIXTURE_TAG, loadFixture, makeUser } from "../helpers";
 import { cookieFor, linkFixturePlayer, type PageTestEnv, setupPages } from "./support";
 
 let env: PageTestEnv;
@@ -29,8 +31,11 @@ describe("battles pages", () => {
     expect(html).toContain("10 Battles");
     expect(battleRows(html)).toBe(10);
     expect(html).toContain("Decks Used");
-    expect(html).toContain('<option value="Ladder">Ladder</option>');
-    expect(html).toContain("Path of Legend");
+    expect(html).toContain('<option value="Trophy Road">Trophy Road</option>');
+    expect(html).toContain('<option value="Ranked">Ranked</option>');
+    expect(html).toContain('<option value="2v2">2v2</option>');
+    expect(html).not.toContain("Path of Legend");
+    expect(html).not.toContain("Ranked1v1_NewArena2");
     expect(html).toContain("Win Rate");
     expect(html).toContain('<option value="win">Win</option>');
     expect(html).toContain('<option value="loss">Loss</option>');
@@ -46,9 +51,16 @@ describe("battles pages", () => {
 
   test("filters by result, mode, and period", async () => {
     expect(battleRows((await get("/battles?result=draw")).html)).toBe(1);
-    const ladder = await get("/battles?mode=Ladder&days=7");
+    const ladder = await get("/battles?mode=Trophy+Road&days=7");
     expect(battleRows(ladder.html)).toBe(5);
-    expect(ladder.html).toContain('<option value="Ladder" selected="">');
+    expect(ladder.html).toContain('<option value="Trophy Road" selected="">');
+    // Links from before mode labels used raw ids; they select the matching label.
+    const old = await get("/battles?mode=Ladder&days=7");
+    expect(battleRows(old.html)).toBe(5);
+    expect(old.html).toContain('<option value="Trophy Road" selected="">');
+    const oldRanked = await get("/battles?mode=pathOfLegend");
+    expect(battleRows(oldRanked.html)).toBe(3);
+    expect(oldRanked.html).toContain('<option value="Ranked" selected="">');
     // Unknown filter values fall back to defaults instead of erroring.
     expect((await get("/battles?days=bogus&result=nope&page=abc")).status).toBe(200);
   });
@@ -134,12 +146,15 @@ describe("battles pages", () => {
     expect(first).toContain('<span class="btn btn-secondary btn-small is-disabled" aria-disabled="true">Prev</span>');
     expect(first).toContain('<span class="btn btn-small pager-current" aria-current="page">1</span>');
     expect(first).toContain("Page 1 of 2");
-    expect(pagerLinks(first)).toEqual(["/battles?days=7&mode=Ladder&page=2", "/battles?days=7&mode=Ladder&page=2"]);
+    expect(pagerLinks(first)).toEqual([
+      "/battles?days=7&mode=Trophy+Road&page=2",
+      "/battles?days=7&mode=Trophy+Road&page=2",
+    ]);
 
     const second = (await get("/battles?mode=Ladder&days=7&page=2")).html;
     expect(battleRows(second)).toBe(5);
     expect(second).toContain("Page 2 of 2");
-    expect(pagerLinks(second)).toEqual(["/battles?days=7&mode=Ladder", "/battles?days=7&mode=Ladder"]);
+    expect(pagerLinks(second)).toEqual(["/battles?days=7&mode=Trophy+Road", "/battles?days=7&mode=Trophy+Road"]);
     expect(second).toContain('aria-disabled="true">Next</span>');
 
     // Past the end clamps to the last page; the live filter form carries no page, so a filter change restarts at 1.
@@ -147,6 +162,45 @@ describe("battles pages", () => {
     expect(past).toContain("Page 2 of 2");
     expect(battleRows(past)).toBe(5);
     expect(past).not.toMatch(/<input[^>]*name="page"/);
+  });
+
+  test("2026 modes show event titles and mapped labels in the table, filter, and detail", async () => {
+    upsertEvents(loadFixture<GameEvent[]>("events"));
+    insertBattles(FIXTURE_TAG, loadFixture<BattleLogEntry[]>("battlelog-modes"));
+    const { html } = await get("/battles?days=all");
+    const options = [...html.matchAll(/<option value="([^"]*)"(?: selected="")?>([^<]*)<\/option>/g)]
+      .map((m) => m[2]!)
+      .slice(1, -8);
+    // Most games first, ties alphabetical.
+    expect(options).toEqual([
+      "Trophy Road",
+      "Clan War",
+      "Ranked",
+      "2v2",
+      "Royale Shuffle",
+      "Classic 2v2",
+      "Friendly",
+      "Princess Gambit Tournament",
+    ]);
+    expect(html).toContain("<td>Royale Shuffle</td>");
+    expect(html).not.toMatch(/<td>[^<]*(RR_|TeamVsTeam|riverRace|boatBattle)/);
+    const gambit = await get("/battles?days=all&mode=Princess+Gambit+Tournament");
+    expect(battleRows(gambit.html)).toBe(1);
+    expect(gambit.html).toContain("<td>Princess Gambit Tournament</td>");
+
+    const shuffle = await get("/battles?days=all&mode=Royale+Shuffle");
+    expect(battleRows(shuffle.html)).toBe(2);
+    // An old raw link to one Royale Shuffle sub-mode widens to the whole label.
+    expect(battleRows((await get("/battles?days=all&mode=RR_Heist_Friendly")).html)).toBe(2);
+    // "Classic 2v2" is an event title; the ended event #2C9J990U and the clanMate2v2 friendly fall back to "2v2".
+    expect(battleRows((await get("/battles?days=all&mode=2v2")).html)).toBe(2);
+    expect(battleRows((await get("/battles?days=all&mode=Classic+2v2")).html)).toBe(1);
+    expect(battleRows((await get("/battles?days=all&mode=Clan+War")).html)).toBe(3);
+
+    const [heist] = listBattles(FIXTURE_TAG, { mode: "RR_Heist_Friendly" });
+    expect(heist!.modeLabel).toBe("Royale Shuffle");
+    const detail = (await get(`/battles/9QJUGC2R/${heist!.id}?partial=1`)).html;
+    expect(detail).toContain("<dt>Mode</dt><dd>Royale Shuffle</dd>");
   });
 
   test("pageList keeps the ends and a window around the current page", () => {

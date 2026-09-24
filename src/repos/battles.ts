@@ -2,8 +2,10 @@ import { displayLevel } from "../cr/levels";
 import type { BattleCard, BattleLogEntry, BattleParticipant } from "../cr/types";
 import { parseBattleTime } from "../cr/types";
 import { getDb } from "../db";
+import { battleModeLabel } from "../domain/battleModes";
 import { daysAgoIso, ratio } from "../util";
 import { type CardRecord, cardsById, cardsMap } from "./cards";
+import { eventTitles } from "./events";
 
 export type BattleResult = "win" | "loss" | "draw";
 
@@ -12,7 +14,7 @@ export interface DeckCard {
   name: string;
   /** In-game display level (1–16 scale), already converted from the API's rarity-relative level. */
   level: number;
-  /** 0 when the card was not played evolved. */
+  /** API bitmask (1 = Evo, 2 = Hero, 3 = both); 0 for neither. See src/domain/evolution.ts. */
   evolutionLevel: number;
 }
 
@@ -22,6 +24,10 @@ export interface BattleRecord {
   battleTime: string;
   type: string;
   gameModeName: string;
+  /** Joins to the events table; null for ladder, ranked and clan war. */
+  eventTag: string | null;
+  /** Readable mode, resolved at read time so a later /events fetch relabels old battles. */
+  modeLabel: string;
   arenaName: string | null;
   opponentTag: string;
   /** For 2v2, both opponents joined with " & ". */
@@ -44,6 +50,7 @@ interface BattleRow {
   battle_time: string;
   type: string;
   game_mode_name: string;
+  event_tag: string | null;
   arena_name: string | null;
   opponent_tag: string;
   opponent_name: string;
@@ -59,9 +66,9 @@ interface BattleRow {
 }
 
 const LIST_COLUMNS =
-  "id, player_tag, battle_time, type, game_mode_name, arena_name, opponent_tag, opponent_name, result, team_crowns, opponent_crowns, team_deck, opponent_deck, deck_key, trophy_change, team_size";
+  "id, player_tag, battle_time, type, game_mode_name, event_tag, arena_name, opponent_tag, opponent_name, result, team_crowns, opponent_crowns, team_deck, opponent_deck, deck_key, trophy_change, team_size";
 
-function toRecord(r: BattleRow): BattleRecord {
+function toRecord(r: BattleRow, titles: ReadonlyMap<string, string>): BattleRecord {
   const teamDeck = JSON.parse(r.team_deck) as DeckCard[];
   return {
     id: r.id,
@@ -69,6 +76,8 @@ function toRecord(r: BattleRow): BattleRecord {
     battleTime: r.battle_time,
     type: r.type,
     gameModeName: r.game_mode_name,
+    eventTag: r.event_tag,
+    modeLabel: battleModeLabel({ type: r.type, gameModeName: r.game_mode_name, eventTag: r.event_tag }, titles),
     arenaName: r.arena_name,
     opponentTag: r.opponent_tag,
     opponentName: r.opponent_name,
@@ -123,6 +132,7 @@ export function battleToRow(tag: string, entry: BattleLogEntry, catalog: Map<num
     battle_time: parseBattleTime(entry.battleTime),
     type: entry.type,
     game_mode_name: entry.gameMode?.name ?? entry.type,
+    event_tag: entry.eventTag ?? null,
     arena_name: entry.arena?.name ?? null,
     opponent_tag: opp[0]?.tag ?? "",
     opponent_name: opp.map((p) => p.name).join(" & "),
@@ -146,12 +156,12 @@ export function insertBattles(tag: string, entries: BattleLogEntry[]): number {
   const db = getDb();
   const catalog = cardsById();
   const stmt = db.query(
-    `INSERT OR IGNORE INTO battles (player_tag, battle_time, type, game_mode_name, arena_name, opponent_tag,
-       opponent_name, result, team_crowns, opponent_crowns, team_deck, opponent_deck, deck_key, trophy_change,
-       team_size, data)
-     VALUES ($player_tag, $battle_time, $type, $game_mode_name, $arena_name, $opponent_tag, $opponent_name,
-       $result, $team_crowns, $opponent_crowns, $team_deck, $opponent_deck, $deck_key, $trophy_change,
-       $team_size, $data)`,
+    `INSERT OR IGNORE INTO battles (player_tag, battle_time, type, game_mode_name, event_tag, arena_name,
+       opponent_tag, opponent_name, result, team_crowns, opponent_crowns, team_deck, opponent_deck, deck_key,
+       trophy_change, team_size, data)
+     VALUES ($player_tag, $battle_time, $type, $game_mode_name, $event_tag, $arena_name, $opponent_tag,
+       $opponent_name, $result, $team_crowns, $opponent_crowns, $team_deck, $opponent_deck, $deck_key,
+       $trophy_change, $team_size, $data)`,
   );
   let added = 0;
   db.transaction(() => {
@@ -171,14 +181,59 @@ export interface BattleFilter {
   /** ISO timestamps, inclusive `since`, exclusive `until`. */
   since?: string;
   until?: string;
-  /** Matches either the battle `type` (e.g. "pathOfLegend") or `gameModeName` (e.g. "Ladder"). */
+  /**
+   * A mode label (e.g. "Royale Shuffle"), or for older links and API clients the raw battle `type`
+   * (e.g. "pathOfLegend") or `gameModeName` (e.g. "Ladder").
+   */
   mode?: string;
   result?: BattleResult;
 }
 
-function whereClause(tag: string, f: BattleFilter): { sql: string; params: (string | number)[] } {
+type SqlParam = string | number | null;
+
+interface ModeCombo {
+  type: string;
+  game_mode_name: string;
+  event_tag: string | null;
+}
+
+/** Each distinct type/mode/event the player has battles in, with its label. */
+function modeCombos(tag: string, titles: ReadonlyMap<string, string>): (ModeCombo & { label: string })[] {
+  return getDb()
+    .query<ModeCombo, [string]>("SELECT DISTINCT type, game_mode_name, event_tag FROM battles WHERE player_tag = ?")
+    .all(tag)
+    .map((c) => ({
+      ...c,
+      label: battleModeLabel({ type: c.type, gameModeName: c.game_mode_name, eventTag: c.event_tag }, titles),
+    }));
+}
+
+/**
+ * The label a `mode` filter value stands for: itself when it is a label, else the label of the
+ * first raw type or game mode it matches (so old ?mode=Ladder links select "Trophy Road").
+ */
+export function modeLabelFor(tag: string, mode: string): string | null {
+  const combos = modeCombos(tag, eventTitles());
+  const hit =
+    combos.find((c) => c.label === mode) ?? combos.find((c) => c.type === mode || c.game_mode_name === mode);
+  return hit?.label ?? null;
+}
+
+// Labels are computed in JS, so a label filter becomes the OR of the raw combinations that carry it.
+function modeClause(tag: string, mode: string): { sql: string; params: (string | null)[] } {
+  const parts = ["type = ?", "game_mode_name = ?"];
+  const params: (string | null)[] = [mode, mode];
+  for (const c of modeCombos(tag, eventTitles())) {
+    if (c.label !== mode) continue;
+    parts.push("(type = ? AND game_mode_name = ? AND event_tag IS ?)");
+    params.push(c.type, c.game_mode_name, c.event_tag);
+  }
+  return { sql: `(${parts.join(" OR ")})`, params };
+}
+
+function whereClause(tag: string, f: BattleFilter): { sql: string; params: SqlParam[] } {
   const parts = ["player_tag = ?"];
-  const params: (string | number)[] = [tag];
+  const params: SqlParam[] = [tag];
   if (f.since) {
     parts.push("battle_time >= ?");
     params.push(f.since);
@@ -188,8 +243,9 @@ function whereClause(tag: string, f: BattleFilter): { sql: string; params: (stri
     params.push(f.until);
   }
   if (f.mode) {
-    parts.push("(type = ? OR game_mode_name = ?)");
-    params.push(f.mode, f.mode);
+    const m = modeClause(tag, f.mode);
+    parts.push(m.sql);
+    params.push(...m.params);
   }
   if (f.result) {
     parts.push("result = ?");
@@ -204,19 +260,20 @@ export function listBattles(
   opts: BattleFilter & { limit?: number; offset?: number } = {},
 ): BattleRecord[] {
   const { sql, params } = whereClause(tag, opts);
+  const titles = eventTitles();
   const limit = Math.min(Math.max(opts.limit ?? 50, 1), 500);
   return getDb()
-    .query<BattleRow, (string | number)[]>(
+    .query<BattleRow, SqlParam[]>(
       `SELECT ${LIST_COLUMNS} FROM battles WHERE ${sql} ORDER BY battle_time DESC LIMIT ? OFFSET ?`,
     )
     .all(...params, limit, opts.offset ?? 0)
-    .map(toRecord);
+    .map((r) => toRecord(r, titles));
 }
 
 export function countBattles(tag: string, filter: BattleFilter = {}): number {
   const { sql, params } = whereClause(tag, filter);
   return getDb()
-    .query<{ n: number }, (string | number)[]>(`SELECT COUNT(*) AS n FROM battles WHERE ${sql}`)
+    .query<{ n: number }, SqlParam[]>(`SELECT COUNT(*) AS n FROM battles WHERE ${sql}`)
     .get(...params)!.n;
 }
 
@@ -226,7 +283,7 @@ export function getBattle(tag: string, id: number): (BattleRecord & { raw: Battl
     .query<BattleRow, [string, number]>(`SELECT ${LIST_COLUMNS}, data FROM battles WHERE player_tag = ? AND id = ?`)
     .get(tag, id);
   if (!row) return null;
-  return { ...toRecord(row), raw: JSON.parse(row.data!) as BattleLogEntry };
+  return { ...toRecord(row, eventTitles()), raw: JSON.parse(row.data!) as BattleLogEntry };
 }
 
 export interface Tally {
@@ -247,7 +304,11 @@ export interface BattleStats {
   winRate: number;
   /** Sum of trophy changes over battles that report one (ladder). */
   netTrophies: number;
-  byMode: (Tally & { type: string; mode: string })[];
+  /**
+   * One row per mode label, most games first. `type`/`mode` are the raw values of the label's
+   * most-played combination, kept for API clients from before labels existed.
+   */
+  byMode: (Tally & { type: string; mode: string; modeLabel: string })[];
   /** Most games first. `lastPlayed` is the newest battle_time with the deck. */
   byDeck: (Tally & { deckKey: string; cards: string[]; avgElixir: number | null; lastPlayed: string })[];
 }
@@ -286,18 +347,35 @@ export function getBattleStats(tag: string, { sinceDays, mode }: { sinceDays?: n
   const db = getDb();
   const { sql, params } = whereClause(tag, { since: sinceDays === undefined ? undefined : daysAgoIso(sinceDays), mode });
   const totals = db
-    .query<TallyRow & { net: number | null }, (string | number)[]>(
+    .query<TallyRow & { net: number | null }, SqlParam[]>(
       `SELECT ${TALLY_SQL}, SUM(trophy_change) AS net FROM battles WHERE ${sql}`,
     )
     .get(...params)!;
-  const byMode = db
-    .query<TallyRow & { type: string; mode: string }, (string | number)[]>(
-      `SELECT type, game_mode_name AS mode, ${TALLY_SQL} FROM battles
-       WHERE ${sql} GROUP BY type, game_mode_name ORDER BY games DESC, mode`,
+  const titles = eventTitles();
+  const byLabel = new Map<string, TallyRow & { type: string; mode: string }>();
+  const comboRows = db
+    .query<TallyRow & { type: string; mode: string; event_tag: string | null }, SqlParam[]>(
+      `SELECT type, game_mode_name AS mode, event_tag, ${TALLY_SQL} FROM battles
+       WHERE ${sql} GROUP BY type, game_mode_name, event_tag ORDER BY games DESC, mode`,
     )
     .all(...params);
+  for (const r of comboRows) {
+    const label = battleModeLabel({ type: r.type, gameModeName: r.mode, eventTag: r.event_tag }, titles);
+    const acc = byLabel.get(label);
+    if (!acc) {
+      byLabel.set(label, { type: r.type, mode: r.mode, games: r.games, wins: r.wins ?? 0, losses: r.losses ?? 0, draws: r.draws ?? 0 });
+      continue;
+    }
+    acc.games += r.games;
+    acc.wins += r.wins ?? 0;
+    acc.losses += r.losses ?? 0;
+    acc.draws += r.draws ?? 0;
+  }
+  const byMode = [...byLabel.entries()]
+    .map(([modeLabel, r]) => ({ type: r.type, mode: r.mode, modeLabel, ...tally(r) }))
+    .sort((a, b) => b.games - a.games || a.modeLabel.localeCompare(b.modeLabel));
   const byDeck = db
-    .query<TallyRow & { deck_key: string; last_played: string }, (string | number)[]>(
+    .query<TallyRow & { deck_key: string; last_played: string }, SqlParam[]>(
       `SELECT deck_key, MAX(battle_time) AS last_played, ${TALLY_SQL} FROM battles
        WHERE ${sql} GROUP BY deck_key ORDER BY games DESC, deck_key`,
     )
@@ -312,7 +390,7 @@ export function getBattleStats(tag: string, { sinceDays, mode }: { sinceDays?: n
     draws: t.draws,
     winRate: t.winRate,
     netTrophies: totals.net ?? 0,
-    byMode: byMode.map((r) => ({ type: r.type, mode: r.mode, ...tally(r) })),
+    byMode,
     byDeck: byDeck.map((r) => {
       const cards = r.deck_key ? r.deck_key.split("|") : [];
       return {

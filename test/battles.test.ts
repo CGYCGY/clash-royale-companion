@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test } from "bun:test";
-import type { BattleLogEntry } from "../src/cr/types";
-import { countBattles, getBattle, getBattleStats, insertBattles, listBattles } from "../src/repos/battles";
+import type { BattleLogEntry, GameEvent } from "../src/cr/types";
+import { countBattles, getBattle, getBattleStats, insertBattles, listBattles, modeLabelFor } from "../src/repos/battles";
+import { eventTitles, upsertEvents } from "../src/repos/events";
 import { addPlayer } from "../src/repos/players";
 import { getDb, migrate, openDatabase } from "../src/db";
 import { FIXTURE_TAG, loadFixture, makeTestDb, makeUser, seedCards } from "./helpers";
@@ -106,6 +107,38 @@ describe("unusual battle entries", () => {
     expect(stored!.opponentDeck).toEqual([]);
   });
 
+  test("migration 0005 backfills event_tag from stored battle JSON", () => {
+    const db = openDatabase(":memory:");
+    db.exec("CREATE TABLE schema_migrations (name TEXT PRIMARY KEY, applied_at TEXT NOT NULL)");
+    db.query("INSERT INTO schema_migrations VALUES ('0005_battle_events.sql', 'x')").run();
+    migrate(db);
+    db.query("DELETE FROM schema_migrations WHERE name = '0005_battle_events.sql'").run();
+    db.query("INSERT INTO users (username, password_hash, created_at) VALUES ('u', 'h', 'x')").run();
+    db.query("INSERT INTO players (tag, user_id, added_at) VALUES (?, 1, 'x')").run(FIXTURE_TAG);
+    insertBattles(FIXTURE_TAG, loadFixture<BattleLogEntry[]>("battlelog-modes"));
+    const rows = getDb().query<Record<string, unknown>, []>("SELECT * FROM battles WHERE event_tag IS NOT NULL OR type = 'boatBattle'").all();
+    const insert = db.query(
+      `INSERT INTO battles (player_tag, battle_time, type, game_mode_name, arena_name, opponent_tag, opponent_name, result,
+         team_crowns, opponent_crowns, team_deck, opponent_deck, deck_key, trophy_change, team_size, data)
+       VALUES ($player_tag, $battle_time, $type, $game_mode_name, $arena_name, $opponent_tag, $opponent_name, $result,
+         $team_crowns, $opponent_crowns, $team_deck, $opponent_deck, $deck_key, $trophy_change, $team_size, $data)`,
+    );
+    for (const { id: _id, event_tag: _et, ...r } of rows) insert.run(r as never);
+    expect(migrate(db)).toEqual(["0005_battle_events.sql"]);
+    const tags = db
+      .query<{ type: string; event_tag: string | null }, []>("SELECT type, event_tag FROM battles ORDER BY battle_time")
+      .all();
+    expect(tags).toEqual([
+      { type: "trail", event_tag: "#2C9J9YRL" },
+      { type: "trail", event_tag: "#2C9JGJ2J" },
+      { type: "trail", event_tag: "#2C9J990U" },
+      { type: "unknown", event_tag: "#2C9J8QUU" },
+      { type: "unknown", event_tag: "#2C9J8QUU" },
+      { type: "boatBattle", event_tag: null },
+    ]);
+    expect(db.query("SELECT COUNT(*) AS n FROM events").get()).toEqual({ n: 0 });
+  });
+
   test("migration 0002 backfills team_size from stored battle JSON", () => {
     const db = openDatabase(":memory:");
     db.exec("CREATE TABLE schema_migrations (name TEXT PRIMARY KEY, applied_at TEXT NOT NULL)");
@@ -138,10 +171,19 @@ describe("getBattleStats", () => {
     const s = getBattleStats(FIXTURE_TAG);
     expect(s).toMatchObject({ sinceDays: null, total: 10, wins: 6, losses: 3, draws: 1, winRate: 0.6, netTrophies: 34 });
     expect(s.byMode).toEqual([
-      { type: "PvP", mode: "Ladder", games: 5, wins: 3, losses: 2, draws: 0, winRate: 0.6 },
-      { type: "pathOfLegend", mode: "Ranked1v1_NewArena2", games: 3, wins: 2, losses: 0, draws: 1, winRate: 0.667 },
-      { type: "friendly", mode: "Friendly", games: 1, wins: 0, losses: 1, draws: 0, winRate: 0 },
-      { type: "clanMate2v2", mode: "TeamVsTeam", games: 1, wins: 1, losses: 0, draws: 0, winRate: 1 },
+      { type: "PvP", mode: "Ladder", modeLabel: "Trophy Road", games: 5, wins: 3, losses: 2, draws: 0, winRate: 0.6 },
+      {
+        type: "pathOfLegend",
+        mode: "Ranked1v1_NewArena2",
+        modeLabel: "Ranked",
+        games: 3,
+        wins: 2,
+        losses: 0,
+        draws: 1,
+        winRate: 0.667,
+      },
+      { type: "clanMate2v2", mode: "TeamVsTeam", modeLabel: "2v2", games: 1, wins: 1, losses: 0, draws: 0, winRate: 1 },
+      { type: "friendly", mode: "Friendly", modeLabel: "Friendly", games: 1, wins: 0, losses: 1, draws: 0, winRate: 0 },
     ]);
     expect(s.byDeck).toHaveLength(2);
     expect(s.byDeck[0]).toMatchObject({ deckKey: HOG, games: 8, wins: 5, losses: 2, draws: 1, winRate: 0.625, avgElixir: 2.63 });
@@ -156,6 +198,37 @@ describe("getBattleStats", () => {
     expect(pol.byDeck.reduce((n, d) => n + d.games, 0)).toBe(3);
     expect(getBattleStats(FIXTURE_TAG, { mode: "Ladder" }).total).toBe(countBattles(FIXTURE_TAG, { mode: "Ladder" }));
     expect(getBattleStats(FIXTURE_TAG, { mode: "nope" }).total).toBe(0);
+  });
+
+  test("modes merge by label; a label, a raw type, or a raw game mode all filter", () => {
+    upsertEvents(loadFixture<GameEvent[]>("events"));
+    insertBattles(FIXTURE_TAG, loadFixture<BattleLogEntry[]>("battlelog-modes"));
+    const s = getBattleStats(FIXTURE_TAG);
+    const shuffle = s.byMode.find((m) => m.modeLabel === "Royale Shuffle")!;
+    expect(shuffle).toMatchObject({ type: "unknown", games: 2 });
+    expect(s.byMode.find((m) => m.modeLabel === "Clan War")).toMatchObject({ games: 3 });
+    expect(s.byMode.map((m) => m.modeLabel)).toEqual([...new Set(s.byMode.map((m) => m.modeLabel))]);
+    expect(countBattles(FIXTURE_TAG, { mode: "Royale Shuffle" })).toBe(2);
+    expect(countBattles(FIXTURE_TAG, { mode: "RR_Heist_Friendly" })).toBe(1);
+    expect(countBattles(FIXTURE_TAG, { mode: "unknown" })).toBe(2);
+    expect(getBattleStats(FIXTURE_TAG, { mode: "Clan War" }).total).toBe(3);
+    expect(modeLabelFor(FIXTURE_TAG, "boatBattle")).toBe("Clan War");
+    expect(modeLabelFor(FIXTURE_TAG, "Royale Shuffle")).toBe("Royale Shuffle");
+    expect(modeLabelFor(FIXTURE_TAG, "nope")).toBeNull();
+    const [gambit] = listBattles(FIXTURE_TAG, { mode: "Princess Gambit Tournament" });
+    expect(gambit).toMatchObject({ type: "trail", eventTag: "#2C9J9YRL", modeLabel: "Princess Gambit Tournament" });
+  });
+
+  test("labels resolve at read time, so battles stored before /events loaded pick up titles later", () => {
+    insertBattles(FIXTURE_TAG, loadFixture<BattleLogEntry[]>("battlelog-modes"));
+    const heist = () => listBattles(FIXTURE_TAG, { mode: "RR_Heist_Friendly" })[0]!.modeLabel;
+    expect(heist()).toBe("Heist");
+    upsertEvents(loadFixture<GameEvent[]>("events"));
+    expect(heist()).toBe("Royale Shuffle");
+    // /events only lists running events; titles already stored survive a later fetch without them.
+    upsertEvents([{ eventTag: "#NEW", title: "New Event", description: null }]);
+    expect(eventTitles().get("#2C9J8QUU")).toBe("Royale Shuffle");
+    expect(heist()).toBe("Royale Shuffle");
   });
 
   test("sinceDays window and empty stats", () => {

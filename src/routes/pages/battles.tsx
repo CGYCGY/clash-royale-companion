@@ -5,12 +5,19 @@ import { normalizeTag, tagSlug } from "../../cr/tag";
 import { notFound } from "../../errors";
 import { parseQuery } from "../../http/validate";
 import { resolvePlayer } from "../../http/currentPlayer";
-import { type BattleFilter, countBattles, getBattle, getBattleStats, listBattles } from "../../repos/battles";
+import {
+  type BattleFilter,
+  countBattles,
+  getBattle,
+  getBattleStats,
+  listBattles,
+  modeLabelFor,
+} from "../../repos/battles";
 import { type CardRecord, cardsMap } from "../../repos/cards";
 import { assertPlayerOwnedBy } from "../../repos/players";
 import type { AppEnv } from "../../types";
 import { daysAgoIso } from "../../util";
-import { BattleTable, modeLabel } from "../../views/battleTable";
+import { BattleTable } from "../../views/battleTable";
 import { deckCardViews, formatElixir, namedCardViews } from "../../views/cardViews";
 import { DeckGrid, EmptyState, ResultBadge, StatTile } from "../../views/components";
 import { formatDateTime, formatPercent, formatSigned } from "../../views/format";
@@ -139,7 +146,7 @@ function BattleDetail({ battle, catalog }: { battle: BattleWithRaw; catalog: Map
         <dl class="facts">
           <div>
             <dt>Mode</dt>
-            <dd>{modeLabel(battle)}</dd>
+            <dd>{battle.modeLabel}</dd>
           </div>
           <div>
             <dt>Arena</dt>
@@ -191,7 +198,10 @@ export const battlePages = new Hono<AppEnv>()
         </EmptyState>,
       );
     }
-    const f = parseQuery(c, filterSchema);
+    const parsed = parseQuery(c, filterSchema);
+    // Links from before mode labels carry a raw type or game mode (?mode=Ladder); widen them to the
+    // label so the dropdown, pager links and results all agree.
+    const f = { ...parsed, mode: parsed.mode ? (modeLabelFor(player.tag, parsed.mode) ?? parsed.mode) : undefined };
     const sinceDays = f.days === "all" ? undefined : Number(f.days);
     const filter: BattleFilter = {
       since: sinceDays === undefined ? undefined : daysAgoIso(sinceDays),
@@ -223,9 +233,8 @@ export const battlePages = new Hono<AppEnv>()
             <select id="mode" name="mode">
               <option value="">All Modes</option>
               {modes.map((m) => (
-                <option value={m.mode} selected={f.mode === m.mode}>
-                  {modeLabel({ type: m.type, gameModeName: m.mode })}
-                  {m.type === "pathOfLegend" ? ` (${m.mode})` : ""}
+                <option value={m.modeLabel} selected={f.mode === m.modeLabel}>
+                  {m.modeLabel}
                 </option>
               ))}
             </select>

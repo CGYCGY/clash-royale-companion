@@ -3,7 +3,8 @@ import { config, requireEnv } from "./config";
 import { getCrClient } from "./cr/client";
 import { closeDatabase, getDb, migrate } from "./db";
 import { countCards } from "./repos/cards";
-import { startScheduler, syncCards } from "./sync";
+import { countEvents } from "./repos/events";
+import { startScheduler, syncCards, syncEvents } from "./sync";
 
 requireEnv("CR_API_TOKEN");
 
@@ -19,6 +20,12 @@ if (countCards() === 0) {
     .catch((err: unknown) =>
       console.error("[startup] card catalog sync failed:", err instanceof Error ? err.message : err),
     );
+}
+
+if (countEvents() === 0) {
+  syncEvents(client)
+    .then((n) => console.log(`[startup] event titles loaded (${n})`))
+    .catch((err: unknown) => console.error("[startup] events sync failed:", err instanceof Error ? err.message : err));
 }
 
 const scheduler = startScheduler(client);

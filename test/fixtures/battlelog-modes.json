@@ -1,0 +1,2581 @@
+[
+  {
+    "type": "trail",
+    "battleTime": "20260924T110000.000Z",
+    "isLadderTournament": false,
+    "eventTag": "#2C9J9YRL",
+    "arena": {
+      "id": 54000139,
+      "name": "Legendary Arena",
+      "rawName": "Arena_AllRandom_Princess"
+    },
+    "gameMode": {
+      "id": 72000519,
+      "name": "All_Random_Princess_Friendly"
+    },
+    "deckSelection": "unknown",
+    "team": [
+      {
+        "tag": "#9QJUGC2R",
+        "name": "Sparky",
+        "crowns": 0,
+        "kingTowerHitPoints": 0,
+        "princessTowersHitPoints": [
+          1887
+        ],
+        "clan": {
+          "tag": "#LQ2P8Y0",
+          "name": "Royal Hogs",
+          "badgeId": 16000012
+        },
+        "cards": [
+          {
+            "name": "Hog Rider",
+            "id": 26000021,
+            "level": 12,
+            "maxLevel": 14,
+            "rarity": "rare",
+            "elixirCost": 4,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/ab87d27e725f33fb50e775.png"
+            }
+          },
+          {
+            "name": "Musketeer",
+            "id": 26000014,
+            "level": 12,
+            "maxLevel": 14,
+            "maxEvolutionLevel": 3,
+            "evolutionLevel": 3,
+            "rarity": "rare",
+            "elixirCost": 4,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/387073f98e383bc8b443f5.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/aa9fb18c6a87e316483e44.png"
+            }
+          },
+          {
+            "name": "Ice Golem",
+            "id": 26000038,
+            "level": 12,
+            "maxLevel": 14,
+            "rarity": "rare",
+            "elixirCost": 2,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/5c70cbebb77d152030ca13.png"
+            },
+            "evolutionLevel": 2,
+            "maxEvolutionLevel": 2
+          },
+          {
+            "name": "Ice Spirit",
+            "id": 26000030,
+            "level": 15,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "evolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 1,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/cc42ae6f55ae6277b87666.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/1c0823df216da5fd549056.png"
+            }
+          },
+          {
+            "name": "Skeletons",
+            "id": 26000010,
+            "level": 15,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 1,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/1f3f66500d51cd085b337a.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/59f551384d2073a263c43d.png"
+            }
+          },
+          {
+            "name": "Cannon",
+            "id": 27000000,
+            "level": 14,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 3,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/22ef5d9468d7aa2f806d86.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/e3ca9fab361ed0586a1331.png"
+            }
+          },
+          {
+            "name": "Fireball",
+            "id": 28000000,
+            "level": 12,
+            "maxLevel": 14,
+            "rarity": "rare",
+            "elixirCost": 4,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/a8155b0ea02bae01cd4136.png"
+            }
+          },
+          {
+            "name": "The Log",
+            "id": 28000011,
+            "level": 5,
+            "maxLevel": 8,
+            "rarity": "legendary",
+            "elixirCost": 2,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/54b778a7b6b194ae705bfb.png"
+            }
+          }
+        ],
+        "supportCards": [
+          {
+            "name": "Tower Princess",
+            "id": 159000000,
+            "level": 14,
+            "maxLevel": 16,
+            "rarity": "common",
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/b1f613ca79b5b7ebb46895.png"
+            }
+          }
+        ],
+        "globalRank": 2,
+        "elixirLeaked": 0.07
+      }
+    ],
+    "opponent": [
+      {
+        "tag": "#8LQ2R0YC0",
+        "name": "BaitMaster",
+        "startingTrophies": 26,
+        "trophyChange": 1,
+        "crowns": 1,
+        "kingTowerHitPoints": 0,
+        "princessTowersHitPoints": [
+          889,
+          1844
+        ],
+        "cards": [
+          {
+            "name": "Knight",
+            "id": 26000000,
+            "level": 14,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "evolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 3,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/8c23b2b86573edf2a5ea48.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/6f9935ccd740be29ae9789.png"
+            }
+          },
+          {
+            "name": "Archers",
+            "id": 26000001,
+            "level": 14,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 3,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/b846b258851257e0691161.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/7e711b383dabb834cc73b5.png"
+            }
+          },
+          {
+            "name": "Goblins",
+            "id": 26000002,
+            "level": 14,
+            "maxLevel": 16,
+            "rarity": "common",
+            "elixirCost": 2,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/50833bc56023c454a3f3f8.png"
+            }
+          },
+          {
+            "name": "Rocket",
+            "id": 28000003,
+            "level": 12,
+            "maxLevel": 14,
+            "rarity": "rare",
+            "elixirCost": 6,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/15e8bfff2c10ca22da244d.png"
+            }
+          },
+          {
+            "name": "The Log",
+            "id": 28000011,
+            "level": 6,
+            "maxLevel": 8,
+            "rarity": "legendary",
+            "elixirCost": 2,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/54b778a7b6b194ae705bfb.png"
+            }
+          },
+          {
+            "name": "Ice Spirit",
+            "id": 26000030,
+            "level": 14,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 1,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/cc42ae6f55ae6277b87666.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/1c0823df216da5fd549056.png"
+            }
+          },
+          {
+            "name": "Tesla",
+            "id": 27000006,
+            "level": 14,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 4,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/8f3182163857c5463c8830.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/ead194a2715e3a86407185.png"
+            }
+          },
+          {
+            "name": "Skeleton Army",
+            "id": 26000012,
+            "level": 9,
+            "maxLevel": 11,
+            "rarity": "epic",
+            "elixirCost": 3,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/e66690a346edf345e4a3b4.png"
+            }
+          }
+        ],
+        "supportCards": [
+          {
+            "name": "Tower Princess",
+            "id": 159000000,
+            "level": 14,
+            "maxLevel": 16,
+            "rarity": "common",
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/b1f613ca79b5b7ebb46895.png"
+            }
+          }
+        ],
+        "globalRank": null,
+        "elixirLeaked": 5.24
+      }
+    ],
+    "isHostedMatch": false,
+    "leagueNumber": 1
+  },
+  {
+    "type": "trail",
+    "battleTime": "20260924T120000.000Z",
+    "isLadderTournament": false,
+    "eventTag": "#2C9JGJ2J",
+    "arena": {
+      "id": 54000159,
+      "name": "Legendary Arena",
+      "rawName": "Arena_minionacademy"
+    },
+    "gameMode": {
+      "id": 72000014,
+      "name": "TeamVsTeam"
+    },
+    "deckSelection": "collection",
+    "team": [
+      {
+        "tag": "#9QJUGC2R",
+        "name": "Sparky",
+        "crowns": 0,
+        "kingTowerHitPoints": 5789,
+        "princessTowersHitPoints": [
+          1429
+        ],
+        "clan": {
+          "tag": "#LQ2P8Y0",
+          "name": "Royal Hogs",
+          "badgeId": 16000012
+        },
+        "cards": [
+          {
+            "name": "Hog Rider",
+            "id": 26000021,
+            "level": 12,
+            "maxLevel": 14,
+            "rarity": "rare",
+            "elixirCost": 4,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/ab87d27e725f33fb50e775.png"
+            }
+          },
+          {
+            "name": "Musketeer",
+            "id": 26000014,
+            "level": 12,
+            "maxLevel": 14,
+            "maxEvolutionLevel": 1,
+            "evolutionLevel": 1,
+            "rarity": "rare",
+            "elixirCost": 4,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/387073f98e383bc8b443f5.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/aa9fb18c6a87e316483e44.png"
+            }
+          },
+          {
+            "name": "Ice Golem",
+            "id": 26000038,
+            "level": 12,
+            "maxLevel": 14,
+            "rarity": "rare",
+            "elixirCost": 2,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/5c70cbebb77d152030ca13.png"
+            }
+          },
+          {
+            "name": "Ice Spirit",
+            "id": 26000030,
+            "level": 15,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "evolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 1,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/cc42ae6f55ae6277b87666.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/1c0823df216da5fd549056.png"
+            }
+          },
+          {
+            "name": "Skeletons",
+            "id": 26000010,
+            "level": 15,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 1,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/1f3f66500d51cd085b337a.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/59f551384d2073a263c43d.png"
+            }
+          },
+          {
+            "name": "Cannon",
+            "id": 27000000,
+            "level": 14,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 3,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/22ef5d9468d7aa2f806d86.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/e3ca9fab361ed0586a1331.png"
+            }
+          },
+          {
+            "name": "Fireball",
+            "id": 28000000,
+            "level": 12,
+            "maxLevel": 14,
+            "rarity": "rare",
+            "elixirCost": 4,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/a8155b0ea02bae01cd4136.png"
+            }
+          },
+          {
+            "name": "The Log",
+            "id": 28000011,
+            "level": 5,
+            "maxLevel": 8,
+            "rarity": "legendary",
+            "elixirCost": 2,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/54b778a7b6b194ae705bfb.png"
+            }
+          }
+        ],
+        "supportCards": [
+          {
+            "name": "Tower Princess",
+            "id": 159000000,
+            "level": 14,
+            "maxLevel": 16,
+            "rarity": "common",
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/b1f613ca79b5b7ebb46895.png"
+            }
+          }
+        ],
+        "globalRank": null,
+        "elixirLeaked": 10.75
+      },
+      {
+        "tag": "#2QQ1",
+        "name": "Teammate",
+        "crowns": 0,
+        "kingTowerHitPoints": 5789,
+        "princessTowersHitPoints": [
+          1429
+        ],
+        "cards": [
+          {
+            "name": "Firecracker",
+            "id": 26000064,
+            "level": 11,
+            "starLevel": 1,
+            "evolutionLevel": 1,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 3
+          },
+          {
+            "name": "Mega Knight",
+            "id": 26000055,
+            "level": 3,
+            "starLevel": 2,
+            "maxLevel": 8,
+            "maxEvolutionLevel": 1,
+            "rarity": "legendary",
+            "elixirCost": 7
+          },
+          {
+            "name": "Boss Bandit",
+            "id": 26000103,
+            "level": 1,
+            "maxLevel": 6,
+            "rarity": "champion",
+            "elixirCost": 6
+          },
+          {
+            "name": "Bats",
+            "id": 26000049,
+            "level": 11,
+            "starLevel": 2,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 2
+          },
+          {
+            "name": "Goblin Barrel",
+            "id": 28000004,
+            "level": 6,
+            "starLevel": 3,
+            "maxLevel": 11,
+            "maxEvolutionLevel": 1,
+            "rarity": "epic",
+            "elixirCost": 3
+          },
+          {
+            "name": "Electro Wizard",
+            "id": 26000042,
+            "level": 3,
+            "starLevel": 1,
+            "maxLevel": 8,
+            "rarity": "legendary",
+            "elixirCost": 4
+          },
+          {
+            "name": "Skeleton Army",
+            "id": 26000012,
+            "level": 6,
+            "starLevel": 3,
+            "maxLevel": 11,
+            "maxEvolutionLevel": 1,
+            "rarity": "epic",
+            "elixirCost": 3
+          },
+          {
+            "name": "The Log",
+            "id": 28000011,
+            "level": 3,
+            "starLevel": 1,
+            "maxLevel": 8,
+            "rarity": "legendary",
+            "elixirCost": 2
+          }
+        ],
+        "supportCards": [
+          {
+            "name": "Tower Princess",
+            "id": 159000000,
+            "level": 11,
+            "maxLevel": 16,
+            "rarity": "common"
+          }
+        ],
+        "globalRank": null,
+        "elixirLeaked": 0.61
+      }
+    ],
+    "opponent": [
+      {
+        "tag": "#8LQ2R0YC1",
+        "name": "BaitMaster 2",
+        "crowns": 1,
+        "kingTowerHitPoints": 5394,
+        "princessTowersHitPoints": [
+          1961,
+          1381
+        ],
+        "cards": [
+          {
+            "name": "Knight",
+            "id": 26000000,
+            "level": 14,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "evolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 3,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/8c23b2b86573edf2a5ea48.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/6f9935ccd740be29ae9789.png"
+            }
+          },
+          {
+            "name": "Archers",
+            "id": 26000001,
+            "level": 14,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 3,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/b846b258851257e0691161.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/7e711b383dabb834cc73b5.png"
+            }
+          },
+          {
+            "name": "Goblins",
+            "id": 26000002,
+            "level": 14,
+            "maxLevel": 16,
+            "rarity": "common",
+            "elixirCost": 2,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/50833bc56023c454a3f3f8.png"
+            }
+          },
+          {
+            "name": "Rocket",
+            "id": 28000003,
+            "level": 12,
+            "maxLevel": 14,
+            "rarity": "rare",
+            "elixirCost": 6,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/15e8bfff2c10ca22da244d.png"
+            }
+          },
+          {
+            "name": "The Log",
+            "id": 28000011,
+            "level": 6,
+            "maxLevel": 8,
+            "rarity": "legendary",
+            "elixirCost": 2,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/54b778a7b6b194ae705bfb.png"
+            }
+          },
+          {
+            "name": "Ice Spirit",
+            "id": 26000030,
+            "level": 14,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 1,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/cc42ae6f55ae6277b87666.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/1c0823df216da5fd549056.png"
+            }
+          },
+          {
+            "name": "Tesla",
+            "id": 27000006,
+            "level": 14,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 4,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/8f3182163857c5463c8830.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/ead194a2715e3a86407185.png"
+            }
+          },
+          {
+            "name": "Skeleton Army",
+            "id": 26000012,
+            "level": 9,
+            "maxLevel": 11,
+            "rarity": "epic",
+            "elixirCost": 3,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/e66690a346edf345e4a3b4.png"
+            }
+          }
+        ],
+        "supportCards": [
+          {
+            "name": "Tower Princess",
+            "id": 159000000,
+            "level": 14,
+            "maxLevel": 16,
+            "rarity": "common",
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/b1f613ca79b5b7ebb46895.png"
+            }
+          }
+        ],
+        "globalRank": null,
+        "elixirLeaked": 0
+      },
+      {
+        "tag": "#8RR1",
+        "name": "Opponent Two",
+        "crowns": 1,
+        "kingTowerHitPoints": 5394,
+        "princessTowersHitPoints": [
+          1961,
+          1381
+        ],
+        "cards": [
+          {
+            "name": "Witch",
+            "id": 26000007,
+            "level": 6,
+            "starLevel": 2,
+            "evolutionLevel": 1,
+            "maxLevel": 11,
+            "maxEvolutionLevel": 1,
+            "rarity": "epic",
+            "elixirCost": 5
+          },
+          {
+            "name": "Bowler",
+            "id": 26000034,
+            "level": 6,
+            "starLevel": 2,
+            "evolutionLevel": 2,
+            "maxLevel": 11,
+            "maxEvolutionLevel": 2,
+            "rarity": "epic",
+            "elixirCost": 5
+          },
+          {
+            "name": "Goblin Drill",
+            "id": 27000013,
+            "level": 6,
+            "evolutionLevel": 1,
+            "maxLevel": 11,
+            "maxEvolutionLevel": 1,
+            "rarity": "epic",
+            "elixirCost": 4
+          },
+          {
+            "name": "Knight",
+            "id": 26000000,
+            "level": 11,
+            "starLevel": 3,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 3,
+            "rarity": "common",
+            "elixirCost": 3
+          },
+          {
+            "name": "Skeletons",
+            "id": 26000010,
+            "level": 11,
+            "starLevel": 2,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 1
+          },
+          {
+            "name": "Tesla",
+            "id": 27000006,
+            "level": 11,
+            "starLevel": 2,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 4
+          },
+          {
+            "name": "Minions",
+            "id": 26000005,
+            "level": 11,
+            "starLevel": 3,
+            "maxLevel": 16,
+            "rarity": "common",
+            "elixirCost": 3
+          },
+          {
+            "name": "Ice Wizard",
+            "id": 26000023,
+            "level": 3,
+            "maxLevel": 8,
+            "maxEvolutionLevel": 2,
+            "rarity": "legendary",
+            "elixirCost": 3
+          }
+        ],
+        "supportCards": [
+          {
+            "name": "Tower Princess",
+            "id": 159000000,
+            "level": 11,
+            "maxLevel": 16,
+            "rarity": "common"
+          }
+        ],
+        "globalRank": null,
+        "elixirLeaked": 0
+      }
+    ],
+    "isHostedMatch": false,
+    "leagueNumber": 1
+  },
+  {
+    "type": "trail",
+    "battleTime": "20260924T130000.000Z",
+    "isLadderTournament": false,
+    "eventTag": "#2C9J990U",
+    "arena": {
+      "id": 168000194,
+      "name": "Competitive",
+      "rawName": "2v2League_202609Arena2"
+    },
+    "gameMode": {
+      "id": 72000014,
+      "name": "TeamVsTeam"
+    },
+    "deckSelection": "collection",
+    "team": [
+      {
+        "tag": "#9QJUGC2R",
+        "name": "Sparky",
+        "crowns": 0,
+        "kingTowerHitPoints": 5789,
+        "princessTowersHitPoints": [
+          2290
+        ],
+        "clan": {
+          "tag": "#LQ2P8Y0",
+          "name": "Royal Hogs",
+          "badgeId": 16000012
+        },
+        "cards": [
+          {
+            "name": "Hog Rider",
+            "id": 26000021,
+            "level": 12,
+            "maxLevel": 14,
+            "rarity": "rare",
+            "elixirCost": 4,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/ab87d27e725f33fb50e775.png"
+            }
+          },
+          {
+            "name": "Musketeer",
+            "id": 26000014,
+            "level": 12,
+            "maxLevel": 14,
+            "maxEvolutionLevel": 1,
+            "evolutionLevel": 1,
+            "rarity": "rare",
+            "elixirCost": 4,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/387073f98e383bc8b443f5.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/aa9fb18c6a87e316483e44.png"
+            }
+          },
+          {
+            "name": "Ice Golem",
+            "id": 26000038,
+            "level": 12,
+            "maxLevel": 14,
+            "rarity": "rare",
+            "elixirCost": 2,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/5c70cbebb77d152030ca13.png"
+            }
+          },
+          {
+            "name": "Ice Spirit",
+            "id": 26000030,
+            "level": 15,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "evolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 1,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/cc42ae6f55ae6277b87666.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/1c0823df216da5fd549056.png"
+            }
+          },
+          {
+            "name": "Skeletons",
+            "id": 26000010,
+            "level": 15,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 1,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/1f3f66500d51cd085b337a.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/59f551384d2073a263c43d.png"
+            }
+          },
+          {
+            "name": "Cannon",
+            "id": 27000000,
+            "level": 14,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 3,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/22ef5d9468d7aa2f806d86.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/e3ca9fab361ed0586a1331.png"
+            }
+          },
+          {
+            "name": "Fireball",
+            "id": 28000000,
+            "level": 12,
+            "maxLevel": 14,
+            "rarity": "rare",
+            "elixirCost": 4,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/a8155b0ea02bae01cd4136.png"
+            }
+          },
+          {
+            "name": "The Log",
+            "id": 28000011,
+            "level": 5,
+            "maxLevel": 8,
+            "rarity": "legendary",
+            "elixirCost": 2,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/54b778a7b6b194ae705bfb.png"
+            }
+          }
+        ],
+        "supportCards": [
+          {
+            "name": "Tower Princess",
+            "id": 159000000,
+            "level": 14,
+            "maxLevel": 16,
+            "rarity": "common",
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/b1f613ca79b5b7ebb46895.png"
+            }
+          }
+        ],
+        "globalRank": null,
+        "elixirLeaked": 0.82
+      },
+      {
+        "tag": "#2QQ1",
+        "name": "Teammate",
+        "crowns": 0,
+        "kingTowerHitPoints": 5789,
+        "princessTowersHitPoints": [
+          2290
+        ],
+        "cards": [
+          {
+            "name": "Mega Knight",
+            "id": 26000055,
+            "level": 3,
+            "starLevel": 2,
+            "evolutionLevel": 1,
+            "maxLevel": 8,
+            "maxEvolutionLevel": 1,
+            "rarity": "legendary",
+            "elixirCost": 7
+          },
+          {
+            "name": "Witch",
+            "id": 26000007,
+            "level": 6,
+            "starLevel": 1,
+            "maxLevel": 11,
+            "maxEvolutionLevel": 1,
+            "rarity": "epic",
+            "elixirCost": 5
+          },
+          {
+            "name": "Firecracker",
+            "id": 26000064,
+            "level": 11,
+            "starLevel": 1,
+            "evolutionLevel": 1,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 3
+          },
+          {
+            "name": "Bats",
+            "id": 26000049,
+            "level": 11,
+            "starLevel": 2,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 2
+          },
+          {
+            "name": "Goblin Barrel",
+            "id": 28000004,
+            "level": 6,
+            "starLevel": 3,
+            "maxLevel": 11,
+            "maxEvolutionLevel": 1,
+            "rarity": "epic",
+            "elixirCost": 3
+          },
+          {
+            "name": "Electro Wizard",
+            "id": 26000042,
+            "level": 3,
+            "starLevel": 1,
+            "maxLevel": 8,
+            "rarity": "legendary",
+            "elixirCost": 4
+          },
+          {
+            "name": "Skeleton Army",
+            "id": 26000012,
+            "level": 6,
+            "starLevel": 3,
+            "maxLevel": 11,
+            "maxEvolutionLevel": 1,
+            "rarity": "epic",
+            "elixirCost": 3
+          },
+          {
+            "name": "The Log",
+            "id": 28000011,
+            "level": 3,
+            "starLevel": 1,
+            "maxLevel": 8,
+            "rarity": "legendary",
+            "elixirCost": 2
+          }
+        ],
+        "supportCards": [
+          {
+            "name": "Tower Princess",
+            "id": 159000000,
+            "level": 11,
+            "maxLevel": 16,
+            "rarity": "common"
+          }
+        ],
+        "globalRank": null,
+        "elixirLeaked": 6.37
+      }
+    ],
+    "opponent": [
+      {
+        "tag": "#8LQ2R0YC2",
+        "name": "BaitMaster 3",
+        "startingTrophies": 1504,
+        "crowns": 1,
+        "kingTowerHitPoints": 5789,
+        "princessTowersHitPoints": [
+          1812,
+          2112
+        ],
+        "cards": [
+          {
+            "name": "Knight",
+            "id": 26000000,
+            "level": 14,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "evolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 3,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/8c23b2b86573edf2a5ea48.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/6f9935ccd740be29ae9789.png"
+            }
+          },
+          {
+            "name": "Archers",
+            "id": 26000001,
+            "level": 14,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 3,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/b846b258851257e0691161.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/7e711b383dabb834cc73b5.png"
+            }
+          },
+          {
+            "name": "Goblins",
+            "id": 26000002,
+            "level": 14,
+            "maxLevel": 16,
+            "rarity": "common",
+            "elixirCost": 2,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/50833bc56023c454a3f3f8.png"
+            }
+          },
+          {
+            "name": "Rocket",
+            "id": 28000003,
+            "level": 12,
+            "maxLevel": 14,
+            "rarity": "rare",
+            "elixirCost": 6,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/15e8bfff2c10ca22da244d.png"
+            }
+          },
+          {
+            "name": "The Log",
+            "id": 28000011,
+            "level": 6,
+            "maxLevel": 8,
+            "rarity": "legendary",
+            "elixirCost": 2,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/54b778a7b6b194ae705bfb.png"
+            }
+          },
+          {
+            "name": "Ice Spirit",
+            "id": 26000030,
+            "level": 14,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 1,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/cc42ae6f55ae6277b87666.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/1c0823df216da5fd549056.png"
+            }
+          },
+          {
+            "name": "Tesla",
+            "id": 27000006,
+            "level": 14,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 4,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/8f3182163857c5463c8830.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/ead194a2715e3a86407185.png"
+            }
+          },
+          {
+            "name": "Skeleton Army",
+            "id": 26000012,
+            "level": 9,
+            "maxLevel": 11,
+            "rarity": "epic",
+            "elixirCost": 3,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/e66690a346edf345e4a3b4.png"
+            }
+          }
+        ],
+        "supportCards": [
+          {
+            "name": "Tower Princess",
+            "id": 159000000,
+            "level": 14,
+            "maxLevel": 16,
+            "rarity": "common",
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/b1f613ca79b5b7ebb46895.png"
+            }
+          }
+        ],
+        "globalRank": null,
+        "elixirLeaked": 0
+      },
+      {
+        "tag": "#8RR2",
+        "name": "Opponent Two",
+        "crowns": 1,
+        "kingTowerHitPoints": 5789,
+        "princessTowersHitPoints": [
+          1812,
+          2112
+        ],
+        "cards": [
+          {
+            "name": "Royal Recruits",
+            "id": 26000047,
+            "level": 11,
+            "evolutionLevel": 1,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 7
+          },
+          {
+            "name": "Dart Goblin",
+            "id": 26000040,
+            "level": 9,
+            "maxLevel": 14,
+            "maxEvolutionLevel": 1,
+            "rarity": "rare",
+            "elixirCost": 3
+          },
+          {
+            "name": "Musketeer",
+            "id": 26000014,
+            "level": 9,
+            "starLevel": 2,
+            "evolutionLevel": 1,
+            "maxLevel": 14,
+            "maxEvolutionLevel": 3,
+            "rarity": "rare",
+            "elixirCost": 4
+          },
+          {
+            "name": "Bandit",
+            "id": 26000046,
+            "level": 3,
+            "maxLevel": 8,
+            "rarity": "legendary",
+            "elixirCost": 3
+          },
+          {
+            "name": "Knight",
+            "id": 26000000,
+            "level": 11,
+            "starLevel": 2,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 3,
+            "rarity": "common",
+            "elixirCost": 3
+          },
+          {
+            "name": "Fireball",
+            "id": 28000000,
+            "level": 9,
+            "maxLevel": 14,
+            "rarity": "rare",
+            "elixirCost": 4
+          },
+          {
+            "name": "Suspicious Bush",
+            "id": 26000097,
+            "level": 9,
+            "maxLevel": 14,
+            "rarity": "rare",
+            "elixirCost": 2
+          },
+          {
+            "name": "Cannon Cart",
+            "id": 26000054,
+            "level": 6,
+            "maxLevel": 11,
+            "rarity": "epic",
+            "elixirCost": 5
+          }
+        ],
+        "supportCards": [
+          {
+            "name": "Tower Princess",
+            "id": 159000000,
+            "level": 11,
+            "maxLevel": 16,
+            "rarity": "common"
+          }
+        ],
+        "globalRank": null,
+        "elixirLeaked": 0.05
+      }
+    ],
+    "isHostedMatch": false,
+    "leagueNumber": 1
+  },
+  {
+    "type": "unknown",
+    "battleTime": "20260924T140000.000Z",
+    "isLadderTournament": false,
+    "eventTag": "#2C9J8QUU",
+    "arena": {
+      "id": 54000006,
+      "name": "P.E.K.K.A's Playhouse",
+      "rawName": "Arena6"
+    },
+    "gameMode": {
+      "id": 72000525,
+      "name": "RR_Heist_Friendly"
+    },
+    "deckSelection": "collection",
+    "team": [
+      {
+        "tag": "#9QJUGC2R",
+        "name": "Sparky",
+        "crowns": 0,
+        "kingTowerHitPoints": 0,
+        "princessTowersHitPoints": null,
+        "clan": {
+          "tag": "#LQ2P8Y0",
+          "name": "Royal Hogs",
+          "badgeId": 16000012
+        },
+        "cards": [
+          {
+            "name": "Hog Rider",
+            "id": 26000021,
+            "level": 12,
+            "maxLevel": 14,
+            "rarity": "rare",
+            "elixirCost": 4,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/ab87d27e725f33fb50e775.png"
+            }
+          },
+          {
+            "name": "Musketeer",
+            "id": 26000014,
+            "level": 12,
+            "maxLevel": 14,
+            "maxEvolutionLevel": 1,
+            "evolutionLevel": 1,
+            "rarity": "rare",
+            "elixirCost": 4,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/387073f98e383bc8b443f5.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/aa9fb18c6a87e316483e44.png"
+            }
+          },
+          {
+            "name": "Ice Golem",
+            "id": 26000038,
+            "level": 12,
+            "maxLevel": 14,
+            "rarity": "rare",
+            "elixirCost": 2,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/5c70cbebb77d152030ca13.png"
+            }
+          },
+          {
+            "name": "Ice Spirit",
+            "id": 26000030,
+            "level": 15,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "evolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 1,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/cc42ae6f55ae6277b87666.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/1c0823df216da5fd549056.png"
+            }
+          },
+          {
+            "name": "Skeletons",
+            "id": 26000010,
+            "level": 15,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 1,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/1f3f66500d51cd085b337a.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/59f551384d2073a263c43d.png"
+            }
+          },
+          {
+            "name": "Cannon",
+            "id": 27000000,
+            "level": 14,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 3,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/22ef5d9468d7aa2f806d86.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/e3ca9fab361ed0586a1331.png"
+            }
+          },
+          {
+            "name": "Fireball",
+            "id": 28000000,
+            "level": 12,
+            "maxLevel": 14,
+            "rarity": "rare",
+            "elixirCost": 4,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/a8155b0ea02bae01cd4136.png"
+            }
+          },
+          {
+            "name": "The Log",
+            "id": 28000011,
+            "level": 5,
+            "maxLevel": 8,
+            "rarity": "legendary",
+            "elixirCost": 2,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/54b778a7b6b194ae705bfb.png"
+            }
+          }
+        ],
+        "supportCards": [
+          {
+            "name": "Tower Princess",
+            "id": 159000000,
+            "level": 14,
+            "maxLevel": 16,
+            "rarity": "common",
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/b1f613ca79b5b7ebb46895.png"
+            }
+          }
+        ],
+        "globalRank": null,
+        "elixirLeaked": 0.17
+      }
+    ],
+    "opponent": [
+      {
+        "tag": "#8LQ2R0YC3",
+        "name": "BaitMaster 4",
+        "crowns": 3,
+        "kingTowerHitPoints": 9059,
+        "princessTowersHitPoints": null,
+        "cards": [
+          {
+            "name": "Knight",
+            "id": 26000000,
+            "level": 14,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "evolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 3,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/8c23b2b86573edf2a5ea48.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/6f9935ccd740be29ae9789.png"
+            }
+          },
+          {
+            "name": "Archers",
+            "id": 26000001,
+            "level": 14,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 3,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/b846b258851257e0691161.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/7e711b383dabb834cc73b5.png"
+            }
+          },
+          {
+            "name": "Goblins",
+            "id": 26000002,
+            "level": 14,
+            "maxLevel": 16,
+            "rarity": "common",
+            "elixirCost": 2,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/50833bc56023c454a3f3f8.png"
+            }
+          },
+          {
+            "name": "Rocket",
+            "id": 28000003,
+            "level": 12,
+            "maxLevel": 14,
+            "rarity": "rare",
+            "elixirCost": 6,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/15e8bfff2c10ca22da244d.png"
+            }
+          },
+          {
+            "name": "The Log",
+            "id": 28000011,
+            "level": 6,
+            "maxLevel": 8,
+            "rarity": "legendary",
+            "elixirCost": 2,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/54b778a7b6b194ae705bfb.png"
+            }
+          },
+          {
+            "name": "Ice Spirit",
+            "id": 26000030,
+            "level": 14,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 1,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/cc42ae6f55ae6277b87666.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/1c0823df216da5fd549056.png"
+            }
+          },
+          {
+            "name": "Tesla",
+            "id": 27000006,
+            "level": 14,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 4,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/8f3182163857c5463c8830.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/ead194a2715e3a86407185.png"
+            }
+          },
+          {
+            "name": "Skeleton Army",
+            "id": 26000012,
+            "level": 9,
+            "maxLevel": 11,
+            "rarity": "epic",
+            "elixirCost": 3,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/e66690a346edf345e4a3b4.png"
+            }
+          }
+        ],
+        "supportCards": [
+          {
+            "name": "Tower Princess",
+            "id": 159000000,
+            "level": 14,
+            "maxLevel": 16,
+            "rarity": "common",
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/b1f613ca79b5b7ebb46895.png"
+            }
+          }
+        ],
+        "globalRank": null,
+        "elixirLeaked": 1.56
+      }
+    ],
+    "isHostedMatch": false,
+    "leagueNumber": 1
+  },
+  {
+    "type": "unknown",
+    "battleTime": "20260924T150000.000Z",
+    "isLadderTournament": false,
+    "eventTag": "#2C9J8QUU",
+    "arena": {
+      "id": 54000009,
+      "name": "Frozen Peak",
+      "rawName": "Arena8"
+    },
+    "gameMode": {
+      "id": 72000526,
+      "name": "RR_Snowball_bombardment"
+    },
+    "deckSelection": "collection",
+    "team": [
+      {
+        "tag": "#9QJUGC2R",
+        "name": "Sparky",
+        "crowns": 1,
+        "kingTowerHitPoints": 4794,
+        "princessTowersHitPoints": [
+          669,
+          3022
+        ],
+        "clan": {
+          "tag": "#LQ2P8Y0",
+          "name": "Royal Hogs",
+          "badgeId": 16000012
+        },
+        "cards": [
+          {
+            "name": "Hog Rider",
+            "id": 26000021,
+            "level": 12,
+            "maxLevel": 14,
+            "rarity": "rare",
+            "elixirCost": 4,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/ab87d27e725f33fb50e775.png"
+            }
+          },
+          {
+            "name": "Musketeer",
+            "id": 26000014,
+            "level": 12,
+            "maxLevel": 14,
+            "maxEvolutionLevel": 1,
+            "evolutionLevel": 1,
+            "rarity": "rare",
+            "elixirCost": 4,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/387073f98e383bc8b443f5.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/aa9fb18c6a87e316483e44.png"
+            }
+          },
+          {
+            "name": "Ice Golem",
+            "id": 26000038,
+            "level": 12,
+            "maxLevel": 14,
+            "rarity": "rare",
+            "elixirCost": 2,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/5c70cbebb77d152030ca13.png"
+            }
+          },
+          {
+            "name": "Ice Spirit",
+            "id": 26000030,
+            "level": 15,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "evolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 1,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/cc42ae6f55ae6277b87666.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/1c0823df216da5fd549056.png"
+            }
+          },
+          {
+            "name": "Skeletons",
+            "id": 26000010,
+            "level": 15,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 1,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/1f3f66500d51cd085b337a.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/59f551384d2073a263c43d.png"
+            }
+          },
+          {
+            "name": "Cannon",
+            "id": 27000000,
+            "level": 14,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 3,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/22ef5d9468d7aa2f806d86.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/e3ca9fab361ed0586a1331.png"
+            }
+          },
+          {
+            "name": "Fireball",
+            "id": 28000000,
+            "level": 12,
+            "maxLevel": 14,
+            "rarity": "rare",
+            "elixirCost": 4,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/a8155b0ea02bae01cd4136.png"
+            }
+          },
+          {
+            "name": "The Log",
+            "id": 28000011,
+            "level": 5,
+            "maxLevel": 8,
+            "rarity": "legendary",
+            "elixirCost": 2,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/54b778a7b6b194ae705bfb.png"
+            }
+          }
+        ],
+        "supportCards": [
+          {
+            "name": "Tower Princess",
+            "id": 159000000,
+            "level": 14,
+            "maxLevel": 16,
+            "rarity": "common",
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/b1f613ca79b5b7ebb46895.png"
+            }
+          }
+        ],
+        "globalRank": null,
+        "elixirLeaked": 14.41
+      }
+    ],
+    "opponent": [
+      {
+        "tag": "#8LQ2R0YC4",
+        "name": "BaitMaster 5",
+        "crowns": 0,
+        "kingTowerHitPoints": 4760,
+        "princessTowersHitPoints": [
+          3052
+        ],
+        "cards": [
+          {
+            "name": "Knight",
+            "id": 26000000,
+            "level": 14,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "evolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 3,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/8c23b2b86573edf2a5ea48.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/6f9935ccd740be29ae9789.png"
+            }
+          },
+          {
+            "name": "Archers",
+            "id": 26000001,
+            "level": 14,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 3,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/b846b258851257e0691161.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/7e711b383dabb834cc73b5.png"
+            }
+          },
+          {
+            "name": "Goblins",
+            "id": 26000002,
+            "level": 14,
+            "maxLevel": 16,
+            "rarity": "common",
+            "elixirCost": 2,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/50833bc56023c454a3f3f8.png"
+            }
+          },
+          {
+            "name": "Rocket",
+            "id": 28000003,
+            "level": 12,
+            "maxLevel": 14,
+            "rarity": "rare",
+            "elixirCost": 6,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/15e8bfff2c10ca22da244d.png"
+            }
+          },
+          {
+            "name": "The Log",
+            "id": 28000011,
+            "level": 6,
+            "maxLevel": 8,
+            "rarity": "legendary",
+            "elixirCost": 2,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/54b778a7b6b194ae705bfb.png"
+            }
+          },
+          {
+            "name": "Ice Spirit",
+            "id": 26000030,
+            "level": 14,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 1,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/cc42ae6f55ae6277b87666.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/1c0823df216da5fd549056.png"
+            }
+          },
+          {
+            "name": "Tesla",
+            "id": 27000006,
+            "level": 14,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 4,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/8f3182163857c5463c8830.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/ead194a2715e3a86407185.png"
+            }
+          },
+          {
+            "name": "Skeleton Army",
+            "id": 26000012,
+            "level": 9,
+            "maxLevel": 11,
+            "rarity": "epic",
+            "elixirCost": 3,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/e66690a346edf345e4a3b4.png"
+            }
+          }
+        ],
+        "supportCards": [
+          {
+            "name": "Tower Princess",
+            "id": 159000000,
+            "level": 14,
+            "maxLevel": 16,
+            "rarity": "common",
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/b1f613ca79b5b7ebb46895.png"
+            }
+          }
+        ],
+        "globalRank": null,
+        "elixirLeaked": 1.6
+      }
+    ],
+    "isHostedMatch": false,
+    "leagueNumber": 1
+  },
+  {
+    "type": "boatBattle",
+    "battleTime": "20260924T160000.000Z",
+    "isLadderTournament": false,
+    "boatBattleSide": "attacker",
+    "boatBattleWon": false,
+    "newTowersDestroyed": 0,
+    "prevTowersDestroyed": 0,
+    "remainingTowers": 3,
+    "arena": {
+      "id": 54000046,
+      "name": "Legendary Arena",
+      "rawName": "Arena_Clanboat"
+    },
+    "gameMode": {
+      "id": 72000266,
+      "name": "ClanWar_BoatBattle"
+    },
+    "deckSelection": "collection",
+    "team": [
+      {
+        "tag": "#9QJUGC2R",
+        "name": "Sparky",
+        "crowns": 0,
+        "kingTowerHitPoints": 0,
+        "princessTowersHitPoints": null,
+        "clan": {
+          "tag": "#LQ2P8Y0",
+          "name": "Royal Hogs",
+          "badgeId": 16000012
+        },
+        "cards": [
+          {
+            "name": "Hog Rider",
+            "id": 26000021,
+            "level": 12,
+            "maxLevel": 14,
+            "rarity": "rare",
+            "elixirCost": 4,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/ab87d27e725f33fb50e775.png"
+            }
+          },
+          {
+            "name": "Musketeer",
+            "id": 26000014,
+            "level": 12,
+            "maxLevel": 14,
+            "maxEvolutionLevel": 1,
+            "evolutionLevel": 1,
+            "rarity": "rare",
+            "elixirCost": 4,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/387073f98e383bc8b443f5.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/aa9fb18c6a87e316483e44.png"
+            }
+          },
+          {
+            "name": "Ice Golem",
+            "id": 26000038,
+            "level": 12,
+            "maxLevel": 14,
+            "rarity": "rare",
+            "elixirCost": 2,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/5c70cbebb77d152030ca13.png"
+            }
+          },
+          {
+            "name": "Ice Spirit",
+            "id": 26000030,
+            "level": 15,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "evolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 1,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/cc42ae6f55ae6277b87666.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/1c0823df216da5fd549056.png"
+            }
+          },
+          {
+            "name": "Skeletons",
+            "id": 26000010,
+            "level": 15,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 1,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/1f3f66500d51cd085b337a.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/59f551384d2073a263c43d.png"
+            }
+          },
+          {
+            "name": "Cannon",
+            "id": 27000000,
+            "level": 14,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 3,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/22ef5d9468d7aa2f806d86.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/e3ca9fab361ed0586a1331.png"
+            }
+          },
+          {
+            "name": "Fireball",
+            "id": 28000000,
+            "level": 12,
+            "maxLevel": 14,
+            "rarity": "rare",
+            "elixirCost": 4,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/a8155b0ea02bae01cd4136.png"
+            }
+          },
+          {
+            "name": "The Log",
+            "id": 28000011,
+            "level": 5,
+            "maxLevel": 8,
+            "rarity": "legendary",
+            "elixirCost": 2,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/54b778a7b6b194ae705bfb.png"
+            }
+          }
+        ],
+        "supportCards": [
+          {
+            "name": "Tower Princess",
+            "id": 159000000,
+            "level": 14,
+            "maxLevel": 16,
+            "rarity": "common",
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/b1f613ca79b5b7ebb46895.png"
+            }
+          }
+        ],
+        "globalRank": null,
+        "elixirLeaked": 2.25
+      }
+    ],
+    "opponent": [
+      {
+        "tag": "#8LQ2R0YC5",
+        "name": "BaitMaster 6",
+        "crowns": 3,
+        "kingTowerHitPoints": 0,
+        "princessTowersHitPoints": null,
+        "cards": [
+          {
+            "name": "Knight",
+            "id": 26000000,
+            "level": 14,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "evolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 3,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/8c23b2b86573edf2a5ea48.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/6f9935ccd740be29ae9789.png"
+            }
+          },
+          {
+            "name": "Archers",
+            "id": 26000001,
+            "level": 14,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 3,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/b846b258851257e0691161.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/7e711b383dabb834cc73b5.png"
+            }
+          },
+          {
+            "name": "Goblins",
+            "id": 26000002,
+            "level": 14,
+            "maxLevel": 16,
+            "rarity": "common",
+            "elixirCost": 2,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/50833bc56023c454a3f3f8.png"
+            }
+          },
+          {
+            "name": "Rocket",
+            "id": 28000003,
+            "level": 12,
+            "maxLevel": 14,
+            "rarity": "rare",
+            "elixirCost": 6,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/15e8bfff2c10ca22da244d.png"
+            }
+          },
+          {
+            "name": "The Log",
+            "id": 28000011,
+            "level": 6,
+            "maxLevel": 8,
+            "rarity": "legendary",
+            "elixirCost": 2,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/54b778a7b6b194ae705bfb.png"
+            }
+          },
+          {
+            "name": "Ice Spirit",
+            "id": 26000030,
+            "level": 14,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 1,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/cc42ae6f55ae6277b87666.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/1c0823df216da5fd549056.png"
+            }
+          },
+          {
+            "name": "Tesla",
+            "id": 27000006,
+            "level": 14,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 4,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/8f3182163857c5463c8830.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/ead194a2715e3a86407185.png"
+            }
+          },
+          {
+            "name": "Skeleton Army",
+            "id": 26000012,
+            "level": 9,
+            "maxLevel": 11,
+            "rarity": "epic",
+            "elixirCost": 3,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/e66690a346edf345e4a3b4.png"
+            }
+          }
+        ],
+        "supportCards": [
+          {
+            "name": "Tower Princess",
+            "id": 159000000,
+            "level": 14,
+            "maxLevel": 16,
+            "rarity": "common",
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/b1f613ca79b5b7ebb46895.png"
+            }
+          }
+        ],
+        "globalRank": null,
+        "elixirLeaked": 0
+      }
+    ],
+    "isHostedMatch": false,
+    "leagueNumber": 1
+  },
+  {
+    "type": "riverRaceDuel",
+    "battleTime": "20260924T170000.000Z",
+    "isLadderTournament": false,
+    "arena": {
+      "id": 54000144,
+      "name": "Spirit Square",
+      "rawName": "Arena_L18"
+    },
+    "gameMode": {
+      "id": 72000267,
+      "name": "CW_Duel_1v1"
+    },
+    "deckSelection": "warDeckPick",
+    "team": [
+      {
+        "tag": "#9QJUGC2R",
+        "name": "Sparky",
+        "crowns": 4,
+        "kingTowerHitPoints": 2115,
+        "princessTowersHitPoints": [
+          2458
+        ],
+        "clan": {
+          "tag": "#LQ2P8Y0",
+          "name": "Royal Hogs",
+          "badgeId": 16000012
+        },
+        "cards": [
+          {
+            "name": "Hog Rider",
+            "id": 26000021,
+            "level": 12,
+            "maxLevel": 14,
+            "rarity": "rare",
+            "elixirCost": 4,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/ab87d27e725f33fb50e775.png"
+            }
+          },
+          {
+            "name": "Musketeer",
+            "id": 26000014,
+            "level": 12,
+            "maxLevel": 14,
+            "maxEvolutionLevel": 1,
+            "evolutionLevel": 1,
+            "rarity": "rare",
+            "elixirCost": 4,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/387073f98e383bc8b443f5.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/aa9fb18c6a87e316483e44.png"
+            }
+          },
+          {
+            "name": "Ice Golem",
+            "id": 26000038,
+            "level": 12,
+            "maxLevel": 14,
+            "rarity": "rare",
+            "elixirCost": 2,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/5c70cbebb77d152030ca13.png"
+            }
+          },
+          {
+            "name": "Ice Spirit",
+            "id": 26000030,
+            "level": 15,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "evolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 1,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/cc42ae6f55ae6277b87666.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/1c0823df216da5fd549056.png"
+            }
+          },
+          {
+            "name": "Skeletons",
+            "id": 26000010,
+            "level": 15,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 1,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/1f3f66500d51cd085b337a.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/59f551384d2073a263c43d.png"
+            }
+          },
+          {
+            "name": "Cannon",
+            "id": 27000000,
+            "level": 14,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 3,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/22ef5d9468d7aa2f806d86.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/e3ca9fab361ed0586a1331.png"
+            }
+          },
+          {
+            "name": "Fireball",
+            "id": 28000000,
+            "level": 12,
+            "maxLevel": 14,
+            "rarity": "rare",
+            "elixirCost": 4,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/a8155b0ea02bae01cd4136.png"
+            }
+          },
+          {
+            "name": "The Log",
+            "id": 28000011,
+            "level": 5,
+            "maxLevel": 8,
+            "rarity": "legendary",
+            "elixirCost": 2,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/54b778a7b6b194ae705bfb.png"
+            }
+          }
+        ],
+        "supportCards": [
+          {
+            "name": "Tower Princess",
+            "id": 159000000,
+            "level": 14,
+            "maxLevel": 16,
+            "rarity": "common",
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/b1f613ca79b5b7ebb46895.png"
+            }
+          }
+        ],
+        "globalRank": 2,
+        "elixirLeaked": 0.87
+      }
+    ],
+    "opponent": [
+      {
+        "tag": "#8LQ2R0YC6",
+        "name": "BaitMaster 7",
+        "startingTrophies": 14000,
+        "crowns": 1,
+        "kingTowerHitPoints": 0,
+        "princessTowersHitPoints": [
+          2833,
+          0
+        ],
+        "cards": [
+          {
+            "name": "Knight",
+            "id": 26000000,
+            "level": 14,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "evolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 3,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/8c23b2b86573edf2a5ea48.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/6f9935ccd740be29ae9789.png"
+            }
+          },
+          {
+            "name": "Archers",
+            "id": 26000001,
+            "level": 14,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 3,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/b846b258851257e0691161.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/7e711b383dabb834cc73b5.png"
+            }
+          },
+          {
+            "name": "Goblins",
+            "id": 26000002,
+            "level": 14,
+            "maxLevel": 16,
+            "rarity": "common",
+            "elixirCost": 2,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/50833bc56023c454a3f3f8.png"
+            }
+          },
+          {
+            "name": "Rocket",
+            "id": 28000003,
+            "level": 12,
+            "maxLevel": 14,
+            "rarity": "rare",
+            "elixirCost": 6,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/15e8bfff2c10ca22da244d.png"
+            }
+          },
+          {
+            "name": "The Log",
+            "id": 28000011,
+            "level": 6,
+            "maxLevel": 8,
+            "rarity": "legendary",
+            "elixirCost": 2,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/54b778a7b6b194ae705bfb.png"
+            }
+          },
+          {
+            "name": "Ice Spirit",
+            "id": 26000030,
+            "level": 14,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 1,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/cc42ae6f55ae6277b87666.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/1c0823df216da5fd549056.png"
+            }
+          },
+          {
+            "name": "Tesla",
+            "id": 27000006,
+            "level": 14,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 4,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/8f3182163857c5463c8830.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/ead194a2715e3a86407185.png"
+            }
+          },
+          {
+            "name": "Skeleton Army",
+            "id": 26000012,
+            "level": 9,
+            "maxLevel": 11,
+            "rarity": "epic",
+            "elixirCost": 3,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/e66690a346edf345e4a3b4.png"
+            }
+          }
+        ],
+        "supportCards": [
+          {
+            "name": "Tower Princess",
+            "id": 159000000,
+            "level": 14,
+            "maxLevel": 16,
+            "rarity": "common",
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/b1f613ca79b5b7ebb46895.png"
+            }
+          }
+        ],
+        "globalRank": null,
+        "elixirLeaked": 19.69
+      }
+    ],
+    "isHostedMatch": false,
+    "leagueNumber": 1
+  },
+  {
+    "type": "riverRacePvP",
+    "battleTime": "20260924T180000.000Z",
+    "isLadderTournament": false,
+    "arena": {
+      "id": 54000144,
+      "name": "Spirit Square",
+      "rawName": "Arena_L18"
+    },
+    "gameMode": {
+      "id": 72000070,
+      "name": "RampUpElixir_Ladder"
+    },
+    "deckSelection": "collection",
+    "team": [
+      {
+        "tag": "#9QJUGC2R",
+        "name": "Sparky",
+        "crowns": 2,
+        "kingTowerHitPoints": 7728,
+        "princessTowersHitPoints": [
+          2352
+        ],
+        "clan": {
+          "tag": "#LQ2P8Y0",
+          "name": "Royal Hogs",
+          "badgeId": 16000012
+        },
+        "cards": [
+          {
+            "name": "Hog Rider",
+            "id": 26000021,
+            "level": 12,
+            "maxLevel": 14,
+            "rarity": "rare",
+            "elixirCost": 4,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/ab87d27e725f33fb50e775.png"
+            }
+          },
+          {
+            "name": "Musketeer",
+            "id": 26000014,
+            "level": 12,
+            "maxLevel": 14,
+            "maxEvolutionLevel": 1,
+            "evolutionLevel": 1,
+            "rarity": "rare",
+            "elixirCost": 4,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/387073f98e383bc8b443f5.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/aa9fb18c6a87e316483e44.png"
+            }
+          },
+          {
+            "name": "Ice Golem",
+            "id": 26000038,
+            "level": 12,
+            "maxLevel": 14,
+            "rarity": "rare",
+            "elixirCost": 2,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/5c70cbebb77d152030ca13.png"
+            }
+          },
+          {
+            "name": "Ice Spirit",
+            "id": 26000030,
+            "level": 15,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "evolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 1,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/cc42ae6f55ae6277b87666.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/1c0823df216da5fd549056.png"
+            }
+          },
+          {
+            "name": "Skeletons",
+            "id": 26000010,
+            "level": 15,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 1,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/1f3f66500d51cd085b337a.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/59f551384d2073a263c43d.png"
+            }
+          },
+          {
+            "name": "Cannon",
+            "id": 27000000,
+            "level": 14,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 3,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/22ef5d9468d7aa2f806d86.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/e3ca9fab361ed0586a1331.png"
+            }
+          },
+          {
+            "name": "Fireball",
+            "id": 28000000,
+            "level": 12,
+            "maxLevel": 14,
+            "rarity": "rare",
+            "elixirCost": 4,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/a8155b0ea02bae01cd4136.png"
+            }
+          },
+          {
+            "name": "The Log",
+            "id": 28000011,
+            "level": 5,
+            "maxLevel": 8,
+            "rarity": "legendary",
+            "elixirCost": 2,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/54b778a7b6b194ae705bfb.png"
+            }
+          }
+        ],
+        "supportCards": [
+          {
+            "name": "Tower Princess",
+            "id": 159000000,
+            "level": 14,
+            "maxLevel": 16,
+            "rarity": "common",
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/b1f613ca79b5b7ebb46895.png"
+            }
+          }
+        ],
+        "globalRank": 2,
+        "elixirLeaked": 4.26
+      }
+    ],
+    "opponent": [
+      {
+        "tag": "#8LQ2R0YC7",
+        "name": "BaitMaster 8",
+        "startingTrophies": 14000,
+        "crowns": 1,
+        "kingTowerHitPoints": 6640,
+        "princessTowersHitPoints": null,
+        "cards": [
+          {
+            "name": "Knight",
+            "id": 26000000,
+            "level": 14,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "evolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 3,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/8c23b2b86573edf2a5ea48.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/6f9935ccd740be29ae9789.png"
+            }
+          },
+          {
+            "name": "Archers",
+            "id": 26000001,
+            "level": 14,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 3,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/b846b258851257e0691161.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/7e711b383dabb834cc73b5.png"
+            }
+          },
+          {
+            "name": "Goblins",
+            "id": 26000002,
+            "level": 14,
+            "maxLevel": 16,
+            "rarity": "common",
+            "elixirCost": 2,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/50833bc56023c454a3f3f8.png"
+            }
+          },
+          {
+            "name": "Rocket",
+            "id": 28000003,
+            "level": 12,
+            "maxLevel": 14,
+            "rarity": "rare",
+            "elixirCost": 6,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/15e8bfff2c10ca22da244d.png"
+            }
+          },
+          {
+            "name": "The Log",
+            "id": 28000011,
+            "level": 6,
+            "maxLevel": 8,
+            "rarity": "legendary",
+            "elixirCost": 2,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/54b778a7b6b194ae705bfb.png"
+            }
+          },
+          {
+            "name": "Ice Spirit",
+            "id": 26000030,
+            "level": 14,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 1,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/cc42ae6f55ae6277b87666.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/1c0823df216da5fd549056.png"
+            }
+          },
+          {
+            "name": "Tesla",
+            "id": 27000006,
+            "level": 14,
+            "maxLevel": 16,
+            "maxEvolutionLevel": 1,
+            "rarity": "common",
+            "elixirCost": 4,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/8f3182163857c5463c8830.png",
+              "evolutionMedium": "https://api-assets.clashroyale.com/cardevolutions/300/ead194a2715e3a86407185.png"
+            }
+          },
+          {
+            "name": "Skeleton Army",
+            "id": 26000012,
+            "level": 9,
+            "maxLevel": 11,
+            "rarity": "epic",
+            "elixirCost": 3,
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/e66690a346edf345e4a3b4.png"
+            }
+          }
+        ],
+        "supportCards": [
+          {
+            "name": "Tower Princess",
+            "id": 159000000,
+            "level": 14,
+            "maxLevel": 16,
+            "rarity": "common",
+            "iconUrls": {
+              "medium": "https://api-assets.clashroyale.com/cards/300/b1f613ca79b5b7ebb46895.png"
+            }
+          }
+        ],
+        "globalRank": null,
+        "elixirLeaked": 13.26
+      }
+    ],
+    "isHostedMatch": false,
+    "leagueNumber": 1
+  }
+]

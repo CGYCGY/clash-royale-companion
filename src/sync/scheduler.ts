@@ -3,21 +3,26 @@ import { config } from "../config";
 import type { CrApi } from "../cr/client";
 import { purgeExpiredSessions } from "../auth/sessions";
 import { countCards } from "../repos/cards";
+import { countEvents } from "../repos/events";
 import { type SyncAllResult, syncAll } from "./syncAll";
 import { pruneSnapshots } from "./retention";
 import { syncCards } from "./syncCards";
+import { syncEvents } from "./syncEvents";
 
 const DAILY_CRON = "17 4 * * *";
 
 const errText = (err: unknown): string => (err instanceof Error ? err.message : String(err));
 
 /**
- * Retries the card catalog when it is empty (a failed startup sync would otherwise leave deck
- * validation broken for everyone until the daily job), then syncs every player.
+ * Retries the card catalog and event titles when they are empty (a failed startup sync would
+ * otherwise leave deck validation and mode labels broken until the daily job), then syncs every player.
  */
 export async function runSyncJob(client: CrApi, opts: { delayMs?: number } = {}): Promise<SyncAllResult> {
   if (countCards() === 0) {
     await syncCards(client).catch((err: unknown) => console.error(`[scheduler] card catalog retry failed: ${errText(err)}`));
+  }
+  if (countEvents() === 0) {
+    await syncEvents(client).catch((err: unknown) => console.error(`[scheduler] events retry failed: ${errText(err)}`));
   }
   const started = Date.now();
   const r = await syncAll(client, opts);
@@ -29,7 +34,9 @@ export async function runSyncJob(client: CrApi, opts: { delayMs?: number } = {})
 }
 
 /** Each step is independent so an upstream outage can't stop retention or the session purge. */
-export async function runDailyJob(client: CrApi): Promise<{ cards: number | null; purged: number; pruned: number }> {
+export async function runDailyJob(
+  client: CrApi,
+): Promise<{ cards: number | null; events: number | null; purged: number; pruned: number }> {
   const pruned = pruneSnapshots().deleted;
   let cards: number | null = null;
   try {
@@ -37,12 +44,19 @@ export async function runDailyJob(client: CrApi): Promise<{ cards: number | null
   } catch (err) {
     console.error(`[scheduler] card catalog refresh failed: ${errText(err)}`);
   }
+  let events: number | null = null;
+  try {
+    events = await syncEvents(client);
+  } catch (err) {
+    console.error(`[scheduler] events refresh failed: ${errText(err)}`);
+  }
   const purged = purgeExpiredSessions();
   console.log(
     `[scheduler] card catalog ${cards === null ? "refresh failed" : `refreshed (${cards})`}, ` +
+      `events ${events === null ? "refresh failed" : `refreshed (${events})`}, ` +
       `purged ${purged} expired sessions, pruned ${pruned} snapshots`,
   );
-  return { cards, purged, pruned };
+  return { cards, events, purged, pruned };
 }
 
 /**

@@ -8,10 +8,6 @@ import { formatDateTime, formatRelative, formatSigned } from "./format";
 
 export const battleHref = (b: BattleRecord): string => `/battles/${tagSlug(b.playerTag)}/${b.id}`;
 
-// Path of Legend game mode names are internal ids like "Ranked1v1_NewArena2".
-export const modeLabel = (b: Pick<BattleRecord, "type" | "gameModeName">): string =>
-  b.type === "pathOfLegend" ? "Path of Legend" : b.gameModeName;
-
 function battleColumns(catalog: Map<string, CardRecord>): Column<BattleRecord>[] {
   return [
     {
@@ -23,7 +19,7 @@ function battleColumns(catalog: Map<string, CardRecord>): Column<BattleRecord>[]
         </a>
       ),
     },
-    { label: "Mode", render: (b) => modeLabel(b) },
+    { label: "Mode", render: (b) => b.modeLabel },
     { label: "Result", render: (b) => <ResultBadge result={b.result} /> },
     { label: "Crowns", align: "center", render: (b) => `${b.teamCrowns}–${b.opponentCrowns}` },
     { label: "Opponent", render: (b) => b.opponentName || <span class="muted">unknown</span> },
