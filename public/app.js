@@ -174,3 +174,171 @@ for (const list of document.querySelectorAll(".pw-match")) {
   confirm.addEventListener("input", update);
   update();
 }
+
+// Header player switcher. The server renders a plain <details> with submit buttons (works without JS);
+// here it becomes a menu button: roles, aria-expanded, arrow keys, and Esc / outside-click to close.
+for (const menu of document.querySelectorAll("details.player-menu")) {
+  const trigger = menu.querySelector("summary");
+  const panel = menu.querySelector(".menu");
+  if (!trigger || !panel) continue;
+  const items = [...panel.querySelectorAll("[data-menu-item]")];
+  panel.id ||= "player-menu";
+  panel.setAttribute("role", "menu");
+  for (const el of panel.querySelectorAll("form, .menu-note")) el.setAttribute("role", "none");
+  for (const item of items) {
+    const radio = item.dataset.menuItem === "radio";
+    item.setAttribute("role", radio ? "menuitemradio" : "menuitem");
+    if (radio) item.setAttribute("aria-checked", String(item.getAttribute("aria-current") === "true"));
+    item.removeAttribute("aria-current");
+    item.tabIndex = -1;
+  }
+  trigger.setAttribute("aria-haspopup", "menu");
+  trigger.setAttribute("aria-controls", panel.id);
+  trigger.setAttribute("aria-expanded", "false");
+
+  const focusItem = (i) => items[(i + items.length) % items.length]?.focus();
+  const close = (refocus) => {
+    menu.open = false;
+    if (refocus) trigger.focus();
+  };
+  menu.addEventListener("toggle", () => {
+    trigger.setAttribute("aria-expanded", String(menu.open));
+    if (menu.open) {
+      const checked = items.findIndex((el) => el.getAttribute("aria-checked") === "true");
+      focusItem(Math.max(0, checked));
+    }
+  });
+  trigger.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      menu.open = true;
+    }
+  });
+  panel.addEventListener("keydown", (e) => {
+    const i = items.indexOf(document.activeElement);
+    if (e.key === "ArrowDown") focusItem(i + 1);
+    else if (e.key === "ArrowUp") focusItem(i - 1);
+    else if (e.key === "Home") focusItem(0);
+    else if (e.key === "End") focusItem(items.length - 1);
+    else if (e.key === "Escape") close(true);
+    else if (e.key === "Tab") return close(false);
+    else return;
+    e.preventDefault();
+  });
+  // <details> has no light-dismiss of its own.
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && menu.open && menu.contains(document.activeElement)) close(true);
+  });
+  document.addEventListener("click", (e) => {
+    if (menu.open && !menu.contains(e.target)) close(false);
+  });
+}
+
+// Battle rows: the time cell holds the real link (keyboard focus target, no-JS fallback, and what
+// ctrl/cmd/middle-click open in a new tab); a plain click anywhere on the row opens it in a dialog.
+const modalTemplate = document.getElementById("battle-modal-template");
+if (modalTemplate && "HTMLDialogElement" in window) {
+  const dialog = modalTemplate.content.firstElementChild.cloneNode(true);
+  document.body.append(dialog);
+  const body = dialog.querySelector(".modal-body");
+  const fullLink = dialog.querySelector(".modal-full");
+  let opener = null;
+  let request = 0;
+  // True while the dialog owns the history entry it pushed, so closing it should go back.
+  let ownsEntry = false;
+
+  const setStatus = (html, busy) => {
+    body.setAttribute("aria-busy", String(busy));
+    body.innerHTML = `<div class="modal-status">${html}</div>`;
+  };
+
+  const load = async (href) => {
+    const id = ++request;
+    fullLink.href = href;
+    setStatus('<p class="muted">Loading battle…</p>', true);
+    try {
+      const res = await fetch(`${href}?partial=1`, { credentials: "same-origin", headers: { Accept: "text/html" } });
+      if (id !== request) return;
+      // A redirect means the session ended (login page); let the full page handle it.
+      if (res.redirected) {
+        location.href = href;
+        return;
+      }
+      if (!res.ok) throw new Error(String(res.status));
+      body.innerHTML = await res.text();
+      body.setAttribute("aria-busy", "false");
+      body.scrollTop = 0;
+    } catch {
+      if (id !== request) return;
+      setStatus('<p>Couldn’t load this battle.</p><p><a class="btn btn-secondary btn-small" href="">Open the battle page</a></p>', false);
+      body.querySelector(".modal-status a").href = href;
+    }
+    body.focus();
+  };
+
+  const open = (href, link, { push = true } = {}) => {
+    opener = link;
+    if (!dialog.open) {
+      dialog.showModal();
+      document.body.classList.add("modal-open");
+    }
+    if (push) {
+      history.pushState({ battleModal: href }, "", href);
+      ownsEntry = true;
+    }
+    load(href);
+  };
+
+  dialog.addEventListener("close", () => {
+    document.body.classList.remove("modal-open");
+    request++;
+    body.innerHTML = "";
+    if (ownsEntry) {
+      ownsEntry = false;
+      history.back();
+    }
+    opener?.focus();
+  });
+  dialog.querySelector(".modal-close").addEventListener("click", () => dialog.close());
+  // A click whose target is the <dialog> itself landed on the backdrop (content fills the box otherwise).
+  dialog.addEventListener("click", (e) => {
+    if (e.target === dialog) dialog.close();
+  });
+
+  window.addEventListener("popstate", (e) => {
+    const href = e.state?.battleModal;
+    if (href) {
+      // Forward onto an entry we pushed earlier: reopen it without pushing again.
+      ownsEntry = true;
+      open(href, document.querySelector(`.battle-row a.row-link[href="${CSS.escape(href)}"]`), { push: false });
+    } else if (dialog.open) {
+      ownsEntry = false;
+      dialog.close();
+    }
+  });
+
+  const modified = (e) => e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey;
+  for (const row of document.querySelectorAll("tr.battle-row[data-href]")) {
+    const link = row.querySelector("a.row-link");
+    if (!link) continue;
+    row.classList.add("is-clickable");
+    row.addEventListener("click", (e) => {
+      const onLink = e.target.closest("a") === link;
+      // Other controls in the row keep their own behaviour.
+      if (!onLink && e.target.closest("a, button, input, select, textarea, summary, label")) return;
+      // Don't turn a text selection drag into a navigation.
+      if (!onLink && String(getSelection()).length > 0) return;
+      if (modified(e)) {
+        if (!onLink && (e.ctrlKey || e.metaKey)) window.open(link.href, "_blank", "noopener");
+        return;
+      }
+      e.preventDefault();
+      open(link.getAttribute("href"), link);
+    });
+    row.addEventListener("auxclick", (e) => {
+      if (e.button === 1 && e.target.closest("a") !== link && !e.target.closest("a, button")) {
+        window.open(link.href, "_blank", "noopener");
+      }
+    });
+  }
+}

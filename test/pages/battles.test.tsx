@@ -19,7 +19,7 @@ const get = async (path: string) => {
   return { status: res.status, html: await res.text() };
 };
 
-const battleRows = (html: string) => (html.match(/href="\/battles\/9QJUGC2R\/\d+"/g) ?? []).length;
+const battleRows = (html: string) => (html.match(/<a href="\/battles\/9QJUGC2R\/\d+" class="row-link"/g) ?? []).length;
 
 describe("battles pages", () => {
   test("lists battles with stats, decks used, and filter options", async () => {
@@ -60,6 +60,45 @@ describe("battles pages", () => {
     expect(html.match(/class="deck-block"/g)?.length).toBe(4);
     expect(html).toContain("Raw battle data");
     expect(html).toContain("&quot;battleTime&quot;");
+  });
+
+  test("dashboard and battles page share the same battle table", async () => {
+    const header = (html: string) => /<thead>(.*?)<\/thead>/.exec(html)?.[1];
+    const battlesHtml = (await get("/battles")).html;
+    const dashboardHtml = (await get("/")).html;
+    expect(header(dashboardHtml)).toBe(header(battlesHtml));
+    expect(header(battlesHtml)).toContain("Opponent deck");
+    expect(dashboardHtml).toMatch(/<tr class="battle-row" data-href="\/battles\/9QJUGC2R\/\d+">/);
+    expect(dashboardHtml).toContain('<a class="btn btn-secondary btn-small" href="/battles">All battles</a>');
+  });
+
+  test("detail ?partial=1 returns just the detail body for the dialog", async () => {
+    const [b] = listBattles(FIXTURE_TAG, { limit: 1 });
+    const res = await env.app.request(`/battles/9QJUGC2R/${b!.id}?partial=1`, { headers: { Cookie: cookie } });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    const html = await res.text();
+    expect(html).toStartWith('<div class="stack battle-detail">');
+    expect(html).toContain('id="battle-detail-title"');
+    expect(html).toContain("Raw battle data");
+    expect(html).not.toContain("<html");
+    expect(html).not.toContain("Back to battles");
+
+    const full = (await get(`/battles/9QJUGC2R/${b!.id}`)).html;
+    expect(full).toContain("<!doctype html>");
+    expect(full).toContain('id="battle-detail-title"');
+    expect(full).toContain("Back to battles");
+  });
+
+  test("detail partial keeps the page's auth and ownership rules", async () => {
+    const [b] = listBattles(FIXTURE_TAG, { limit: 1 });
+    const path = `/battles/9QJUGC2R/${b!.id}?partial=1`;
+    const anon = await env.app.request(path);
+    expect(anon.status).toBe(302);
+    expect(anon.headers.get("location")).toStartWith("/login");
+    const mallory = cookieFor(makeUser("mallory"));
+    expect((await env.app.request(path, { headers: { Cookie: mallory } })).status).toBe(404);
+    expect((await get("/battles/9QJUGC2R/999999?partial=1")).status).toBe(404);
   });
 
   test("detail is 404 for other users and unknown ids", async () => {

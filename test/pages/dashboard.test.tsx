@@ -56,8 +56,10 @@ describe("dashboard", () => {
   test("switcher picks a player by ?tag and rejects other users' tags", async () => {
     await linkFixturePlayer(user, env.client);
     addPlayer(user.id, "#2PP", "Alt");
-    const html = await (await env.app.request("/?tag=2PP", { headers: { Cookie: cookie } })).text();
-    expect(html).toContain('class="player-switcher"');
+    const res = await env.app.request("/?tag=2PP", { headers: { Cookie: cookie } });
+    expect(res.headers.getSetCookie().join()).toContain("cr_player=2PP;");
+    const html = await res.text();
+    expect(html).toContain('class="player-menu"');
     expect(html).toContain("hasn&#39;t synced successfully");
 
     addPlayer(makeUser("mallory").id, "#8QQ");
@@ -69,7 +71,8 @@ describe("dashboard", () => {
     await linkFixturePlayer(user, env.client);
     const cooled = await env.app.request("/players/9QJUGC2R/sync", formPost(cookie, {}));
     expect(cooled.status).toBe(302);
-    expect(cooled.headers.get("location")).toBe("/?tag=9QJUGC2R");
+    expect(cooled.headers.get("location")).toBe("/");
+    expect(cooled.headers.getSetCookie().join()).toContain("cr_player=9QJUGC2R;");
     expect(await (await follow(env.app, cooled, cookie)).text()).toMatch(/Try again in \d+s\./);
 
     config.SYNC_COOLDOWN_SECONDS = 0;

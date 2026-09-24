@@ -1,19 +1,21 @@
 import { Hono } from "hono";
+import { z } from "zod";
 import { currentUser, requireUser } from "../../auth/middleware";
 import { normalizeTag, tagSlug } from "../../cr/tag";
+import { afterSwitchPath, rememberPlayer, resolvePlayer } from "../../http/currentPlayer";
 import { setFlash } from "../../http/flash";
+import { parseForm } from "../../http/validate";
 import { averageElixir, type BattleStats, getBattleStats, listBattles } from "../../repos/battles";
 import { cardsMap } from "../../repos/cards";
 import { assertPlayerOwnedBy, getLatestSnapshot, type PlayerRecord, type Snapshot } from "../../repos/players";
 import { manualSync } from "../../sync";
 import type { AppEnv } from "../../types";
-import { battleColumns } from "../../views/battleTable";
+import { BattleTable } from "../../views/battleTable";
 import { formatElixir, playerCardView } from "../../views/cardViews";
-import { CardIcon, DeckGrid, EmptyState, StatTile, Table } from "../../views/components";
+import { CardIcon, DeckGrid, EmptyState, StatTile } from "../../views/components";
 import { formatDateTime, formatPercent, formatRelative, formatSigned } from "../../views/format";
-import { PlayerSwitcher, resolvePlayer } from "../../views/playerSelect";
 import { renderPage } from "../../views/render";
-import { syncCooldownRemaining } from "./shared";
+import { safeNext, syncCooldownRemaining, text } from "./shared";
 
 function PlayerHeader({ player, snapshot }: { player: PlayerRecord; snapshot: Snapshot }) {
   const p = snapshot.player;
@@ -163,7 +165,7 @@ export const dashboardPages = new Hono<AppEnv>()
   .use("/", requireUser)
   .use("/players/*", requireUser)
   .get("/", (c) => {
-    const { players, player } = resolvePlayer(c);
+    const { current: player } = resolvePlayer(c);
     if (!player) {
       return renderPage(
         c,
@@ -183,7 +185,6 @@ export const dashboardPages = new Hono<AppEnv>()
       c,
       { title: "Dashboard", active: "dashboard" },
       <div class="stack">
-        <PlayerSwitcher players={players} active={player} basePath="/" />
         {snapshot ? (
           <>
             <PlayerHeader player={player} snapshot={snapshot} />
@@ -207,9 +208,11 @@ export const dashboardPages = new Hono<AppEnv>()
           <div class="row section-head">
             <h2>Recent battles</h2>
             <div class="spacer" />
-            <a href={`/battles?tag=${tagSlug(player.tag)}`}>All battles</a>
+            <a class="btn btn-secondary btn-small" href="/battles">
+              All battles
+            </a>
           </div>
-          <Table columns={battleColumns(catalog)} rows={battles} empty="No battles stored yet." />
+          <BattleTable battles={battles} catalog={catalog} empty="No battles stored yet." />
         </section>
         <SyncCard player={player} />
       </div>,
@@ -226,5 +229,12 @@ export const dashboardPages = new Hono<AppEnv>()
     } else {
       setFlash(c, "error", `Sync failed: ${r.error}`);
     }
-    return c.redirect(`/?tag=${tagSlug(tag)}`);
+    rememberPlayer(c, tag);
+    return c.redirect("/");
+  })
+  .post("/players/current", async (c) => {
+    const form = await parseForm(c, z.object({ tag: text, next: text }));
+    const player = assertPlayerOwnedBy(normalizeTag(form.tag), currentUser(c).id);
+    rememberPlayer(c, player.tag);
+    return c.redirect(afterSwitchPath(safeNext(form.next)));
   });
