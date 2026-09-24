@@ -29,6 +29,10 @@ body {
   margin: 0;
   padding: 0;
 }
+/* Author `display` rules (buttons, .btn, flex rows) would otherwise beat the UA's [hidden] rule. */
+[hidden] {
+  display: none !important;
+}
 /* Keeps #anchor targets (e.g. /settings#username after a redirect) out from under the sticky header. */
 html {
   scroll-padding-top: 6rem;
@@ -125,10 +129,42 @@ pre {
 .account {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.35rem;
   margin-left: auto;
   white-space: nowrap;
   min-width: 0;
+}
+/* The logout form is only there for the POST; it must not add a box of its own. */
+.account .logout-form {
+  display: contents;
+}
+.sync-form {
+  display: flex;
+  align-items: center;
+  gap: 0.1rem;
+  margin: 0 0.25rem 0 0;
+  flex: none;
+}
+.sync-time {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+.sync-time.sync-failed {
+  color: var(--loss);
+}
+.sync-btn.is-syncing svg {
+  animation: spin 0.9s linear infinite;
+}
+.sync-btn.is-syncing:disabled,
+.sync-btn.is-syncing {
+  opacity: 1;
+  color: var(--accent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .sync-btn.is-syncing svg {
+    animation-duration: 3s;
+  }
 }
 .nav a:focus-visible,
 .brand:focus-visible {
@@ -137,7 +173,10 @@ pre {
   border-radius: 6px;
 }
 
-/* Square icon-only button (header settings/logout, dialog close). Works on <a> and <button>. */
+/*
+ * Square icon-only button (header sync/settings/logout, dialog close). Works on <a> and <button>;
+ * the resets undo the global `button` styles so both render the same box.
+ */
 .icon-btn {
   display: inline-flex;
   align-items: center;
@@ -146,10 +185,21 @@ pre {
   width: 2.25rem;
   height: 2.25rem;
   padding: 0;
+  margin: 0;
   color: var(--muted);
   background: transparent;
   border: 1px solid transparent;
   border-radius: 8px;
+  font: inherit;
+  line-height: 1;
+  appearance: none;
+  cursor: pointer;
+}
+.icon-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background: transparent;
+  color: var(--muted);
 }
 .icon-btn:hover {
   color: var(--text);
@@ -178,8 +228,9 @@ pre {
   gap: 0.4rem;
   min-width: 0;
   max-width: 280px;
-  margin-right: 0.35rem;
-  padding: 0.3rem 0.55rem 0.3rem 0.75rem;
+  height: 2.25rem;
+  margin-right: 0.2rem;
+  padding: 0 0.55rem 0 0.75rem;
   color: var(--text);
   background: var(--surface-2);
   border: 1px solid var(--border);
@@ -727,25 +778,17 @@ button:focus-visible,
   border: none;
   border-radius: 5px;
 }
-/* The global `button { display: inline-flex }` would otherwise override the hidden attribute. */
-.input-btn[hidden] {
-  display: none;
-}
 .input-btn:hover {
   color: var(--text);
-  background: var(--surface-2);
+  background: transparent;
+}
+.input-btn .icon-slot {
+  display: inline-flex;
 }
 .input-btn:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 0;
   color: var(--text);
-}
-.password-toggle .icon-eye-off,
-.password-toggle[aria-pressed="true"] .icon-eye {
-  display: none;
-}
-.password-toggle[aria-pressed="true"] .icon-eye-off {
-  display: block;
 }
 .copy-key .icon-check,
 .copy-key.copied .icon-copy {
@@ -944,8 +987,49 @@ label.check {
 }
 .pager {
   display: flex;
-  justify-content: space-between;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
   margin-top: 0.75rem;
+}
+.pager-pages {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+.pager .btn {
+  min-width: 2.1rem;
+  justify-content: center;
+}
+.pager-current {
+  cursor: default;
+}
+.pager-current:hover {
+  background: var(--accent);
+}
+.pager .is-disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.pager .is-disabled:hover {
+  background: var(--surface-2);
+}
+.pager-gap {
+  color: var(--muted);
+  padding: 0 0.2rem;
+}
+/* The numbered pages say it already; the text is for when they wrap away on phones. */
+.pager-status {
+  display: none;
+}
+@media (max-width: 480px) {
+  .pager-pages {
+    display: none;
+  }
+  .pager-status {
+    display: inline;
+  }
 }
 
 .battle-title {
@@ -1132,14 +1216,30 @@ details pre {
     flex: 1 1 140px;
   }
 }
-/* Phones: the switcher drops the tag so name + two icons fit beside the brand. */
+/* Phones: the switcher drops the tag so sync, name and two icons fit beside the brand. */
 @media (max-width: 480px) {
   .player-trigger-tag {
     display: none;
   }
   .player-trigger {
-    margin-right: 0.15rem;
+    margin-right: 0;
     padding-left: 0.6rem;
+  }
+  .account {
+    gap: 0.15rem;
+  }
+  /* "CR" alone frees the room the player name needs beside sync, settings and logout. */
+  .brand-rest {
+    display: none;
+  }
+  .player-trigger-name {
+    min-width: 3.5rem;
+  }
+  .sync-form {
+    margin-right: 0.1rem;
+  }
+  .sync-time {
+    font-size: 0.72rem;
   }
 }
 
@@ -1236,4 +1336,170 @@ body.modal-open {
 .inline-status {
   margin: 0 0 0.75rem;
   font-weight: 600;
+}
+
+/* Live filter results: dim while app.js fetches the new ones. */
+.live-results {
+  transition: opacity 0.15s;
+}
+.live-results[aria-busy="true"] {
+  opacity: 0.55;
+}
+.filter-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1rem;
+}
+.sort-control {
+  display: flex;
+  gap: 0.4rem;
+}
+.sort-control select {
+  min-width: 0;
+}
+.order-toggle {
+  flex: none;
+  padding: 0.45rem 0.65rem;
+  font-weight: 600;
+}
+.filters .field-search {
+  flex: 1 1 200px;
+}
+.filters .field:has(.sort-control) {
+  max-width: 330px;
+  flex: 1 1 260px;
+}
+
+/* Upgrade-ready strip on Collection */
+.ready-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.ready-card {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0.6rem 0.45rem 0.45rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  min-width: 0;
+}
+.ready-card .card-icon.size-md {
+  width: 52px;
+  flex: none;
+}
+.ready-info {
+  min-width: 0;
+  line-height: 1.35;
+}
+.ready-info .coll-name {
+  text-align: left;
+  font-weight: 600;
+}
+.ready-levels {
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Decks page: saved / used / in-use */
+.stack-tight > * + * {
+  margin-top: 0.6rem;
+}
+.stack-tight > h2 {
+  margin-bottom: 0;
+}
+.deck-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.25rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.deck-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.05rem 0.5rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.tag-in-use {
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.tag-saved {
+  color: var(--win);
+}
+.tag-used {
+  color: var(--draw);
+}
+.deck-tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+}
+.deck-card-head {
+  gap: 0.5rem;
+  min-height: 1.6rem;
+}
+.deck-card.deck-used {
+  border-style: dashed;
+}
+/* The ring is a shadow, not a thicker border, so the card's content stays aligned with its neighbours. */
+.deck-card.in-use {
+  border: 1px solid var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), 0 0 0 5px rgba(79, 140, 255, 0.15);
+}
+.deck-card .deck-meta {
+  margin-top: 0.6rem;
+  gap: 0.35rem 1rem;
+}
+.deck-actions {
+  gap: 0.5rem;
+}
+
+/* Collapsed form behind a button (Settings > Change Password) */
+.disclosure > summary {
+  list-style: none;
+  width: fit-content;
+}
+.disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+.disclosure > summary .icon-chevron {
+  transition: transform 0.15s;
+}
+.disclosure[open] > summary .icon-chevron {
+  transform: rotate(180deg);
+}
+.disclosure-body {
+  margin-top: 1rem;
+}
+.coll-card .gold {
+  white-space: nowrap;
+}
+.upgrade-now {
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.2;
 }

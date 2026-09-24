@@ -14,23 +14,55 @@ for (const img of document.querySelectorAll(".card-icon img")) {
   if (img.complete && img.naturalWidth === 0) markBroken(img);
 }
 
-// Sync cooldown: count down the disabled button and re-enable it at zero.
+// Header sync button. The server renders it disabled during the cooldown; count the label down and
+// re-enable it at zero. The button is icon-only, so the countdown lives in its label and tooltip.
 for (const btn of document.querySelectorAll("button[data-retry-after]")) {
   let left = Number(btn.dataset.retryAfter);
   if (!Number.isFinite(left)) continue;
+  const setLabel = (label) => {
+    btn.setAttribute("aria-label", label);
+    btn.title = label;
+  };
   const tick = () => {
     if (left <= 0) {
       clearInterval(timer);
       btn.disabled = false;
-      btn.textContent = btn.dataset.readyLabel || "Try again";
+      btn.removeAttribute("data-retry-after");
+      setLabel(btn.dataset.readyLabel || "Sync Now");
       return;
     }
-    btn.textContent = `Try again in ${left}s`;
+    setLabel(`Sync available in ${left}s`);
     left--;
   };
   const timer = setInterval(tick, 1000);
   tick();
 }
+
+// The sync POST redirects back to this page once the sync finishes (a few seconds); spin meanwhile.
+for (const form of document.querySelectorAll("form.sync-form")) {
+  const btn = form.querySelector(".sync-btn");
+  form.addEventListener("submit", (e) => {
+    if (btn.classList.contains("is-syncing")) {
+      e.preventDefault();
+      return;
+    }
+    btn.classList.add("is-syncing");
+    btn.setAttribute("aria-busy", "true");
+    btn.setAttribute("aria-label", "Syncing…");
+    btn.title = "Syncing…";
+  });
+}
+// A tab left open would otherwise keep saying "just now". Mirrors formatRelative in src/views/format.ts.
+const relativeTime = (iso) => {
+  const seconds = Math.round((Date.now() - Date.parse(iso)) / 1000);
+  if (seconds < 45) return "just now";
+  if (seconds < 3600) return `${Math.max(1, Math.round(seconds / 60))}m ago`;
+  if (seconds < 86400) return `${Math.round(seconds / 3600)}h ago`;
+  if (seconds < 86400 * 30) return `${Math.round(seconds / 86400)}d ago`;
+  return iso.slice(0, 10);
+};
+const syncTime = document.querySelector("time.sync-time[datetime]");
+if (syncTime) setInterval(() => (syncTime.textContent = relativeTime(syncTime.dateTime)), 30_000);
 
 // New API key: copy button inside the input, plus a best-effort copy on load.
 const copyText = async (input) => {
@@ -100,13 +132,19 @@ for (const btn of document.querySelectorAll(".password-toggle")) {
   btn.addEventListener("mousedown", (e) => {
     if (document.activeElement === input) e.preventDefault();
   });
+  const showIcon = btn.querySelector("[data-show-icon]");
+  const hideIcon = btn.querySelector("[data-hide-icon]");
   btn.addEventListener("click", () => {
     const show = input.type === "password";
     const hadFocus = document.activeElement === input;
     const { selectionStart, selectionEnd } = input;
     input.type = show ? "text" : "password";
     btn.setAttribute("aria-pressed", String(show));
-    btn.setAttribute("aria-label", show ? "Hide password" : "Show password");
+    const label = show ? "Hide Password" : "Show Password";
+    btn.setAttribute("aria-label", label);
+    btn.title = label;
+    if (showIcon) showIcon.hidden = show;
+    if (hideIcon) hideIcon.hidden = !show;
     // Chrome moves the caret to the start after a type change made from a real click, and does it
     // asynchronously, so restoring it synchronously isn't enough.
     if (hadFocus && selectionStart !== null) {
@@ -236,6 +274,8 @@ for (const menu of document.querySelectorAll("details.player-menu")) {
 
 // Battle rows: the time cell holds the real link (keyboard focus target, no-JS fallback, and what
 // ctrl/cmd/middle-click open in a new tab); a plain click anywhere on the row opens it in a dialog.
+// Assigned below when the dialog is supported; live filters call it on rows they swap in.
+let wireBattleRows = () => {};
 const modalTemplate = document.getElementById("battle-modal-template");
 if (modalTemplate && "HTMLDialogElement" in window) {
   const dialog = modalTemplate.content.firstElementChild.cloneNode(true);
@@ -318,27 +358,107 @@ if (modalTemplate && "HTMLDialogElement" in window) {
   });
 
   const modified = (e) => e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey;
-  for (const row of document.querySelectorAll("tr.battle-row[data-href]")) {
-    const link = row.querySelector("a.row-link");
-    if (!link) continue;
-    row.classList.add("is-clickable");
-    row.addEventListener("click", (e) => {
-      const onLink = e.target.closest("a") === link;
-      // Other controls in the row keep their own behaviour.
-      if (!onLink && e.target.closest("a, button, input, select, textarea, summary, label")) return;
-      // Don't turn a text selection drag into a navigation.
-      if (!onLink && String(getSelection()).length > 0) return;
-      if (modified(e)) {
-        if (!onLink && (e.ctrlKey || e.metaKey)) window.open(link.href, "_blank", "noopener");
+  wireBattleRows = (root) => {
+    for (const row of root.querySelectorAll("tr.battle-row[data-href]:not(.is-clickable)")) {
+      const link = row.querySelector("a.row-link");
+      if (!link) continue;
+      row.classList.add("is-clickable");
+      row.addEventListener("click", (e) => {
+        const onLink = e.target.closest("a") === link;
+        // Other controls in the row keep their own behaviour.
+        if (!onLink && e.target.closest("a, button, input, select, textarea, summary, label")) return;
+        // Don't turn a text selection drag into a navigation.
+        if (!onLink && String(getSelection()).length > 0) return;
+        if (modified(e)) {
+          if (!onLink && (e.ctrlKey || e.metaKey)) window.open(link.href, "_blank", "noopener");
+          return;
+        }
+        e.preventDefault();
+        open(link.getAttribute("href"), link);
+      });
+      row.addEventListener("auxclick", (e) => {
+        if (e.button === 1 && e.target.closest("a") !== link && !e.target.closest("a, button")) {
+          window.open(link.href, "_blank", "noopener");
+        }
+      });
+    }
+  };
+  wireBattleRows(document);
+}
+
+// Live filters: a filter form with data-live-filter applies as soon as a select or checkbox changes, and
+// 500ms after typing stops in a text box. It fetches the same page with the new query and swaps every
+// [data-live-swap] element by id, so the form itself (focus, caret, half-typed text) is never replaced.
+// The URL is updated in place so reloads and bookmarks keep the filters. Without JS the form's
+// <noscript> Apply button submits it normally.
+for (const form of document.querySelectorAll("form[data-live-filter]")) {
+  let timer;
+  let controller;
+  const regions = () => document.querySelectorAll(".live-results");
+
+  const urlFor = () => {
+    const url = new URL(form.getAttribute("action") || location.pathname, location.href);
+    const params = new URLSearchParams();
+    for (const [k, v] of new FormData(form)) if (typeof v === "string" && v.trim() !== "") params.append(k, v);
+    url.search = params.toString();
+    return url;
+  };
+
+  const apply = async () => {
+    clearTimeout(timer);
+    const url = urlFor();
+    controller?.abort();
+    controller = new AbortController();
+    for (const r of regions()) r.setAttribute("aria-busy", "true");
+    try {
+      const res = await fetch(url, { signal: controller.signal, credentials: "same-origin", headers: { Accept: "text/html" } });
+      // Session ended (login redirect) or an error page: let a real navigation show it.
+      if (res.redirected || !res.ok) {
+        location.href = url.href;
         return;
       }
-      e.preventDefault();
-      open(link.getAttribute("href"), link);
-    });
-    row.addEventListener("auxclick", (e) => {
-      if (e.button === 1 && e.target.closest("a") !== link && !e.target.closest("a, button")) {
-        window.open(link.href, "_blank", "noopener");
+      const doc = new DOMParser().parseFromString(await res.text(), "text/html");
+      for (const el of document.querySelectorAll("[data-live-swap][id]")) {
+        const fresh = doc.getElementById(el.id);
+        if (fresh) el.replaceWith(document.adoptNode(fresh));
       }
-    });
-  }
+      history.replaceState(history.state, "", url.pathname + url.search);
+      wireBattleRows(document);
+    } catch (err) {
+      if (err.name !== "AbortError") location.href = url.href;
+    } finally {
+      for (const r of regions()) r.removeAttribute("aria-busy");
+    }
+  };
+
+  form.addEventListener("input", (e) => {
+    if (!e.target.matches('input[type="search"], input[type="text"]')) return;
+    clearTimeout(timer);
+    timer = setTimeout(apply, 500);
+  });
+  form.addEventListener("change", (e) => {
+    if (!e.target.matches("select, input[type=checkbox], input[type=radio]")) return;
+    // A new sort starts in its own natural order rather than inheriting the last one's.
+    if (e.target.name === "sort" && form.elements.order) form.elements.order.value = "";
+    apply();
+  });
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    apply();
+  });
+  // These links are swapped with the results, so listen on the form rather than on them.
+  form.addEventListener("click", (e) => {
+    const toggle = e.target.closest("[data-order-toggle]");
+    const clear = e.target.closest("[data-live-clear]");
+    if ((!toggle && !clear) || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    e.preventDefault();
+    if (toggle && form.elements.order) form.elements.order.value = toggle.dataset.nextOrder;
+    if (clear) {
+      for (const el of form.elements) {
+        if (el.type === "checkbox") el.checked = false;
+        else if (el.type === "search" || el.type === "text") el.value = "";
+      }
+    }
+    apply();
+  });
 }
