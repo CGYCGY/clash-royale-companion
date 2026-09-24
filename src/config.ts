@@ -6,7 +6,7 @@ const envSchema = z.object({
   DATABASE_PATH: z.string().default("./data/app.db"),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   SYNC_CRON: z.string().default("0 3 * * *"),
-  SYNC_COOLDOWN_SECONDS: z.coerce.number().int().min(0).default(300),
+  SYNC_COOLDOWN_SECONDS: z.coerce.number().int().min(0).default(60),
   APP_URL: z.url().optional(),
   SNAPSHOT_KEEP_ALL_DAYS: z.coerce.number().int().min(0).default(7),
   SNAPSHOT_KEEP_DAILY_DAYS: z.coerce.number().int().min(0).default(90),

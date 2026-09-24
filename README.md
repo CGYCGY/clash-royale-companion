@@ -197,7 +197,7 @@ Any other agent can follow `.claude/skills/clash-royale-companion/SKILL.md` as p
 | `PORT` | `3000` | HTTP port. Keep `3000` in Docker. |
 | `SYNC_CRON` | `0 3 * * *` | Schedule for syncing all players, in the server's timezone. Daily at 03:00 by default. Use hourly (`0 * * * *`) if someone plays more than about 25 battles a day, since the API only keeps the last 25. |
 | `TZ` | `UTC` | Timezone for the cron schedule, e.g. `Asia/Kuala_Lumpur`. |
-| `SYNC_COOLDOWN_SECONDS` | `300` | Minimum gap between manual syncs of one player. |
+| `SYNC_COOLDOWN_SECONDS` | `60` | Minimum gap between manual syncs of one player, from the dashboard button or the API. |
 | `SNAPSHOT_KEEP_ALL_DAYS` | `7` | Keep every profile snapshot for this many days. |
 | `SNAPSHOT_KEEP_DAILY_DAYS` | `90` | After that, keep one snapshot per UTC day until this age, then delete. |
 

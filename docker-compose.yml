@@ -18,7 +18,7 @@ services:
       CR_API_BASE: ${CR_API_BASE:-https://api.clashroyale.com/v1}
       SYNC_CRON: ${SYNC_CRON:-0 3 * * *}
       TZ: ${TZ:-UTC}
-      SYNC_COOLDOWN_SECONDS: ${SYNC_COOLDOWN_SECONDS:-300}
+      SYNC_COOLDOWN_SECONDS: ${SYNC_COOLDOWN_SECONDS:-60}
       SNAPSHOT_KEEP_ALL_DAYS: ${SNAPSHOT_KEEP_ALL_DAYS:-7}
       SNAPSHOT_KEEP_DAILY_DAYS: ${SNAPSHOT_KEEP_DAILY_DAYS:-90}
       # Fixed inside the container: the port mapping, healthcheck and volume depend on them.
