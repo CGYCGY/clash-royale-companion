@@ -3,7 +3,9 @@
 # ${VAR} referenced below there).
 services:
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile
     restart: unless-stopped
     ports:
       # On Coolify you can drop this mapping and assign a domain to the service instead;

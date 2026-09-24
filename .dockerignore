@@ -10,6 +10,6 @@ test
 scripts
 .claude/
 *.md
-Dockerfile
+deploy/
 docker-compose.yml
 .dockerignore
