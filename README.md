@@ -198,7 +198,7 @@ curl -sS -X POST -H "$A" "$URL/api/admin/sync"            # sync every player no
 See [`docs/ai-skill.md`](docs/ai-skill.md). In short:
 
 1. Copy `.claude/skills/clash-royale-companion` to `~/.claude/skills/` (inside this repo it loads automatically).
-2. Set `CR_COMPANION_URL` and `CR_COMPANION_API_KEY`.
+2. In the skill folder, copy `.env.example` to `.env` and set `CR_COMPANION_URL` and `CR_COMPANION_API_KEY`.
 
 Any other agent can follow `.claude/skills/clash-royale-companion/SKILL.md` as plain instructions.
 

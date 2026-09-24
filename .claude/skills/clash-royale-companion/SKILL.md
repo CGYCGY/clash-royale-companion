@@ -16,9 +16,16 @@ You need two values:
 - `CR_COMPANION_API_KEY`: a personal API key starting with `crk_`. The user creates it on the app's
   **Settings** page, under API keys.
 
-Read them from the environment first. If they are missing, look for a `.env` file in the current project or
-in this skill's folder. If they are still missing, ask the user to set them. Do not ask them to paste the key
-into the chat.
+Read them from the environment first. If they are missing, load the `.env` file in this skill's folder (the
+user creates it from `.env.example` next to this file), then fall back to a `.env` in the current project.
+Load it without printing it, in the same command that uses the values:
+
+```sh
+set -a; . "<this skill's folder>/.env"; set +a
+```
+
+If the values are still missing, ask the user to copy `.env.example` to `.env` in this skill's folder and fill
+it in. Do not ask them to paste the key into the chat.
 
 Treat the key as a secret:
 

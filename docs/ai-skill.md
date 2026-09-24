@@ -25,15 +25,15 @@ Skills. The assistant needs network access to your app's URL.
 ## Configure
 
 1. Log in to the app, open **Settings**, and create an API key. It starts with `crk_` and is shown only once.
-2. Give the assistant the app URL and the key as environment variables:
+2. In the skill folder, copy `.env.example` to `.env` and fill in both values:
 
 ```sh
-export CR_COMPANION_URL=https://cr.example.com
-export CR_COMPANION_API_KEY=crk_...
+CR_COMPANION_URL=https://cr.example.com
+CR_COMPANION_API_KEY=crk_...
 ```
 
-Put these lines in your shell profile, or in a `.env` file in your project or in the skill folder. Keep that
-file out of version control. The skill reads the key from the environment and never prints it.
+Environment variables with the same names take precedence, so you can also export them from your shell
+profile instead. Keep `.env` out of version control. The skill loads the key without printing it.
 
 The key can read and change your players, decks and notes. It cannot manage API keys. Revoke it on the
 Settings page if it leaks.
