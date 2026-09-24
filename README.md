@@ -14,12 +14,13 @@ process in one Docker container.
 
 **Web pages**
 
+- A player switcher in the header: with several linked tags, every page shows the one you picked.
 - Dashboard with trophies, Path of Legend, recent form, and a manual sync button.
-- Battle history with filters, and a detail view with both decks.
+- Battle history with filters; click a battle to see both decks in a dialog (or on its own page).
 - Card collection with levels, upgrade-ready cards, and the copies and gold needed for the next level and
   for max level.
 - Deck builder with average elixir, and a level check against your collection.
-- Settings to link player tags, keep notes per player, manage API keys, and change your password.
+- Settings to link player tags, keep notes per player, manage API keys, and change your username or password.
 
 **JSON API** under `/api`
 

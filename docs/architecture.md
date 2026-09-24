@@ -38,13 +38,14 @@ src/
   auth/                passwords, users, register, sessions, apiKeys, adminTokens, invites, middleware, crypto.
   repos/               Typed queries: players, battles, cards, decks, notes, syncRuns.
   sync/                syncPlayer, syncCards, syncAll, manualSync, trackPlayer, scheduler (index.ts re-exports).
-  http/                validate.ts (zod helpers), flash.ts, csrf.ts.
+  http/                validate.ts (zod helpers), flash.ts, csrf.ts, currentPlayer.ts (header player switcher).
   routes/index.ts      registerRoutes(app): THE place routers are mounted.
   routes/api/*.ts      JSON routers, mounted under /api.
   routes/pages/*.tsx   HTML routers, mounted under /.
   views/               Layout.tsx, render.tsx (renderPage), components.tsx, format.ts.
-  cli/index.ts         bun run cli: migrate, invite, user, admin-token create|list|revoke, player, sync, stats.
-public/                Served at /static/* (app.css dark theme; app.js: copy buttons, card image fallback, sync countdown).
+  cli/index.ts         bun run cli: migrate, invite, user (list|create|set-password|rename), admin-token create|list|revoke, player, sync, stats.
+public/                Served at /static/* (app.css dark theme; app.js: copy buttons, card image fallback, sync countdown,
+                       player menu keyboard support, clickable battle rows opening the detail in a <dialog>).
 test/                  *.test.ts(x), helpers.ts, fixtures/{player,battlelog,chests,cards}.json.
 ```
 
@@ -135,7 +136,8 @@ Building blocks for login/register/logout pages (not yet implemented as routes):
   `invalid_invite`, or `conflict`. Invite use and user insert are one transaction.
 - `startSession(c, userId)` sets the cookie; `endSession(c)` deletes the session and clears it.
   The Layout's logout button POSTs to `/logout`.
-- `setFlash(c, "success" | "error" | "info", msg)` before a redirect; the next `renderPage` shows it.
+- `setFlash(c, "success" | "error" | "info", msg, target?)` before a redirect; the next `renderPage` shows it.
+  With a `target` the Layout skips it and the page renders it next to the matching form (settings username).
 - Username rules: 3–32 of `[a-z0-9_]`, stored lowercased.
 - Password policy (`auth/passwordPolicy`, applied when a password is set, never at login): 12–128 code points,
   at least 3 of lowercase / uppercase / digit / symbol, must not contain the username, not in
@@ -152,7 +154,9 @@ All repos use `getDb()` and are synchronous. `tag` arguments are normalized tags
 
 **auth/users**: `createUser(username, password): Promise<User>`, `insertUser(username, hash): User`,
 `getUserByUsername(name)`, `getUserById(id)`, `listUsers()`, `verifyCredentials(u, p)`,
-`setPassword(userId, pw)`, `normalizeUsername(s)`. Both password setters enforce the policy.
+`setPassword(userId, pw)`, `renameUser(userId, name)`, `normalizeUsername(s)`. Both password setters enforce the
+policy. `renameUser` applies the registration rules (`validation_error`, `conflict`); sessions and API keys
+reference the user id, so they survive a rename. The password is not re-checked against the new name.
 
 **auth/sessions**: `createSession(userId, now?) -> rawToken`, `getUserBySessionToken(token, now?)`,
 `deleteSession(token)`, `deleteSessionsForUser(userId)`, `purgeExpiredSessions(now?)`,
@@ -238,14 +242,24 @@ The scheduler is in-process, so run exactly one app instance per database.
 
 ## Views
 
-- `renderPage(c, { title, active?, status? }, <content/>)` wraps content in `Layout` with the user and flash.
+- `renderPage(c, { title, active?, status? }, <content/>)` wraps content in `Layout` with the user, flash, and the
+  header player switcher.
+- Current player (`http/currentPlayer.ts`): the `cr_player` cookie holds a tag slug and is re-checked against
+  the user's linked players on every request; unknown or foreign values fall back to the first player (and
+  the cookie is rewritten). Player pages call `resolvePlayer(c)`, which also honours `?tag=` from old links
+  (404 for tags the user doesn't own) and remembers it. The switcher POSTs `{ tag, next }` to
+  `/players/current`, which redirects to `safeNext(next)` minus `tag`/`page` (a battle detail goes to `/battles`).
+  Decks are per user, not per player; their level check uses the current player's collection.
+- `BattleTable({ battles, catalog, empty })` in `battleTable.tsx` is the single battle list (dashboard and
+  Battles page). Rows carry `data-href`; the time cell keeps the real link. `GET /battles/:tag/:id?partial=1`
+  returns the detail body without Layout for the dialog; without JS the full page still works.
 - `components.tsx` provides `CardIcon({ card, size })`, `DeckGrid({ cards, size })`, `StatTile({ label, value, hint? })`,
-  `Table({ columns: { label, align?, render(row) }[], rows, empty? })`, `ResultBadge({ result })`, and
+  `Table({ columns: { label, align?, render(row) }[], rows, empty?, rowAttrs? })`, `ResultBadge({ result })`, and
   `EmptyState({ title })`. Components take `CardView`. Build one with `toCardView({ name, level?, evolutionLevel? }, cardsMap())`,
   which fills icon URLs from the catalog.
 - `format.ts` provides `formatPercent(0.6) -> "60%"`, `formatDateTime`, `formatRelative`, and `formatSigned`.
 - CSS classes in `public/app.css` include `.card`, `.stack`, `.row`, `.grid`, `.stats`, `.table`, `.btn`,
-  `.btn-secondary`, `.btn-danger`, `.btn-link`, `.field`, `.form-narrow`, `.muted`, `.badge-{win,loss,draw}`,
+  `.btn-secondary`, `.btn-ghost` (back links), `.btn-danger`, `.btn-small`, `.icon-btn`, `.field`, `.form-narrow`, `.muted`, `.badge-{win,loss,draw}`,
   and `.flash-{info,success,error}`. Theme colors are CSS variables in `:root`.
 
 ## Clash Royale API gotchas
