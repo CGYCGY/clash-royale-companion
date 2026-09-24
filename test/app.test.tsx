@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { Hono } from "hono";
 import { createApp } from "../src/app";
 import { createAdminToken } from "../src/auth/adminTokens";
@@ -6,6 +8,7 @@ import { createApiKey } from "../src/auth/apiKeys";
 import { currentUser, requireAdmin, requireSession, requireUser } from "../src/auth/middleware";
 import { createSession, SESSION_COOKIE } from "../src/auth/sessions";
 import { AppError } from "../src/errors";
+import { assetUrl } from "../src/http/assets";
 import { setFlash } from "../src/http/flash";
 import type { AppEnv, User } from "../src/types";
 import { renderPage } from "../src/views/render";
@@ -72,6 +75,41 @@ describe("app basics", () => {
     const res = await app.request("/static/app.css");
     expect(res.status).toBe(200);
     expect(await res.text()).toContain("--bg");
+  });
+});
+
+describe("static asset versioning and caching", () => {
+  const sha1 = (file: string) =>
+    new Bun.CryptoHasher("sha1").update(readFileSync(join(import.meta.dir, "..", "public", file))).digest("hex").slice(0, 10);
+
+  test("pages reference app.css and app.js by content hash", async () => {
+    const html = await (await app.request("/login")).text();
+    expect(html).toContain(`<link rel="stylesheet" href="/static/app.css?v=${sha1("app.css")}"/>`);
+    expect(html).toContain(`<script src="/static/app.js?v=${sha1("app.js")}" defer=""></script>`);
+    expect(assetUrl("does-not-exist.css")).toBe("/static/does-not-exist.css");
+  });
+
+  test("only the current version is cacheable forever", async () => {
+    const current = await app.request(`/static/app.js?v=${sha1("app.js")}`);
+    expect(current.status).toBe(200);
+    expect(current.headers.get("cache-control")).toBe("public, max-age=31536000, immutable");
+    // Unversioned, or a page rendered before a deploy asking for the old hash: must revalidate.
+    for (const path of ["/static/app.js", "/static/app.js?v=0000000000", `/static/app.js?v=${sha1("app.css")}`]) {
+      const res = await app.request(path);
+      expect(res.status).toBe(200);
+      expect(res.headers.get("cache-control")).toBe("no-cache");
+    }
+    expect((await app.request("/static/nope.css")).status).toBe(404);
+  });
+
+  test("HTML pages are private to the browser; explicit choices are kept", async () => {
+    for (const path of ["/login", "/nope"]) {
+      expect((await app.request(path)).headers.get("cache-control")).toBe("private, no-cache");
+    }
+    const page = await app.request("/dashboard", { headers: { Cookie: cookieFor(user) } });
+    expect(page.headers.get("cache-control")).toBe("private, no-cache");
+    // The battle dialog partial keeps its own no-store: see test/pages/battles.test.tsx.
+    expect((await app.request("/api/health")).headers.get("cache-control")).toBeNull();
   });
 });
 

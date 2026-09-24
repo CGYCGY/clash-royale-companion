@@ -1,9 +1,9 @@
 import { Hono } from "hono";
-import { serveStatic } from "hono/bun";
 import { HTTPException } from "hono/http-exception";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { authenticate, isApiRequest } from "./auth/middleware";
 import { AppError, errorBody } from "./errors";
+import { noSharedCacheForHtml, staticAssets } from "./http/assets";
 import { csrfProtection } from "./http/csrf";
 import { flashMiddleware } from "./http/flash";
 import { registerRoutes } from "./routes";
@@ -14,10 +14,8 @@ export function createApp(): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
 
   // Before auth so asset requests don't hit the database.
-  app.use(
-    "/static/*",
-    serveStatic({ root: "./public", rewriteRequestPath: (p) => p.replace(/^\/static/, "") }),
-  );
+  app.use("/static/*", staticAssets());
+  app.use(noSharedCacheForHtml);
   app.use(csrfProtection);
   app.use(authenticate);
   app.use(flashMiddleware);
@@ -28,12 +26,12 @@ export function createApp(): Hono<AppEnv> {
     if (isApiRequest(c)) return c.json(errorBody("not_found", `No route for ${c.req.method} ${c.req.path}`), 404);
     return renderPage(
       c,
-      { title: "Not found", status: 404 },
+      { title: "Not Found", status: 404 },
       <div class="card">
-        <h1>Not found</h1>
+        <h1>Not Found</h1>
         <p class="muted">That page doesn't exist.</p>
         <a class="btn btn-secondary" href="/">
-          Back to dashboard
+          Back to Dashboard
         </a>
       </div>,
     );
@@ -61,10 +59,10 @@ export function createApp(): Hono<AppEnv> {
       c,
       { title: "Error", status },
       <div class="card">
-        <h1>{status >= 500 ? "Something went wrong" : "Request failed"}</h1>
+        <h1>{status >= 500 ? "Something Went Wrong" : "Request Failed"}</h1>
         <p>{message}</p>
         <a class="btn btn-secondary" href="/">
-          Back to dashboard
+          Back to Dashboard
         </a>
       </div>,
     );
