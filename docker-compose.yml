@@ -1,0 +1,31 @@
+# Works with `docker compose up -d --build` locally and with Coolify's "Docker Compose" build pack.
+# Values come from .env (local) or Coolify's environment variables UI (Coolify lists every
+# ${VAR} referenced below there).
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      # On Coolify you can drop this mapping and assign a domain to the service instead;
+      # Coolify's proxy then reaches the container on port 3000 directly.
+      - "${HOST_PORT:-3000}:3000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      CR_API_TOKEN: ${CR_API_TOKEN:?set CR_API_TOKEN}
+      ADMIN_TOKEN: ${ADMIN_TOKEN:?set ADMIN_TOKEN}
+      APP_URL: ${APP_URL:-}
+      CR_API_BASE: ${CR_API_BASE:-https://api.clashroyale.com/v1}
+      SYNC_CRON: ${SYNC_CRON:-0 * * * *}
+      SYNC_COOLDOWN_SECONDS: ${SYNC_COOLDOWN_SECONDS:-300}
+      SNAPSHOT_KEEP_ALL_DAYS: ${SNAPSHOT_KEEP_ALL_DAYS:-7}
+      SNAPSHOT_KEEP_DAILY_DAYS: ${SNAPSHOT_KEEP_DAILY_DAYS:-90}
+      # Fixed inside the container: the port mapping, healthcheck and volume depend on them.
+      PORT: "3000"
+      DATABASE_PATH: /data/app.db
+    volumes:
+      - cr-data:/data
+
+volumes:
+  cr-data:
