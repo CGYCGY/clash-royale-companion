@@ -248,7 +248,8 @@ export interface BattleStats {
   /** Sum of trophy changes over battles that report one (ladder). */
   netTrophies: number;
   byMode: (Tally & { type: string; mode: string })[];
-  byDeck: (Tally & { deckKey: string; cards: string[]; avgElixir: number | null })[];
+  /** Most games first. `lastPlayed` is the newest battle_time with the deck. */
+  byDeck: (Tally & { deckKey: string; cards: string[]; avgElixir: number | null; lastPlayed: string })[];
 }
 
 interface TallyRow {
@@ -296,8 +297,8 @@ export function getBattleStats(tag: string, { sinceDays, mode }: { sinceDays?: n
     )
     .all(...params);
   const byDeck = db
-    .query<TallyRow & { deck_key: string }, (string | number)[]>(
-      `SELECT deck_key, ${TALLY_SQL} FROM battles
+    .query<TallyRow & { deck_key: string; last_played: string }, (string | number)[]>(
+      `SELECT deck_key, MAX(battle_time) AS last_played, ${TALLY_SQL} FROM battles
        WHERE ${sql} GROUP BY deck_key ORDER BY games DESC, deck_key`,
     )
     .all(...params);
@@ -314,7 +315,13 @@ export function getBattleStats(tag: string, { sinceDays, mode }: { sinceDays?: n
     byMode: byMode.map((r) => ({ type: r.type, mode: r.mode, ...tally(r) })),
     byDeck: byDeck.map((r) => {
       const cards = r.deck_key ? r.deck_key.split("|") : [];
-      return { deckKey: r.deck_key, cards, avgElixir: averageElixir(cards, catalog), ...tally(r) };
+      return {
+        deckKey: r.deck_key,
+        cards,
+        avgElixir: averageElixir(cards, catalog),
+        lastPlayed: r.last_played,
+        ...tally(r),
+      };
     }),
   };
 }

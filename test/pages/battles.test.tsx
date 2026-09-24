@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test } from "bun:test";
-import { listBattles } from "../../src/repos/battles";
+import { insertBattles, listBattles } from "../../src/repos/battles";
+import { pageList } from "../../src/routes/pages/battles";
 import type { User } from "../../src/types";
 import { FIXTURE_TAG, makeUser } from "../helpers";
 import { cookieFor, linkFixturePlayer, type PageTestEnv, setupPages } from "./support";
@@ -25,12 +26,12 @@ describe("battles pages", () => {
   test("lists battles with stats, decks used, and filter options", async () => {
     const { status, html } = await get("/battles");
     expect(status).toBe(200);
-    expect(html).toContain("10 battles");
+    expect(html).toContain("10 Battles");
     expect(battleRows(html)).toBe(10);
-    expect(html).toContain("Decks used");
+    expect(html).toContain("Decks Used");
     expect(html).toContain('<option value="Ladder">Ladder</option>');
     expect(html).toContain("Path of Legend");
-    expect(html).toContain("Win rate");
+    expect(html).toContain("Win Rate");
     expect(html).toContain('<option value="win">Win</option>');
     expect(html).toContain('<option value="loss">Loss</option>');
     expect(html).toContain('<option value="draw">Draw</option>');
@@ -58,7 +59,7 @@ describe("battles pages", () => {
     const { status, html } = await get(`/battles/9QJUGC2R/${twoVsTwo!.id}`);
     expect(status).toBe(200);
     expect(html.match(/class="deck-block"/g)?.length).toBe(4);
-    expect(html).toContain("Raw battle data");
+    expect(html).toContain("Raw Battle Data");
     expect(html).toContain("&quot;battleTime&quot;");
   });
 
@@ -67,9 +68,9 @@ describe("battles pages", () => {
     const battlesHtml = (await get("/battles")).html;
     const dashboardHtml = (await get("/")).html;
     expect(header(dashboardHtml)).toBe(header(battlesHtml));
-    expect(header(battlesHtml)).toContain("Opponent deck");
+    expect(header(battlesHtml)).toContain("Opponent Deck");
     expect(dashboardHtml).toMatch(/<tr class="battle-row" data-href="\/battles\/9QJUGC2R\/\d+">/);
-    expect(dashboardHtml).toContain('<a class="btn btn-secondary btn-small" href="/battles">All battles</a>');
+    expect(dashboardHtml).toContain('<a class="btn btn-secondary btn-small" href="/battles">All Battles</a>');
   });
 
   test("detail ?partial=1 returns just the detail body for the dialog", async () => {
@@ -80,14 +81,14 @@ describe("battles pages", () => {
     const html = await res.text();
     expect(html).toStartWith('<div class="stack battle-detail">');
     expect(html).toContain('id="battle-detail-title"');
-    expect(html).toContain("Raw battle data");
+    expect(html).toContain("Raw Battle Data");
     expect(html).not.toContain("<html");
-    expect(html).not.toContain("Back to battles");
+    expect(html).not.toContain("Back to Battles");
 
     const full = (await get(`/battles/9QJUGC2R/${b!.id}`)).html;
     expect(full).toContain("<!doctype html>");
     expect(full).toContain('id="battle-detail-title"');
-    expect(full).toContain("Back to battles");
+    expect(full).toContain("Back to Battles");
   });
 
   test("detail partial keeps the page's auth and ownership rules", async () => {
@@ -107,5 +108,78 @@ describe("battles pages", () => {
     const res = await env.app.request(`/battles/9QJUGC2R/${b!.id}`, { headers: { Cookie: mallory } });
     expect(res.status).toBe(404);
     expect((await get("/battles/9QJUGC2R/999999")).status).toBe(404);
+  });
+
+  /** Stores copies of the fixture log shifted back by 1..n hours: 10 more battles per copy. */
+  const addOlderCopies = (n: number) => {
+    for (let h = 1; h <= n; h++) {
+      insertBattles(
+        FIXTURE_TAG,
+        env.client.battleLog.map((b) => {
+          const iso = b.battleTime.replace(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})/, "$1-$2-$3T$4:$5:$6");
+          const shifted = new Date(Date.parse(iso) - h * 3_600_000 - 1000).toISOString();
+          return { ...b, battleTime: shifted.replace(/[-:]/g, "") };
+        }),
+      );
+    }
+  };
+  const pagerLinks = (html: string) => [...(/<nav class="pager".*?<\/nav>/.exec(html)?.[0] ?? "").matchAll(/href="([^"]+)"/g)].map((m) => m[1]!.replaceAll("&amp;", "&"));
+
+  test("10 battles per page with numbered pager links that keep the filters", async () => {
+    expect(pagerLinks((await get("/battles")).html)).toEqual([]);
+    addOlderCopies(2);
+    const first = (await get("/battles?mode=Ladder&days=7")).html;
+    expect(first).toContain("15 Battles");
+    expect(battleRows(first)).toBe(10);
+    expect(first).toContain('<span class="btn btn-secondary btn-small is-disabled" aria-disabled="true">Prev</span>');
+    expect(first).toContain('<span class="btn btn-small pager-current" aria-current="page">1</span>');
+    expect(first).toContain("Page 1 of 2");
+    expect(pagerLinks(first)).toEqual(["/battles?days=7&mode=Ladder&page=2", "/battles?days=7&mode=Ladder&page=2"]);
+
+    const second = (await get("/battles?mode=Ladder&days=7&page=2")).html;
+    expect(battleRows(second)).toBe(5);
+    expect(second).toContain("Page 2 of 2");
+    expect(pagerLinks(second)).toEqual(["/battles?days=7&mode=Ladder", "/battles?days=7&mode=Ladder"]);
+    expect(second).toContain('aria-disabled="true">Next</span>');
+
+    // Past the end clamps to the last page; the live filter form carries no page, so a filter change restarts at 1.
+    const past = (await get("/battles?mode=Ladder&days=7&page=99")).html;
+    expect(past).toContain("Page 2 of 2");
+    expect(battleRows(past)).toBe(5);
+    expect(past).not.toMatch(/<input[^>]*name="page"/);
+  });
+
+  test("pageList keeps the ends and a window around the current page", () => {
+    expect(pageList(1, 1)).toEqual([1]);
+    expect(pageList(1, 3)).toEqual([1, 2, 3]);
+    expect(pageList(5, 10)).toEqual([1, null, 4, 5, 6, null, 10]);
+    expect(pageList(10, 10)).toEqual([1, null, 9, 10]);
+    expect(pageList(2, 10)).toEqual([1, 2, 3, null, 10]);
+    expect(pageList(1, 4)).toEqual([1, 2, 3, 4]);
+    expect(pageList(4, 10)).toEqual([1, 2, 3, 4, 5, null, 10]);
+  });
+
+  test("filters apply live: no Filter button, results in a swappable region", async () => {
+    const { html } = await get("/battles");
+    expect(html).toContain('<form method="get" action="/battles" class="filters" data-live-filter="true">');
+    expect(html).toContain('<noscript><div class="filter-actions"><button type="submit">Apply</button></div></noscript>');
+    expect(html).not.toContain(">Filter</button>");
+    expect(html).toContain('<div id="battles-results" class="stack live-results" data-live-swap="true">');
+  });
+
+  test("Decks Used lists only the 3 most recently played decks", async () => {
+    // A third and fourth deck, each played once and more recently than the fixture's two.
+    const [newest] = env.client.battleLog;
+    const deckOf = (names: string[]) => names.map((name, i) => ({ ...newest!.team[0]!.cards![i]!, name }));
+    const later = (minutes: number) =>
+      new Date(Date.now() - 3_600_000 + minutes * 60_000).toISOString().replace(/[-:]/g, "");
+    insertBattles(FIXTURE_TAG, [
+      { ...newest!, battleTime: later(5), team: [{ ...newest!.team[0]!, cards: deckOf(["Knight", "Archers", "Goblins", "Arrows", "Zap", "Minions", "Giant", "Musketeer"]) }] },
+      { ...newest!, battleTime: later(10), team: [{ ...newest!.team[0]!, cards: deckOf(["Knight", "Archers", "Goblins", "Arrows", "Zap", "Minions", "Giant", "Valkyrie"]) }] },
+    ]);
+    const { html } = await get("/battles");
+    const section = /<h2>Decks Used.*?<\/section>/.exec(html)?.[0] ?? "";
+    expect(section.match(/class="card deck-card"/g)).toHaveLength(3);
+    expect(section.indexOf('title="Valkyrie"')).toBeLessThan(section.indexOf('title="Musketeer"'));
   });
 });

@@ -18,7 +18,8 @@ import { ArrowLeftIcon } from "../../views/icons";
 import { renderPage } from "../../views/render";
 import { idParam } from "./shared";
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 10;
+const RECENT_DECKS = 3;
 const DAY_OPTIONS = ["7", "30", "90", "all"] as const;
 const RESULT_OPTIONS = [
   ["win", "Win"],
@@ -36,6 +37,70 @@ const filterSchema = z.object({
 });
 type Filters = z.infer<typeof filterSchema>;
 
+function battlesHref(f: Filters, page: number): string {
+  return `/battles?${queryString(f, page)}`;
+}
+
+/**
+ * Page numbers to show: first, last, and a window around the current one, with null for a gap. A gap
+ * that would hide a single page shows that page instead, since "…" takes the same room.
+ */
+export function pageList(page: number, pages: number, window = 1): (number | null)[] {
+  const shown = (p: number) => p === 1 || p === pages || Math.abs(p - page) <= window;
+  const out: (number | null)[] = [];
+  for (let p = 1; p <= pages; p++) {
+    if (shown(p) || (shown(p - 1) && shown(p + 1))) out.push(p);
+    else if (out[out.length - 1] !== null) out.push(null);
+  }
+  return out;
+}
+
+function Pager({ f, page, pages }: { f: Filters; page: number; pages: number }) {
+  if (pages <= 1) return null;
+  return (
+    <nav class="pager" aria-label="Pagination">
+      {page > 1 ? (
+        <a class="btn btn-secondary btn-small" href={battlesHref(f, page - 1)} rel="prev">
+          Prev
+        </a>
+      ) : (
+        <span class="btn btn-secondary btn-small is-disabled" aria-disabled="true">
+          Prev
+        </span>
+      )}
+      <span class="pager-pages">
+        {pageList(page, pages).map((p) =>
+          p === null ? (
+            <span class="pager-gap" aria-hidden="true">
+              …
+            </span>
+          ) : p === page ? (
+            <span class="btn btn-small pager-current" aria-current="page">
+              {p}
+            </span>
+          ) : (
+            <a class="btn btn-ghost btn-small" href={battlesHref(f, p)} aria-label={`Page ${p}`}>
+              {p}
+            </a>
+          ),
+        )}
+      </span>
+      <span class="pager-status muted small">
+        Page {page} of {pages}
+      </span>
+      {page < pages ? (
+        <a class="btn btn-secondary btn-small" href={battlesHref(f, page + 1)} rel="next">
+          Next
+        </a>
+      ) : (
+        <span class="btn btn-secondary btn-small is-disabled" aria-disabled="true">
+          Next
+        </span>
+      )}
+    </nav>
+  );
+}
+
 function queryString(f: Filters, page: number): string {
   const q = new URLSearchParams({ days: f.days });
   if (f.mode) q.set("mode", f.mode);
@@ -49,7 +114,7 @@ type BattleWithRaw = NonNullable<ReturnType<typeof getBattle>>;
 function BattleDetail({ battle, catalog }: { battle: BattleWithRaw; catalog: Map<string, CardRecord> }) {
   const half = (cards: typeof battle.teamDeck, i: number) => cards.slice(i * 8, i * 8 + 8);
   const sides = [
-    { title: "Your team", names: battle.raw.team.map((p) => p.name), deck: battle.teamDeck, crowns: battle.teamCrowns },
+    { title: "Your Team", names: battle.raw.team.map((p) => p.name), deck: battle.teamDeck, crowns: battle.teamCrowns },
     {
       title: "Opponent",
       names: battle.raw.opponent.map((p) => p.name),
@@ -104,7 +169,7 @@ function BattleDetail({ battle, catalog }: { battle: BattleWithRaw; catalog: Map
         ))}
       </div>
       <details class="card">
-        <summary>Raw battle data</summary>
+        <summary>Raw Battle Data</summary>
         <pre>{JSON.stringify(battle.raw, null, 2)}</pre>
       </details>
     </div>
@@ -119,9 +184,9 @@ export const battlePages = new Hono<AppEnv>()
       return renderPage(
         c,
         { title: "Battles", active: "battles" },
-        <EmptyState title="No players linked yet">
+        <EmptyState title="No Players Linked Yet">
           <a class="btn" href="/settings">
-            Link a player
+            Link a Player
           </a>
         </EmptyState>,
       );
@@ -142,18 +207,21 @@ export const battlePages = new Hono<AppEnv>()
     const modes = getBattleStats(player.tag).byMode;
     const catalog = cardsMap();
     const windowLabel = sinceDays === undefined ? "All time" : `Last ${sinceDays} days`;
-    const topDecks = stats.byDeck.filter((d) => d.cards.length).slice(0, 8);
+    const recentDecks = stats.byDeck
+      .filter((d) => d.cards.length)
+      .sort((a, b) => b.lastPlayed.localeCompare(a.lastPlayed))
+      .slice(0, RECENT_DECKS);
 
     return renderPage(
       c,
       { title: "Battles", active: "battles" },
       <div class="stack">
         <h1>Battles</h1>
-        <form method="get" action="/battles" class="filters">
+        <form method="get" action="/battles" class="filters" data-live-filter>
           <div class="field">
             <label for="mode">Mode</label>
             <select id="mode" name="mode">
-              <option value="">All modes</option>
+              <option value="">All Modes</option>
               {modes.map((m) => (
                 <option value={m.mode} selected={f.mode === m.mode}>
                   {modeLabel({ type: m.type, gameModeName: m.mode })}
@@ -178,76 +246,59 @@ export const battlePages = new Hono<AppEnv>()
             <select id="days" name="days">
               {DAY_OPTIONS.map((d) => (
                 <option value={d} selected={f.days === d}>
-                  {d === "all" ? "All time" : `Last ${d} days`}
+                  {d === "all" ? "All Time" : `Last ${d} Days`}
                 </option>
               ))}
             </select>
           </div>
-          <div class="filter-actions">
-            <button type="submit">Filter</button>
-          </div>
+          <noscript>
+            <div class="filter-actions">
+              <button type="submit">Apply</button>
+            </div>
+          </noscript>
         </form>
 
-        <div class="stats">
-          <StatTile label="Win rate" value={stats.total ? formatPercent(stats.winRate) : "–"} hint={windowLabel} />
-          <StatTile label="Games" value={stats.total} hint={`${stats.wins}W ${stats.losses}L ${stats.draws}D`} />
-          <StatTile label="Net trophies" value={formatSigned(stats.netTrophies)} hint="ladder" />
-        </div>
-
-        {topDecks.length > 0 && (
-          <section>
-            <h2>Decks used</h2>
-            <div class="grid">
-              {topDecks.map((d) => (
-                <div class="card deck-card">
-                  <DeckGrid cards={namedCardViews(d.cards, catalog)} size="sm" />
-                  <div class="row deck-meta">
-                    <span>
-                      <strong>{d.games}</strong> games
-                    </span>
-                    <span>
-                      <strong>{formatPercent(d.winRate)}</strong> win
-                    </span>
-                    <span>
-                      <strong>{formatElixir(d.avgElixir)}</strong> elixir
-                    </span>
+        <div id="battles-results" class="stack live-results" data-live-swap>
+          <div class="stats">
+            <StatTile label="Win Rate" value={stats.total ? formatPercent(stats.winRate) : "–"} hint={windowLabel} />
+            <StatTile label="Games" value={stats.total} hint={`${stats.wins}W ${stats.losses}L ${stats.draws}D`} />
+            <StatTile label="Net Trophies" value={formatSigned(stats.netTrophies)} hint="ladder" />
+          </div>
+  
+          {recentDecks.length > 0 && (
+            <section>
+              <h2>
+                Decks Used <span class="muted small">most recent</span>
+              </h2>
+              <div class="grid">
+                {recentDecks.map((d) => (
+                  <div class="card deck-card">
+                    <DeckGrid cards={namedCardViews(d.cards, catalog)} size="sm" />
+                    <div class="row deck-meta">
+                      <span>
+                        <strong>{d.games}</strong> games
+                      </span>
+                      <span>
+                        <strong>{formatPercent(d.winRate)}</strong> win
+                      </span>
+                      <span>
+                        <strong>{formatElixir(d.avgElixir)}</strong> elixir
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        <section>
-          <h2>
-            {total} battle{total === 1 ? "" : "s"}
-            {pages > 1 && (
-              <span class="muted small">
-                {" "}
-                · page {page} of {pages}
-              </span>
-            )}
-          </h2>
-          <BattleTable battles={battles} catalog={catalog} empty="No battles match these filters." />
-          {pages > 1 && (
-            <nav class="pager" aria-label="Pages">
-              {page > 1 ? (
-                <a class="btn btn-secondary btn-small" href={`/battles?${queryString(f, page - 1)}`}>
-                  Newer
-                </a>
-              ) : (
-                <span />
-              )}
-              {page < pages ? (
-                <a class="btn btn-secondary btn-small" href={`/battles?${queryString(f, page + 1)}`}>
-                  Older
-                </a>
-              ) : (
-                <span />
-              )}
-            </nav>
+                ))}
+              </div>
+            </section>
           )}
-        </section>
+  
+          <section>
+            <h2>
+              {total} Battle{total === 1 ? "" : "s"}
+            </h2>
+            <BattleTable battles={battles} catalog={catalog} empty="No battles match these filters." />
+            <Pager f={f} page={page} pages={pages} />
+          </section>
+        </div>
       </div>,
     );
   })
@@ -268,7 +319,7 @@ export const battlePages = new Hono<AppEnv>()
       <div class="stack">
         <p>
           <a class="btn btn-ghost btn-small" href={`/battles?tag=${tagSlug(tag)}`}>
-            <ArrowLeftIcon /> Back to battles
+            <ArrowLeftIcon /> Back to Battles
           </a>
         </p>
         {detail}

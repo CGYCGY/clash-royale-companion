@@ -27,9 +27,9 @@ function battleColumns(catalog: Map<string, CardRecord>): Column<BattleRecord>[]
     { label: "Result", render: (b) => <ResultBadge result={b.result} /> },
     { label: "Crowns", align: "center", render: (b) => `${b.teamCrowns}–${b.opponentCrowns}` },
     { label: "Opponent", render: (b) => b.opponentName || <span class="muted">unknown</span> },
-    { label: "Your deck", render: (b) => <DeckGrid cards={deckCardViews(b.teamDeck.slice(0, 8), catalog)} size="sm" /> },
+    { label: "Your Deck", render: (b) => <DeckGrid cards={deckCardViews(b.teamDeck.slice(0, 8), catalog)} size="sm" /> },
     {
-      label: "Opponent deck",
+      label: "Opponent Deck",
       render: (b) => <DeckGrid cards={deckCardViews(b.opponentDeck.slice(0, 8), catalog)} size="sm" />,
     },
     {
