@@ -486,7 +486,8 @@ for (const form of document.querySelectorAll("form[data-live-filter]")) {
     if (toggle && form.elements.order) form.elements.order.value = toggle.dataset.nextOrder;
     if (clear) {
       for (const el of form.elements) {
-        if (el.type === "checkbox") el.checked = false;
+        // A switch is a view mode like the sort, not a filter, so Clear leaves it alone.
+        if (el.type === "checkbox" && el.getAttribute("role") !== "switch") el.checked = false;
         else if (el.type === "search" || el.type === "text") el.value = "";
       }
     }

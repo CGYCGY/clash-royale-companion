@@ -7,8 +7,10 @@ import {
   type CollectionEntry,
   type CollectionSort,
   DEFAULT_ORDER,
+  projectAffordable,
   RARITY_ORDER,
   sortCollection,
+  summarizeCollection,
 } from "../../domain/collection";
 import { cardForms } from "../../domain/evolution";
 import { resolvePlayer } from "../../http/currentPlayer";
@@ -35,6 +37,7 @@ const filterSchema = z.object({
   q: z.string().max(100).default("").catch(""),
   ready: z.string().optional().catch(undefined),
   missing: z.string().optional().catch(undefined),
+  max: z.string().optional().catch(undefined),
   sort: z.enum(COLLECTION_SORTS).default("rarity").catch("rarity"),
   order: z.enum(["asc", "desc"]).optional().catch(undefined),
 });
@@ -46,6 +49,7 @@ function collectionHref(f: Filters, overrides: Partial<Filters> = {}): string {
   if (merged.q) q.set("q", merged.q);
   if (merged.ready === "1") q.set("ready", "1");
   if (merged.missing === "1") q.set("missing", "1");
+  if (merged.max === "1") q.set("max", "1");
   if (merged.sort !== "rarity") q.set("sort", merged.sort);
   if (merged.order) q.set("order", merged.order);
   const qs = q.toString();
@@ -116,7 +120,7 @@ function FormBadges({ e }: { e: CollectionEntry }) {
   );
 }
 
-function CollectionCard({ e }: { e: CollectionEntry }) {
+function CollectionCard({ e, fromLevel }: { e: CollectionEntry; fromLevel?: number }) {
   return (
     <div class={`coll-card${e.owned ? "" : " missing"}${e.upgradeReady ? " ready" : ""}`}>
       <CardIcon card={view(e)} size="md" />
@@ -124,6 +128,7 @@ function CollectionCard({ e }: { e: CollectionEntry }) {
         {e.name}
       </div>
       <Progress e={e} />
+      {fromLevel !== undefined && <div class="muted small">from Lv {fromLevel}</div>}
       <FormBadges e={e} />
     </div>
   );
@@ -178,20 +183,27 @@ export const collectionPages = new Hono<AppEnv>().use("/collection/*", requireUs
   }
   const f = parseQuery(c, filterSchema);
   const order = f.order ?? DEFAULT_ORDER[f.sort];
-  const { entries, summary } = buildCollection(snapshot.player, listCards());
+  const collection = buildCollection(snapshot.player, listCards());
+  const maxOut = f.max === "1";
   const q = f.q.trim().toLowerCase();
   const onlyReady = f.ready === "1";
   const onlyMissing = f.missing === "1";
+  // Filters run on the real entries so that under Max Out, "Upgrade Ready" picks the cards the preview raised.
+  const matching = collection.entries.filter(
+    (e) => (!q || e.name.toLowerCase().includes(q)) && (!onlyReady || e.upgradeReady) && (!onlyMissing || !e.owned),
+  );
+  const fromLevel = new Map(
+    maxOut ? collection.entries.filter((e) => e.upgradableLevels > 0).map((e) => [e.id, e.level!]) : [],
+  );
+  const summary = maxOut ? summarizeCollection(collection.entries.map(projectAffordable)) : collection.summary;
   const shown = sortCollection(
-    entries.filter(
-      (e) => (!q || e.name.toLowerCase().includes(q)) && (!onlyReady || e.upgradeReady) && (!onlyMissing || !e.owned),
-    ),
+    maxOut ? matching.map(projectAffordable) : matching,
     // Rarity groups into sections below, so inside each section it's alphabetical.
     f.sort === "rarity" ? "name" : f.sort,
     f.sort === "rarity" ? "asc" : order,
   );
   const ready = sortCollection(
-    entries.filter((e) => e.upgradeReady),
+    collection.entries.filter((e) => e.upgradeReady),
     "upgradable",
     "desc",
   );
@@ -222,10 +234,10 @@ export const collectionPages = new Hono<AppEnv>().use("/collection/*", requireUs
           {snapshot.player.name} · snapshot {formatRelative(snapshot.lastSeenAt)}
         </span>
       </div>
-      <div class="stats">
+      <div id="collection-stats" class="stats" data-live-swap>
         <StatTile label="Owned" value={`${summary.owned}/${summary.total}`} hint={`${summary.missing} missing`} />
         <StatTile label="Maxed" value={summary.maxed} />
-        <StatTile label="Upgrade Ready" value={summary.upgradeReady} />
+        {!maxOut && <StatTile label="Upgrade Ready" value={summary.upgradeReady} />}
         {summary.byRarity.map((r) => (
           <StatTile
             label={r.rarity}
@@ -263,6 +275,12 @@ export const collectionPages = new Hono<AppEnv>().use("/collection/*", requireUs
             Clear
           </a>
         </div>
+        <label
+          class="switch"
+          title="Show every card at the level its copies already pay for, with the leftover copies"
+        >
+          <input type="checkbox" role="switch" name="max" value="1" checked={maxOut} /> Max Out
+        </label>
         <div class="field field-sort">
           <label for="sort">Sort By</label>
           <div class="sort-control">
@@ -293,7 +311,7 @@ export const collectionPages = new Hono<AppEnv>().use("/collection/*", requireUs
       </form>
 
       <div id="collection-results" class="stack live-results" data-live-swap>
-        {ready.length > 0 && !filtered && (
+        {ready.length > 0 && !filtered && !maxOut && (
           <section class="card">
             <h2>
               Upgrade Ready <span class="muted small">{ready.length}</span>
@@ -314,7 +332,7 @@ export const collectionPages = new Hono<AppEnv>().use("/collection/*", requireUs
             </h2>
             <div class="coll-grid">
               {s.items.map((e) => (
-                <CollectionCard e={e} />
+                <CollectionCard e={e} fromLevel={fromLevel.get(e.id)} />
               ))}
             </div>
           </section>

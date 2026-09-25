@@ -121,4 +121,33 @@ describe("collection page", () => {
     expect(plus[0]).toBeGreaterThan(0);
     expect(plus).toEqual([...plus].sort((a, b) => b - a));
   });
+  test("Max Out shows cards at the level their copies pay for, with no upgrade-ready leftovers", async () => {
+    env.client.player = {
+      ...env.client.player,
+      cards: env.client.player.cards.map((c) => (c.name === "Knight" ? { ...c, level: 11, count: 4100, maxLevel: 16 } : c)),
+    };
+    await linkFixturePlayer(user, env.client);
+    const off = await get("/collection?sort=level");
+    expect(off).toContain('<input type="checkbox" role="switch" name="max" value="1"/>');
+    expect(levelOf(off, "Knight")).toBe(11);
+
+    const html = await get("/collection?sort=level&max=1");
+    expect(html).toContain('<input type="checkbox" role="switch" name="max" value="1" checked=""/>');
+    expect(levelOf(html, "Knight")).toBe(13);
+    const knight = /<div class="coll-card[^"]*">(?:(?!<div class="coll-card).)*?title="Knight">Knight<\/div>(?:(?!<div class="coll-card).)*/.exec(html)?.[0] ?? "";
+    expect(knight).toContain('<span class="progress-text">100/3500</span>');
+    expect(knight).toContain('<div class="muted small">from Lv 11</div>');
+    expect(html).not.toContain("<h2>Upgrade Ready");
+    expect(html).not.toMatch(/class="coll-card[^"]* ready/);
+    expect(html).not.toContain('class="upgrade-now');
+    expect(html).toContain('<div id="collection-stats" class="stats" data-live-swap="true">');
+    expect(html).not.toMatch(/stat-label">Upgrade Ready/i);
+    // The order toggle keeps the switch on.
+    expect(html).toContain('href="/collection?max=1&amp;sort=level&amp;order=asc"');
+
+    // Upgrade Ready still filters by the real state, so it lists what the preview raised.
+    const raised = await get("/collection?max=1&ready=1");
+    expect(raised).toContain('title="Knight"');
+    expect(raised).not.toMatch(/class="coll-card[^"]* ready/);
+  });
 });

@@ -60,24 +60,27 @@ const rarityRank = (r: string): number => {
   return i === -1 ? RARITY_ORDER.length : i;
 };
 
-function toEntry(card: CardRecord | null, owned: PlayerCard | undefined, kind: "card" | "support"): CollectionEntry {
-  const rarity = (card?.rarity ?? owned?.rarity ?? "").toLowerCase();
-  const apiMax = card?.maxLevel ?? owned?.maxLevel ?? 0;
-  const maxLevel = displayLevel(apiMax, rarity);
-  const level = owned ? displayLevel(owned.level, rarity) : null;
-  const count = owned?.count ?? 0;
+type LevelFields = Pick<
+  CollectionEntry,
+  | "level"
+  | "count"
+  | "countNeeded"
+  | "goldNeeded"
+  | "goldToMax"
+  | "copiesToMax"
+  | "upgradeReady"
+  | "upgradableLevels"
+  | "upgradableGold"
+  | "levelsToMax"
+>;
+
+function levelFields(rarity: string, level: number | null, count: number, maxLevel: number): LevelFields {
   const upgradable = level !== null && level < maxLevel;
   const countNeeded = upgradable ? copiesForNextLevel(rarity, level) : null;
   const copiesLeft = level === null ? null : copiesToMax(rarity, level, maxLevel);
   const now = upgradable ? upgradableNow(rarity, level, count, maxLevel) : null;
   return {
-    id: card?.id ?? owned!.id,
-    name: card?.name ?? owned!.name,
-    rarity,
-    elixirCost: card ? card.elixirCost : (owned?.elixirCost ?? null),
-    owned: !!owned,
     level,
-    maxLevel,
     count,
     countNeeded,
     goldNeeded: countNeeded === null ? null : goldForNextLevel(level!),
@@ -87,6 +90,22 @@ function toEntry(card: CardRecord | null, owned: PlayerCard | undefined, kind: "
     upgradableLevels: now?.levels ?? 0,
     upgradableGold: now?.gold ?? 0,
     levelsToMax: level === null ? null : Math.max(0, maxLevel - level),
+  };
+}
+
+function toEntry(card: CardRecord | null, owned: PlayerCard | undefined, kind: "card" | "support"): CollectionEntry {
+  const rarity = (card?.rarity ?? owned?.rarity ?? "").toLowerCase();
+  const apiMax = card?.maxLevel ?? owned?.maxLevel ?? 0;
+  const maxLevel = displayLevel(apiMax, rarity);
+  const level = owned ? displayLevel(owned.level, rarity) : null;
+  return {
+    id: card?.id ?? owned!.id,
+    name: card?.name ?? owned!.name,
+    rarity,
+    elixirCost: card ? card.elixirCost : (owned?.elixirCost ?? null),
+    owned: !!owned,
+    maxLevel,
+    ...levelFields(rarity, level, owned?.count ?? 0, maxLevel),
     evolutionLevel: owned?.evolutionLevel ?? 0,
     maxEvolutionLevel: card?.maxEvolutionLevel ?? owned?.maxEvolutionLevel ?? 0,
     iconUrl: card?.iconUrl ?? owned?.iconUrls.medium ?? null,
@@ -94,6 +113,16 @@ function toEntry(card: CardRecord | null, owned: PlayerCard | undefined, kind: "
     iconUrlHero: card?.iconUrlHero ?? owned?.iconUrls.heroMedium ?? null,
     kind,
   };
+}
+
+/**
+ * The entry as if every upgrade its copies pay for were done: the level jumps by `upgradableLevels`
+ * and `count` becomes the copies left over, so nothing is upgrade-ready afterwards.
+ */
+export function projectAffordable(e: CollectionEntry): CollectionEntry {
+  if (e.level === null || e.upgradableLevels === 0) return e;
+  const now = upgradableNow(e.rarity, e.level, e.count, e.maxLevel);
+  return { ...e, ...levelFields(e.rarity, now.toLevel, now.copiesLeft, e.maxLevel) };
 }
 
 /**
@@ -123,6 +152,10 @@ export function buildCollection(
       a.name.localeCompare(b.name),
   );
 
+  return { entries, summary: summarizeCollection(entries) };
+}
+
+export function summarizeCollection(entries: CollectionEntry[]): CollectionSummary {
   const byRarity = new Map<string, { total: number; owned: number; levelSum: number }>();
   let owned = 0;
   let maxed = 0;
@@ -143,22 +176,19 @@ export function buildCollection(
   const total = entries.filter((e) => e.kind === "card").length;
 
   return {
-    entries,
-    summary: {
-      total,
-      owned,
-      missing: total - owned,
-      maxed,
-      upgradeReady,
-      byRarity: [...byRarity.entries()]
-        .sort(([a], [b]) => rarityRank(a) - rarityRank(b))
-        .map(([rarity, r]) => ({
-          rarity,
-          total: r.total,
-          owned: r.owned,
-          avgLevel: r.owned ? Math.round((r.levelSum / r.owned) * 100) / 100 : null,
-        })),
-    },
+    total,
+    owned,
+    missing: total - owned,
+    maxed,
+    upgradeReady,
+    byRarity: [...byRarity.entries()]
+      .sort(([a], [b]) => rarityRank(a) - rarityRank(b))
+      .map(([rarity, r]) => ({
+        rarity,
+        total: r.total,
+        owned: r.owned,
+        avgLevel: r.owned ? Math.round((r.levelSum / r.owned) * 100) / 100 : null,
+      })),
   };
 }
 
