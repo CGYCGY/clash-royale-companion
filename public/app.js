@@ -52,6 +52,12 @@ for (const form of document.querySelectorAll("form.sync-form")) {
     btn.title = "Syncing…";
   });
 }
+// Header forms carry the `next` rendered at page load, but live filters and the pager rewrite the URL in
+// place since; send the URL on screen now, or the redirect brings back the old filters and page.
+for (const input of document.querySelectorAll('form.sync-form input[name="next"], details.player-menu input[name="next"]')) {
+  input.form.addEventListener("submit", () => (input.value = location.pathname + location.search));
+}
+
 // A tab left open would otherwise keep saying "just now". Mirrors formatRelative in src/views/format.ts.
 const relativeTime = (iso) => {
   const seconds = Math.round((Date.now() - Date.parse(iso)) / 1000);
