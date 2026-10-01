@@ -91,6 +91,7 @@ describe("renderContextMarkdown", () => {
       recentBattles: listBattles(FIXTURE_TAG, { limit: 15 }),
       collection: buildCollection(snapshot.player, listCards()),
       notes: "## Budget\nF2P, no pass this season.",
+      resources: { gold: 182_500, gems: null, updatedAt: new Date(Date.now() - 3 * 3_600_000).toISOString() },
       decks: [deck],
       appUrl: "https://cr.example.com/",
     });
@@ -113,6 +114,7 @@ describe("renderContextMarkdown", () => {
     expect(md).toContain("- King Tower level: 15 (next level needs 14 cards at level 15+, has 3; tower troops don't count)");
     expect(md).toContain("- Collection level: 546 (");
     expect(md).toContain("- Current streak: 3 wins in a row");
+    expect(md).toContain("- Gold: 182,500 · Gems: not entered (entered by the player 3 h ago)");
     expect(md).not.toContain("Exp level");
     expect(md).toContain("| Musketeer | 14 | Evo + Hero | 4 |");
     expect(md).toContain("| Ice Golem | 14 | Hero | 2 |");

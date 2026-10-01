@@ -4,6 +4,7 @@ import type { PlayerCard } from "../cr/types";
 import type { BattleRecord, BattleStats } from "../repos/battles";
 import type { DeckRecord } from "../repos/decks";
 import type { PlayerRecord, Snapshot } from "../repos/players";
+import type { PlayerResources } from "../repos/resources";
 import { type Collection, type CollectionEntry, RARITY_ORDER } from "./collection";
 import { formsLabel, formsOwnership } from "./evolution";
 import { nextKingTower } from "./kingTower";
@@ -16,6 +17,7 @@ export interface ContextInput {
   recentBattles: BattleRecord[];
   collection: Collection;
   notes: string | null;
+  resources?: PlayerResources | null;
   decks: DeckRecord[];
   appUrl?: string;
   now?: Date;
@@ -81,7 +83,14 @@ function streakText(n: number): string {
   return `${k} ${n > 0 ? "win" : "loss"}${k === 1 ? "" : n > 0 ? "s" : "es"} in a row`;
 }
 
-function profile({ snapshot }: ContextInput): string {
+function resourcesLine({ resources, now = new Date() }: ContextInput): string {
+  const amount = (n: number | null | undefined) => (n === null || n === undefined ? "not entered" : gold(n));
+  if (!resources) return "- Gold: not entered · Gems: not entered";
+  return `- Gold: ${amount(resources.gold)} · Gems: ${amount(resources.gems)} (entered by the player ${ageText(resources.updatedAt, now)} ago)`;
+}
+
+function profile(input: ContextInput): string {
+  const { snapshot } = input;
   if (!snapshot) return "## Profile\n\nNo snapshot yet; the player has not synced successfully.";
   const p = snapshot.player;
   const pol = p.currentPathOfLegendSeasonResult;
@@ -98,6 +107,7 @@ function profile({ snapshot }: ContextInput): string {
     `- Best Ranked: ${polText(best)}`,
     `- Record: ${p.wins} W / ${p.losses} L in ${p.battleCount} battles, ${p.threeCrownWins} three-crown wins`,
     `- Clan: ${p.clan ? `${p.clan.name} (${p.clan.tag})` : "none"}`,
+    resourcesLine(input),
   ];
   if (p.currentWinLoseStreak !== undefined) rows.push(`- Current streak: ${streakText(p.currentWinLoseStreak)}`);
   if (p.currentFavouriteCard) rows.push(`- Favourite card: ${p.currentFavouriteCard.name}`);
@@ -276,7 +286,7 @@ function limitations({ snapshot, now = new Date() }: ContextInput): string {
   return [
     "## Data limitations",
     "",
-    "- The official API exposes no gold, gems, shop offers, or Pass Royale status; see Player notes for those.",
+    "- The official API exposes no gold, gems, shop offers, or Pass Royale status. Gold and gems in Profile are typed in by the player and may be stale; see Player notes for the rest.",
     "- Card levels cap at 16. Elite Wild Cards no longer exist (removed November 2025); every level costs copies plus gold.",
     "- The API battle log keeps only about 25 battles, so history covers what this app has stored since tracking began.",
     "- Merge Tactics matches never appear in the battle log. There is no chest cycle any more (removed March 2025).",

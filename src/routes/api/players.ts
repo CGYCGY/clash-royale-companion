@@ -11,6 +11,7 @@ import { parseJson, parseQuery, parseWith } from "../../http/validate";
 import { countBattles, getBattle, getBattleStats, listBattles } from "../../repos/battles";
 import { type CardRecord, cardsById, listCards } from "../../repos/cards";
 import { getNotes, setNotes } from "../../repos/notes";
+import { getResources, setResources } from "../../repos/resources";
 import {
   assertPlayerOwnedBy,
   getLatestSnapshot,
@@ -143,6 +144,13 @@ export const playerRoutes = new Hono<AppEnv>()
     const player = ownedPlayer(c);
     const { content } = await parseJson(c, z.object({ content: z.string().max(20_000) }));
     return c.json({ notes: setNotes(player.tag, content) });
+  })
+  .get("/players/:tag/resources", (c) => c.json({ resources: getResources(ownedPlayer(c).tag) }))
+  .put("/players/:tag/resources", async (c) => {
+    const player = ownedPlayer(c);
+    const amount = z.number().int().min(0).max(999_999_999).nullable();
+    const body = await parseJson(c, z.object({ gold: amount, gems: amount }));
+    return c.json({ resources: setResources(player.tag, body) });
   })
   .post("/players/:tag/sync", async (c) => {
     const player = ownedPlayer(c);

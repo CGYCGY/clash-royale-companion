@@ -54,7 +54,7 @@ export function addPlayer(userId: number, tag: string, name = ""): PlayerRecord 
   return toRecord(row);
 }
 
-/** Deletes the player and (via cascade) its snapshots, battles, notes, and sync runs. Owner-scoped. */
+/** Deletes the player and (via cascade) its snapshots, battles, notes, resources, and sync runs. Owner-scoped. */
 export function removePlayer(tag: string, userId: number): boolean {
   return getDb().query("DELETE FROM players WHERE tag = ? AND user_id = ?").run(tag, userId).changes > 0;
 }

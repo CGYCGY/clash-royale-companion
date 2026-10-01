@@ -226,3 +226,20 @@ describe("context", () => {
     expect(json.markdown).toBe(md);
   });
 });
+
+describe("resources", () => {
+  test("round trip, nulls allowed", async () => {
+    expect(await get<{ resources: unknown }>(`${base}/resources`)).toEqual({ resources: null });
+    const put = await env.app.request(`${base}/resources`, jsonInit("PUT", auth, { gold: 52_000, gems: null }));
+    expect(put.status).toBe(200);
+    const { resources } = await get<{ resources: { gold: number; gems: null; updatedAt: string } }>(`${base}/resources`);
+    expect(resources).toEqual({ gold: 52_000, gems: null, updatedAt: expect.any(String) });
+  });
+
+  test("rejects negatives, fractions and missing fields", async () => {
+    for (const body of [{ gold: -1, gems: 0 }, { gold: 1.5, gems: 0 }, { gold: 1 }]) {
+      const res = await env.app.request(`${base}/resources`, jsonInit("PUT", auth, body));
+      expect(res.status).toBe(400);
+    }
+  });
+});

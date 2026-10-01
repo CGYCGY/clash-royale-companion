@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { currentUser, requireUser } from "../../auth/middleware";
-import { normalizeTag } from "../../cr/tag";
+import { normalizeTag, tagSlug } from "../../cr/tag";
 import { nextKingTower } from "../../domain/kingTower";
 import { afterSwitchPath, rememberPlayer, resolvePlayer } from "../../http/currentPlayer";
 import { setFlash } from "../../http/flash";
@@ -9,6 +9,7 @@ import { parseForm } from "../../http/validate";
 import { averageElixir, type BattleStats, getBattleStats, listBattles } from "../../repos/battles";
 import { cardsById, cardsMap } from "../../repos/cards";
 import { assertPlayerOwnedBy, getLatestSnapshot, type PlayerRecord, type Snapshot } from "../../repos/players";
+import { getResources, type PlayerResources, setResources } from "../../repos/resources";
 import { manualSync } from "../../sync";
 import type { AppEnv } from "../../types";
 import { BattleTable } from "../../views/battleTable";
@@ -16,9 +17,47 @@ import { formatElixir, playerCardView } from "../../views/cardViews";
 import { CardIcon, DeckGrid, EmptyState, StatTile } from "../../views/components";
 import { formatPercent, formatRelative, formatSigned } from "../../views/format";
 import { renderPage } from "../../views/render";
-import { safeNext, text } from "./shared";
+import { formError, safeNext, text } from "./shared";
 
-function PlayerHeader({ player, snapshot }: { player: PlayerRecord; snapshot: Snapshot }) {
+// Blank clears the value; separators are dropped so a pasted "1,234,567" is accepted.
+const resourceAmount = z
+  .string()
+  .default("")
+  .transform((s) => s.replace(/[\s,._]/g, ""))
+  .pipe(z.string().regex(/^\d{0,9}$/))
+  .transform((s) => (s === "" ? null : Number(s)));
+
+function ResourcesForm({ player, resources }: { player: PlayerRecord; resources: PlayerResources | null }) {
+  const slug = tagSlug(player.tag);
+  return (
+    <form method="post" action={`/players/${slug}/resources`} class="resources-form">
+      <div class="field">
+        <label for="res-gold">Gold</label>
+        <input id="res-gold" type="text" name="gold" inputmode="numeric" autocomplete="off" placeholder="—" value={resources?.gold?.toLocaleString("en-US") ?? ""} />
+      </div>
+      <div class="field">
+        <label for="res-gems">Gems</label>
+        <input id="res-gems" type="text" name="gems" inputmode="numeric" autocomplete="off" placeholder="—" value={resources?.gems?.toLocaleString("en-US") ?? ""} />
+      </div>
+      <button type="submit" class="btn-secondary">
+        Save
+      </button>
+      <span class="muted small">
+        {resources ? `Updated ${formatRelative(resources.updatedAt)}` : "Not in the API; enter them by hand."}
+      </span>
+    </form>
+  );
+}
+
+function PlayerHeader({
+  player,
+  snapshot,
+  resources,
+}: {
+  player: PlayerRecord;
+  snapshot: Snapshot;
+  resources: PlayerResources | null;
+}) {
   const p = snapshot.player;
   const pol = p.currentPathOfLegendSeasonResult;
   return (
@@ -64,6 +103,7 @@ function PlayerHeader({ player, snapshot }: { player: PlayerRecord; snapshot: Sn
           </dd>
         </div>
       </dl>
+      <ResourcesForm player={player} resources={resources} />
     </section>
   );
 }
@@ -186,7 +226,7 @@ export const dashboardPages = new Hono<AppEnv>()
       <div class="stack">
         {snapshot ? (
           <>
-            <PlayerHeader player={player} snapshot={snapshot} />
+            <PlayerHeader player={player} snapshot={snapshot} resources={getResources(player.tag)} />
             <div class="stats">
               <WindowTiles label="7d" stats={getBattleStats(player.tag, { sinceDays: 7 })} />
               <WindowTiles label="30d" stats={getBattleStats(player.tag, { sinceDays: 30 })} />
@@ -230,6 +270,19 @@ export const dashboardPages = new Hono<AppEnv>()
     }
     rememberPlayer(c, tag);
     return c.redirect(safeNext(next));
+  })
+  .post("/players/:tag/resources", async (c) => {
+    const tag = normalizeTag(c.req.param("tag"));
+    assertPlayerOwnedBy(tag, currentUser(c).id);
+    rememberPlayer(c, tag);
+    try {
+      setResources(tag, await parseForm(c, z.object({ gold: resourceAmount, gems: resourceAmount })));
+      setFlash(c, "success", "Saved gold and gems.");
+    } catch (err) {
+      formError(err);
+      setFlash(c, "error", "Gold and gems must be whole numbers up to 999,999,999.");
+    }
+    return c.redirect("/");
   })
   .post("/players/current", async (c) => {
     const form = await parseForm(c, z.object({ tag: text, next: text }));

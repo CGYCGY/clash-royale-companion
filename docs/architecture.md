@@ -36,7 +36,7 @@ src/
   cr/                  Clash Royale API: client.ts (CrClient, CrApi, CrApiError, getCrClient),
                        types.ts (response types, parseBattleTime), tag.ts, levels.ts.
   auth/                passwords, users, register, sessions, apiKeys, adminTokens, invites, middleware, crypto.
-  repos/               Typed queries: players, battles, cards, decks, notes, syncRuns.
+  repos/               Typed queries: players, battles, cards, decks, notes, resources (gold/gems), syncRuns.
   sync/                syncPlayer, syncCards, syncAll, manualSync, trackPlayer, scheduler (index.ts re-exports).
   http/                validate.ts (zod helpers), flash.ts, csrf.ts, currentPlayer.ts (header player switcher),
                        assets.ts (content-hashed /static URLs and their Cache-Control).
@@ -313,7 +313,7 @@ The scheduler is in-process, so run exactly one app instance per database.
 ## Database
 
 The schema lives in `src/db/migrations/` (`0001_init.sql` through `0006_cards_hero_icon.sql`). Add changes as the
-next `NNNN_*.sql` file and never edit an applied one. Foreign keys are on, and deleting a player cascades to its snapshots, battles, notes, and sync runs.
+next `NNNN_*.sql` file and never edit an applied one. Foreign keys are on, and deleting a player cascades to its snapshots, battles, notes, resources, and sync runs.
 Large payloads are stored as JSON text (`player_snapshots.data`, `battles.data`, `cards.data`). Query them with
 `json_extract` rather than parsing in JS when you need one field, as `getTrophyHistory` does.
 

@@ -4,6 +4,7 @@ import { listCards } from "../repos/cards";
 import { listDecks } from "../repos/decks";
 import { getNotes } from "../repos/notes";
 import { getLatestSnapshot, type PlayerRecord } from "../repos/players";
+import { getResources } from "../repos/resources";
 import { buildCollection } from "./collection";
 import { renderContextMarkdown } from "./context";
 
@@ -18,6 +19,7 @@ export function playerContextMarkdown(player: PlayerRecord): string {
     recentBattles: listBattles(player.tag, { limit: 15 }),
     collection: buildCollection(snapshot?.player ?? null, listCards()),
     notes: getNotes(player.tag)?.content ?? null,
+    resources: getResources(player.tag),
     decks: listDecks(player.userId),
     appUrl: config.APP_URL,
   });

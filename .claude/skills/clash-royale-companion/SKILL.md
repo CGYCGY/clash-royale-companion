@@ -125,6 +125,8 @@ UTC. `{tag}` is a player tag without `#`.
 | GET | `/api/players/{tag}/cards` | | `{ summary, cards: CollectionEntry[], fetchedAt, lastSeenAt }` |
 | GET | `/api/players/{tag}/notes` | | `{ notes: { content, updatedAt } \| null }` |
 | PUT | `/api/players/{tag}/notes` | `{ content }` (Markdown, max 20,000 chars) | `{ notes: { content, updatedAt } }`. Replaces the whole note |
+| GET | `/api/players/{tag}/resources` | | `{ resources: { gold, gems, updatedAt } \| null }`. Typed in by the player (the API has neither); either may be `null` |
+| PUT | `/api/players/{tag}/resources` | `{ gold, gems }` (whole numbers or `null`, both required) | `{ resources }`. Only when the user tells you new amounts |
 | POST | `/api/players/{tag}/sync` | | `{ ok: true, battlesAdded }`, or `429 cooldown`, or `502 upstream_error` |
 | GET | `/api/players/{tag}/context.md` | | `text/markdown`, the full coaching context |
 | GET | `/api/players/{tag}/context` | | `{ markdown }`, the same document as JSON |

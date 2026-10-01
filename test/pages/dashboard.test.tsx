@@ -77,6 +77,38 @@ describe("dashboard", () => {
     expect(html).not.toContain(`King Tower ${old.expLevel}`);
   });
 
+  test("gold and gems: saved from the header form, separators accepted, blank clears", async () => {
+    await linkFixturePlayer(user, env.client);
+    const before = await (await env.app.request("/", { headers: { Cookie: cookie } })).text();
+    expect(before).toContain('<form method="post" action="/players/9QJUGC2R/resources" class="resources-form">');
+    expect(before).toContain("Not in the API; enter them by hand.");
+
+    const res = await env.app.request("/players/9QJUGC2R/resources", formPost(cookie, { gold: "1,234,567", gems: " 890 " }));
+    expect(res.status).toBe(302);
+    const html = await (await follow(env.app, res, cookie)).text();
+    expect(html).toContain("Saved gold and gems.");
+    expect(html).toContain('id="res-gold" type="text" name="gold" inputmode="numeric" autocomplete="off" placeholder="—" value="1,234,567"');
+    expect(html).toContain('name="gems" inputmode="numeric" autocomplete="off" placeholder="—" value="890"');
+    expect(getDb().query("SELECT gold, gems FROM player_resources").get()).toEqual({ gold: 1_234_567, gems: 890 });
+
+    await env.app.request("/players/9QJUGC2R/resources", formPost(cookie, { gold: "", gems: "5" }));
+    expect(getDb().query("SELECT gold, gems FROM player_resources").get()).toEqual({ gold: null, gems: 5 });
+  });
+
+  test("gold and gems: bad input flashes an error and keeps the old values; other users' tags 404", async () => {
+    await linkFixturePlayer(user, env.client);
+    await env.app.request("/players/9QJUGC2R/resources", formPost(cookie, { gold: "100", gems: "5" }));
+    for (const gold of ["-1", "1.5k", "1000000000"]) {
+      const res = await env.app.request("/players/9QJUGC2R/resources", formPost(cookie, { gold, gems: "5" }));
+      expect(await (await follow(env.app, res, cookie)).text()).toContain("Gold and gems must be whole numbers");
+    }
+    expect(getDb().query("SELECT gold, gems FROM player_resources").get()).toEqual({ gold: 100, gems: 5 });
+
+    addPlayer(makeUser("mallory").id, "#8QQ");
+    const other = await env.app.request("/players/8QQ/resources", formPost(cookie, { gold: "1", gems: "1" }));
+    expect(other.status).toBe(404);
+  });
+
   test("King Tower card says max at level 16", async () => {
     env.client.player = { ...env.client.player, kingTowerLevel: 16 };
     await linkFixturePlayer(user, env.client);
