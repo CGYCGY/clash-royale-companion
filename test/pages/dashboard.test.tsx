@@ -35,7 +35,7 @@ describe("dashboard", () => {
     expect(html).not.toMatch(/chest/i);
     expect(html).toContain("#9QJUGC2R · King Tower 15</div>");
     expect(html).not.toContain("King level");
-    expect(html).toMatch(/<h2>King Tower &amp; Collection Level<\/h2><span class="info-tip"><button type="button" class="info-tip-btn" aria-label="Collection Level adds up/);
+    expect(html).toMatch(/<h2>King Tower &amp; Collection Level<\/h2><span class="info-tip info-tip-end"><button type="button" class="info-tip-btn" aria-label="Collection Level adds up/);
     expect(html).toContain('<div class="stat-label">Collection Level</div><div class="stat-value">546</div>');
     // KT15 → 16 needs 14 cards at level 15+ (tower troops excluded); the fixture has 3.
     expect(html).toContain("Next: King Tower 16 needs 14 cards at level 15+");
@@ -80,8 +80,8 @@ describe("dashboard", () => {
   test("gold and gems: saved from the header form, separators accepted, blank clears", async () => {
     await linkFixturePlayer(user, env.client);
     const before = await (await env.app.request("/", { headers: { Cookie: cookie } })).text();
-    expect(before).toContain('<form method="post" action="/players/9QJUGC2R/resources" class="resources-form">');
-    expect(before).toContain("Not in the API; enter them by hand.");
+    expect(before).toContain('<form method="post" action="/players/9QJUGC2R/resources" class="facts resources-form" data-save-on-change="true">');
+    expect(before).toContain("The Clash Royale API doesn&#39;t share your gems, so enter it here.\"");
 
     const res = await env.app.request("/players/9QJUGC2R/resources", formPost(cookie, { gold: "1,234,567", gems: " 890 " }));
     expect(res.status).toBe(302);
@@ -89,6 +89,7 @@ describe("dashboard", () => {
     expect(html).toContain("Saved gold and gems.");
     expect(html).toContain('id="res-gold" type="text" name="gold" inputmode="numeric" autocomplete="off" placeholder="—" value="1,234,567"');
     expect(html).toContain('name="gems" inputmode="numeric" autocomplete="off" placeholder="—" value="890"');
+    expect(html).toContain("so enter it here. Last saved just now.");
     expect(getDb().query("SELECT gold, gems FROM player_resources").get()).toEqual({ gold: 1_234_567, gems: 890 });
 
     await env.app.request("/players/9QJUGC2R/resources", formPost(cookie, { gold: "", gems: "5" }));

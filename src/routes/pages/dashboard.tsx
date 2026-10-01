@@ -28,23 +28,33 @@ const resourceAmount = z
   .transform((s) => (s === "" ? null : Number(s)));
 
 function ResourcesForm({ player, resources }: { player: PlayerRecord; resources: PlayerResources | null }) {
-  const slug = tagSlug(player.tag);
+  const saved = resources ? ` Last saved ${formatRelative(resources.updatedAt)}.` : "";
+  const field = (name: "gold" | "gems", label: string) => (
+    <div>
+      <div class="resource-label">
+        <label for={`res-${name}`}>{label}</label>
+        <InfoTip align="start" text={`The Clash Royale API doesn't share your ${name}, so enter it here.${saved}`} />
+      </div>
+      <input
+        id={`res-${name}`}
+        type="text"
+        name={name}
+        inputmode="numeric"
+        autocomplete="off"
+        placeholder="—"
+        value={resources?.[name]?.toLocaleString("en-US") ?? ""}
+      />
+    </div>
+  );
   return (
-    <form method="post" action={`/players/${slug}/resources`} class="resources-form">
-      <div class="field">
-        <label for="res-gold">Gold</label>
-        <input id="res-gold" type="text" name="gold" inputmode="numeric" autocomplete="off" placeholder="—" value={resources?.gold?.toLocaleString("en-US") ?? ""} />
+    <form method="post" action={`/players/${tagSlug(player.tag)}/resources`} class="facts resources-form" data-save-on-change>
+      {field("gold", "Gold")}
+      {field("gems", "Gems")}
+      <div class="resources-save">
+        <button type="submit" class="btn-small">
+          Save
+        </button>
       </div>
-      <div class="field">
-        <label for="res-gems">Gems</label>
-        <input id="res-gems" type="text" name="gems" inputmode="numeric" autocomplete="off" placeholder="—" value={resources?.gems?.toLocaleString("en-US") ?? ""} />
-      </div>
-      <button type="submit" class="btn-secondary">
-        Save
-      </button>
-      <span class="muted small">
-        {resources ? `Updated ${formatRelative(resources.updatedAt)}` : "Not in the API; enter them by hand."}
-      </span>
     </form>
   );
 }

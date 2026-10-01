@@ -132,9 +132,10 @@ export function EmptyState({ title, children }: { title: string; children?: Chil
 }
 
 /** A button so touch users can tap it: the tip shows on hover and while it has focus (CSS only). */
-export function InfoTip({ text }: { text: string }) {
+/** `align="start"` opens the tip rightwards, for icons near the left edge. */
+export function InfoTip({ text, align = "end" }: { text: string; align?: "start" | "end" }) {
   return (
-    <span class="info-tip">
+    <span class={`info-tip info-tip-${align}`}>
       <button type="button" class="info-tip-btn" aria-label={text}>
         <InfoIcon />
       </button>

@@ -58,6 +58,15 @@ for (const input of document.querySelectorAll('form.sync-form input[name="next"]
   input.form.addEventListener("submit", () => (input.value = location.pathname + location.search));
 }
 
+// Save shows only once a field differs from what the server rendered; without JS it is always visible.
+for (const form of document.querySelectorAll("form[data-save-on-change]")) {
+  const btn = form.querySelector('button[type="submit"]');
+  const inputs = [...form.querySelectorAll("input")];
+  const update = () => (btn.hidden = inputs.every((i) => i.value.trim() === i.defaultValue));
+  form.addEventListener("input", update);
+  update();
+}
+
 // A tab left open would otherwise keep saying "just now". Mirrors formatRelative in src/views/format.ts.
 const relativeTime = (iso) => {
   const seconds = Math.round((Date.now() - Date.parse(iso)) / 1000);

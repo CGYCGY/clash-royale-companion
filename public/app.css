@@ -1631,7 +1631,6 @@ label.switch {
   position: absolute;
   z-index: 20;
   top: calc(100% + 6px);
-  right: 0;
   width: max-content;
   max-width: min(300px, calc(100vw - 32px));
   padding: 0.55rem 0.7rem;
@@ -1647,6 +1646,12 @@ label.switch {
   opacity: 0;
   transition: opacity 0.12s;
 }
+.info-tip-end .info-tip-text {
+  right: 0;
+}
+.info-tip-start .info-tip-text {
+  left: 0;
+}
 .info-tip:hover .info-tip-text,
 .info-tip-btn:focus + .info-tip-text {
   visibility: visible;
@@ -1654,25 +1659,30 @@ label.switch {
 }
 
 .resources-form {
+  margin-top: 0.75rem;
+}
+.resource-label {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 0.6rem 0.75rem;
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--border);
+  align-items: center;
+  gap: 0.2rem;
 }
-.resources-form .field {
-  flex: 0 1 150px;
+.resource-label label {
   margin: 0;
-}
-.resources-form label {
   color: var(--muted);
   font-size: 0.8rem;
   font-weight: 400;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
-.resources-form .muted {
-  padding-bottom: 0.6rem;
+.resource-label .info-tip-btn svg {
+  width: 15px;
+  height: 15px;
+}
+.resources-form input {
+  max-width: 130px;
+  padding: 0.25rem 0.5rem;
+  font-weight: 600;
+}
+.resources-save {
+  align-self: end;
 }
