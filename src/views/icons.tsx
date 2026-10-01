@@ -95,3 +95,11 @@ export const SortDescIcon = () => (
     <path d="M3 16l4 4 4-4M7 20V4M13 4h8M13 8h5M13 12h2" />
   </svg>
 );
+
+export const InfoIcon = () => (
+  <svg {...svgProps} class="icon-info">
+    <circle cx="12" cy="12" r="10" />
+    <path d="M12 16v-4" />
+    <path d="M12 8h.01" />
+  </svg>
+);

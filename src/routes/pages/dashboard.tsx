@@ -14,7 +14,7 @@ import { manualSync } from "../../sync";
 import type { AppEnv } from "../../types";
 import { BattleTable } from "../../views/battleTable";
 import { formatElixir, playerCardView } from "../../views/cardViews";
-import { CardIcon, DeckGrid, EmptyState, StatTile } from "../../views/components";
+import { CardIcon, DeckGrid, EmptyState, InfoTip, StatTile } from "../../views/components";
 import { formatPercent, formatRelative, formatSigned } from "../../views/format";
 import { renderPage } from "../../views/render";
 import { formError, safeNext, text } from "./shared";
@@ -161,7 +161,10 @@ function KingTowerCard({ snapshot }: { snapshot: Snapshot }) {
   const next = nextKingTower(p, cardsById());
   return (
     <section class="card">
-      <h2>King Tower &amp; Collection Level</h2>
+      <div class="row title-with-tip">
+        <h2>King Tower &amp; Collection Level</h2>
+        <InfoTip text="Collection Level adds up every card and tower troop level, plus 5 per Evolution and Hero owned. Tower troops don't count toward King Tower." />
+      </div>
       <div class="kt-levels">
         <div>
           <div class="stat-label">King Tower</div>
@@ -192,10 +195,6 @@ function KingTowerCard({ snapshot }: { snapshot: Snapshot }) {
       ) : (
         p.kingTowerLevel !== undefined && <p class="kt-next">Max King Tower level.</p>
       )}
-      <p class="muted small kt-note">
-        Collection Level adds up every card and tower troop level, plus 5 per Evolution and Hero owned. Tower
-        troops don't count toward King Tower.
-      </p>
     </section>
   );
 }

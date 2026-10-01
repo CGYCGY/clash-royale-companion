@@ -35,7 +35,7 @@ describe("dashboard", () => {
     expect(html).not.toMatch(/chest/i);
     expect(html).toContain("#9QJUGC2R · King Tower 15</div>");
     expect(html).not.toContain("King level");
-    expect(html).toContain("<h2>King Tower &amp; Collection Level</h2>");
+    expect(html).toMatch(/<h2>King Tower &amp; Collection Level<\/h2><span class="info-tip"><button type="button" class="info-tip-btn" aria-label="Collection Level adds up/);
     expect(html).toContain('<div class="stat-label">Collection Level</div><div class="stat-value">546</div>');
     // KT15 → 16 needs 14 cards at level 15+ (tower troops excluded); the fixture has 3.
     expect(html).toContain("Next: King Tower 16 needs 14 cards at level 15+");

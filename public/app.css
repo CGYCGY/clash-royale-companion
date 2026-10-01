@@ -1600,8 +1600,57 @@ label.switch {
   margin-top: 0.4rem;
   max-width: 320px;
 }
-.kt-note {
-  margin: 0.9rem 0 0;
+
+.title-with-tip {
+  flex-wrap: nowrap;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+.title-with-tip h2 {
+  margin: 0;
+}
+.info-tip {
+  position: relative;
+  display: inline-flex;
+}
+.info-tip-btn {
+  padding: 0.15rem;
+  background: transparent;
+  color: var(--muted);
+  border-radius: 50%;
+}
+.info-tip-btn:hover {
+  background: transparent;
+  color: var(--text);
+}
+.info-tip-btn svg {
+  width: 18px;
+  height: 18px;
+}
+.info-tip-text {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  right: 0;
+  width: max-content;
+  max-width: min(300px, calc(100vw - 32px));
+  padding: 0.55rem 0.7rem;
+  font-size: 0.85rem;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.35);
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.info-tip:hover .info-tip-text,
+.info-tip-btn:focus + .info-tip-text {
+  visibility: visible;
+  opacity: 1;
 }
 
 .resources-form {

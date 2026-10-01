@@ -2,6 +2,7 @@ import type { Child } from "hono/jsx";
 import { cardForms } from "../domain/evolution";
 import type { BattleResult } from "../repos/battles";
 import type { CardRecord } from "../repos/cards";
+import { InfoIcon } from "./icons";
 
 /** What the card components need. Build from battle DeckCards, deck names, or player cards via toCardView. */
 export interface CardView {
@@ -127,5 +128,19 @@ export function EmptyState({ title, children }: { title: string; children?: Chil
       <h2>{title}</h2>
       {children}
     </div>
+  );
+}
+
+/** A button so touch users can tap it: the tip shows on hover and while it has focus (CSS only). */
+export function InfoTip({ text }: { text: string }) {
+  return (
+    <span class="info-tip">
+      <button type="button" class="info-tip-btn" aria-label={text}>
+        <InfoIcon />
+      </button>
+      <span class="info-tip-text" aria-hidden="true">
+        {text}
+      </span>
+    </span>
   );
 }
