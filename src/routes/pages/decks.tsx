@@ -7,8 +7,8 @@ import { classifyDecks, type UsedDeckStats } from "../../domain/deckUsage";
 import { AppError, notFound } from "../../errors";
 import { resolvePlayer } from "../../http/currentPlayer";
 import { setFlash } from "../../http/flash";
-import { parseForm } from "../../http/validate";
-import { averageElixir, getBattleStats } from "../../repos/battles";
+import { parseForm, parseQuery } from "../../http/validate";
+import { averageElixir, type BattleStats, getBattleStats } from "../../repos/battles";
 import { cardsMap, listCards } from "../../repos/cards";
 import { createDeck, DECK_SIZE, type DeckRecord, deleteDeck, getDeck, listDecks, updateDeck } from "../../repos/decks";
 import { getLatestSnapshot, type PlayerRecord } from "../../repos/players";
@@ -39,6 +39,29 @@ function SourceBadge({ source }: { source: DeckRecord["source"] }) {
 // Past this the page turns into a battle-log dump; the Battles page has the full history.
 const MAX_USED_DECKS = 12;
 
+const deckFilterSchema = z.object({
+  mode: z.string().trim().max(100).catch(""),
+  show: z.enum(["saved", "used"]).optional().catch(undefined),
+});
+
+/**
+ * Deck stats carry mode tags, not labels, so a war sub-mode is offered by its tag ("Touchdown") and
+ * shown under its group ("Clan War · Touchdown").
+ */
+export function deckModeOptions(byMode: BattleStats["byMode"]): { value: string; text: string }[] {
+  const groups = new Map<string, Set<string>>();
+  for (const m of byMode) {
+    const [group = m.modeLabel, ...subs] = m.modeTags;
+    const set = groups.get(group) ?? new Set<string>();
+    for (const sub of subs) set.add(sub);
+    groups.set(group, set);
+  }
+  return [...groups].flatMap(([group, subs]) => [
+    { value: group, text: subs.size ? `${group} · All` : group },
+    ...[...subs].map((sub) => ({ value: sub, text: `${group} · ${sub}` })),
+  ]);
+}
+
 const DECK_TAG_LABELS = { "in-use": "In Use", saved: "Saved", used: "Used" } as const;
 
 function DeckTag({ kind }: { kind: keyof typeof DECK_TAG_LABELS }) {
@@ -56,29 +79,26 @@ function DeckStats({
   tracked: boolean;
 }) {
   return (
-    <>
-      <div class="row deck-meta">
-        <span>
-          <strong>{formatElixir(avgElixir)}</strong> elixir
-        </span>
-        {stats ? (
-          <>
-            <span>
-              <strong>{stats.games}</strong> game{stats.games === 1 ? "" : "s"}
-            </span>
-            <span>
-              <strong>{formatPercent(stats.winRate)}</strong> win
-            </span>
-            <span class="muted small">
-              {stats.wins}W {stats.losses}L {stats.draws}D
-            </span>
-          </>
-        ) : (
-          tracked && <span class="muted small">no stored battles with this deck</span>
-        )}
-      </div>
-      {stats && <ModeTags tags={stats.modeTags} />}
-    </>
+    <div class="row deck-meta">
+      <span>
+        <strong>{formatElixir(avgElixir)}</strong> elixir
+      </span>
+      {stats ? (
+        <>
+          <span>
+            <strong>{stats.games}</strong> game{stats.games === 1 ? "" : "s"}
+          </span>
+          <span>
+            <strong>{formatPercent(stats.winRate)}</strong> win
+          </span>
+          <span class="muted small">
+            {stats.wins}W {stats.losses}L {stats.draws}D
+          </span>
+        </>
+      ) : (
+        tracked && <span class="muted small">no stored battles with this deck</span>
+      )}
+    </div>
   );
 }
 
@@ -190,7 +210,14 @@ function DeckForm({
         </datalist>
         <div class="card-inputs">
           {slots.map((v, i) => (
-            <input type="text" name="cards" value={v} list="card-names" aria-label={`Card ${i + 1}`} autocomplete="off" />
+            <input
+              type="text"
+              name="cards"
+              value={v}
+              list="card-names"
+              aria-label={`Card ${i + 1}`}
+              autocomplete="off"
+            />
           ))}
         </div>
       </fieldset>
@@ -234,7 +261,9 @@ function deckFormError(err: unknown) {
   if (err instanceof AppError && err.code === "invalid_deck") {
     const d = err.details as { unknown?: string[]; duplicates?: string[]; count?: number } | undefined;
     const countMsg =
-      d?.count !== undefined && d.count !== DECK_SIZE ? `A deck needs exactly ${DECK_SIZE} cards (got ${d.count}).` : "";
+      d?.count !== undefined && d.count !== DECK_SIZE
+        ? `A deck needs exactly ${DECK_SIZE} cards (got ${d.count}).`
+        : "";
     return { message: countMsg || "Some cards aren't valid.", unknown: d?.unknown, duplicates: d?.duplicates };
   }
   return { message: formError(err) };
@@ -289,8 +318,16 @@ export const deckPages = new Hono<AppEnv>()
     const catalog = cardsMap();
     const snapshot = player ? getLatestSnapshot(player.tag) : null;
     const equipped = snapshot?.player.currentDeck?.map((card) => card.name) ?? null;
-    const usage = classifyDecks(listDecks(currentUser(c).id), player ? getBattleStats(player.tag).byDeck : [], equipped);
-    const used = usage.used.slice(0, MAX_USED_DECKS);
+    const battleStats = player ? getBattleStats(player.tag) : null;
+    const usage = classifyDecks(listDecks(currentUser(c).id), battleStats?.byDeck ?? [], equipped);
+    const f = parseQuery(c, deckFilterSchema);
+    const modeOptions = battleStats ? deckModeOptions(battleStats.byMode) : [];
+    const modeText = modeOptions.find((o) => o.value === f.mode)?.text ?? f.mode;
+    const playedIn = (s: UsedDeckStats | null) => !f.mode || (s?.modeTags.includes(f.mode) ?? false);
+    const saved = usage.saved.filter((d) => playedIn(d.stats));
+    const allUsed = usage.used.filter((d) => playedIn(d.stats));
+    const used = allUsed.slice(0, MAX_USED_DECKS);
+    const filtered = Boolean(f.mode || f.show);
     const playerName = player ? player.name || player.tag : null;
     return renderPage(
       c,
@@ -319,94 +356,147 @@ export const deckPages = new Hono<AppEnv>()
           )}
         </ul>
 
-        <section class="stack-tight">
-          <h2>Saved Decks</h2>
-          {usage.saved.length ? (
-            <div class="grid">
-              {usage.saved.map(({ deck: d, stats, inUse }) => (
-                <article class={`card deck-card deck-saved${inUse ? " in-use" : ""}`}>
-                  <div class="row deck-card-head">
-                    <h3 class="deck-name">
-                      <a href={`/decks/${d.id}`}>{d.name}</a>
-                    </h3>
-                    <div class="spacer" />
-                    <span class="deck-tags">
-                      {inUse && <DeckTag kind="in-use" />}
-                      <DeckTag kind="saved" />
-                      <SourceBadge source={d.source} />
-                    </span>
-                  </div>
-                  <DeckGrid cards={namedCardViews(d.cards, catalog)} size="sm" />
-                  <DeckStats stats={stats} avgElixir={averageElixir(d.cards, catalog)} tracked={player !== null} />
-                  {d.notes && <p class="muted excerpt">{d.notes.length > 140 ? `${d.notes.slice(0, 140)}…` : d.notes}</p>}
-                  <div class="row deck-actions">
-                    <a class="btn btn-secondary btn-small" href={`/decks/${d.id}/edit`}>
-                      Edit
-                    </a>
-                    <form
-                      method="post"
-                      action={`/decks/${d.id}/delete`}
-                      class="inline"
-                      onsubmit="return confirm('Delete this deck?')"
-                    >
-                      <button type="submit" class="btn-danger btn-small">
-                        Delete
-                      </button>
-                    </form>
-                    <div class="spacer" />
-                    <span class="muted small">updated {formatRelative(d.updatedAt)}</span>
-                  </div>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <EmptyState title="No Saved Decks Yet">
-              <p class="muted">Save decks here, or let your AI assistant save them through the API.</p>
-              <a class="btn" href="/decks/new">
-                New Deck
-              </a>
-            </EmptyState>
-          )}
-        </section>
-
-        {player && (
-          <section class="stack-tight">
-            <h2>
-              Used in Battles <span class="muted small">{playerName}</span>
-            </h2>
-            {used.length ? (
-              <div class="grid">
-                {used.map(({ cards, stats, inUse }) => (
-                  <article class={`card deck-card deck-used${inUse ? " in-use" : ""}`}>
-                    <div class="row deck-card-head">
-                      <span class="deck-tags">
-                        {inUse && <DeckTag kind="in-use" />}
-                        <DeckTag kind="used" />
-                      </span>
-                      <div class="spacer" />
-                      {stats && (
-                        <span class="muted small" title={formatDateTime(stats.lastPlayed)}>
-                          played {formatRelative(stats.lastPlayed)}
-                        </span>
-                      )}
-                    </div>
-                    <DeckGrid cards={namedCardViews(cards, catalog)} size="sm" />
-                    <DeckStats stats={stats} avgElixir={averageElixir(cards, catalog)} tracked />
-                  </article>
+        <form method="get" action="/decks" class="filters" data-live-filter>
+          {modeOptions.length > 0 && (
+            <div class="field">
+              <label for="mode">Played In</label>
+              <select id="mode" name="mode">
+                <option value="">Any Mode</option>
+                {modeOptions.map((o) => (
+                  <option value={o.value} selected={f.mode === o.value}>
+                    {o.text}
+                  </option>
                 ))}
-              </div>
-            ) : (
-              <p class="muted">
-                {usage.saved.length ? "Every deck played in stored battles is saved above." : "No battles stored yet."}
-              </p>
-            )}
-            {usage.used.length > used.length && (
-              <p class="muted small">
-                Showing the {used.length} most recently played of {usage.used.length}.
-              </p>
-            )}
-          </section>
-        )}
+              </select>
+            </div>
+          )}
+          <div class="field">
+            <label for="show">Show</label>
+            <select id="show" name="show">
+              <option value="">All Decks</option>
+              <option value="saved" selected={f.show === "saved"}>
+                Saved
+              </option>
+              {player && (
+                <option value="used" selected={f.show === "used"}>
+                  Used in Battles
+                </option>
+              )}
+            </select>
+          </div>
+          <div class="filter-actions">
+            <noscript>
+              <button type="submit">Apply</button>
+            </noscript>
+            {/* A plain link: a full load also resets the selects, which the live Clear only does for inputs. */}
+            <a id="deck-clear" class="btn btn-ghost" href="/decks" data-live-swap hidden={!filtered}>
+              Clear
+            </a>
+          </div>
+        </form>
+
+        <div id="deck-results" class="stack live-results" data-live-swap>
+          {f.show !== "used" && (
+            <section class="stack-tight">
+              <h2>Saved Decks</h2>
+              {saved.length ? (
+                <div class="grid">
+                  {saved.map(({ deck: d, stats, inUse }) => (
+                    <article class={`card deck-card deck-saved${inUse ? " in-use" : ""}`}>
+                      <div class="row deck-card-head">
+                        <h3 class="deck-name">
+                          <a href={`/decks/${d.id}`}>{d.name}</a>
+                        </h3>
+                        <div class="spacer" />
+                        <span class="deck-tags">
+                          {inUse && <DeckTag kind="in-use" />}
+                          <DeckTag kind="saved" />
+                          <SourceBadge source={d.source} />
+                        </span>
+                      </div>
+                      <DeckGrid cards={namedCardViews(d.cards, catalog)} size="sm" />
+                      <DeckStats stats={stats} avgElixir={averageElixir(d.cards, catalog)} tracked={player !== null} />
+                      {stats && <ModeTags tags={stats.modeTags} />}
+                      {d.notes && (
+                        <p class="muted excerpt">{d.notes.length > 140 ? `${d.notes.slice(0, 140)}…` : d.notes}</p>
+                      )}
+                      <div class="row deck-actions">
+                        <a class="btn btn-secondary btn-small" href={`/decks/${d.id}/edit`}>
+                          Edit
+                        </a>
+                        <form
+                          method="post"
+                          action={`/decks/${d.id}/delete`}
+                          class="inline"
+                          onsubmit="return confirm('Delete this deck?')"
+                        >
+                          <button type="submit" class="btn-danger btn-small">
+                            Delete
+                          </button>
+                        </form>
+                        <div class="spacer" />
+                        <span class="muted small">updated {formatRelative(d.updatedAt)}</span>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : f.mode ? (
+                <p class="muted">No saved deck was played in {modeText}.</p>
+              ) : (
+                <EmptyState title="No Saved Decks Yet">
+                  <p class="muted">Save decks here, or let your AI assistant save them through the API.</p>
+                  <a class="btn" href="/decks/new">
+                    New Deck
+                  </a>
+                </EmptyState>
+              )}
+            </section>
+          )}
+
+          {player && f.show !== "saved" && (
+            <section class="stack-tight">
+              <h2>
+                Used in Battles <span class="muted small">{playerName}</span>
+              </h2>
+              {used.length ? (
+                <div class="grid">
+                  {used.map(({ cards, stats, inUse }) => (
+                    <article class={`card deck-card deck-used${inUse ? " in-use" : ""}`}>
+                      <div class="row deck-card-head">
+                        <span class="deck-tags">
+                          {inUse && <DeckTag kind="in-use" />}
+                          <DeckTag kind="used" />
+                        </span>
+                        <div class="spacer" />
+                        {stats && (
+                          <span class="muted small" title={formatDateTime(stats.lastPlayed)}>
+                            played {formatRelative(stats.lastPlayed)}
+                          </span>
+                        )}
+                      </div>
+                      <DeckGrid cards={namedCardViews(cards, catalog)} size="sm" />
+                      <DeckStats stats={stats} avgElixir={averageElixir(cards, catalog)} tracked />
+                      {stats && <ModeTags tags={stats.modeTags} />}
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p class="muted">
+                  {f.mode
+                    ? `No other deck was played in ${modeText}.`
+                    : usage.saved.length
+                      ? "Every deck played in stored battles is saved above."
+                      : "No battles stored yet."}
+                </p>
+              )}
+              {allUsed.length > used.length && (
+                <p class="muted small">
+                  Showing the {used.length} most recently played of {allUsed.length}.
+                </p>
+              )}
+            </section>
+          )}
+        </div>
       </div>,
     );
   })
@@ -466,4 +556,3 @@ export const deckPages = new Hono<AppEnv>()
     setFlash(c, "success", `Deleted "${deck.name}".`);
     return c.redirect("/decks");
   });
-

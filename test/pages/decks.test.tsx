@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { listDecks } from "../../src/repos/decks";
+import { deckModeOptions } from "../../src/routes/pages/decks";
 import type { User } from "../../src/types";
 import { makeUser } from "../helpers";
 import { cookieFor, follow, formPost, linkFixturePlayer, type PageTestEnv, setupPages } from "./support";
@@ -110,6 +111,50 @@ describe("deck pages", () => {
     expect(usedCards[0]).toContain('<span class="tag tag-used">Used</span>');
     expect(usedCards[0]).not.toContain("tag-in-use");
     expect(usedCards[0]).toContain("<strong>2</strong> games");
+  });
+
+  test("filters narrow the list by mode played and by saved or used", async () => {
+    await linkFixturePlayer(user, env.client);
+    const equipped = ["The Log", "Fireball", "Cannon", "Skeletons", "Ice Spirit", "Ice Golem", "Musketeer", "Hog Rider"];
+    await env.app.request("/decks", formPost(cookie, { name: "Hog 2.6", cards: equipped }));
+    await env.app.request("/decks", formPost(cookie, { name: "Unplayed", cards: HOG }));
+    const page = async (q: string) => (await env.app.request(`/decks?${q}`, { headers: { Cookie: cookie } })).text();
+
+    const ranked = await page("mode=Ranked");
+    expect(ranked).toContain('<option value="Ranked" selected="">Ranked</option>');
+    expect(ranked).toContain(">Hog 2.6</a>");
+    expect(ranked).not.toContain(">Unplayed</a>");
+    expect(ranked).toContain('<a id="deck-clear" class="btn btn-ghost" href="/decks" data-live-swap="true">');
+
+    const nowhere = await page("mode=Touchdown");
+    expect(nowhere).toContain("No saved deck was played in Touchdown.");
+    expect(nowhere).toContain("No other deck was played in Touchdown.");
+
+    const savedOnly = await page("show=saved");
+    expect(savedOnly).toContain(">Unplayed</a>");
+    expect(savedOnly).not.toContain("<h2>Used in Battles");
+    const usedOnly = await page("show=used");
+    expect(usedOnly).not.toContain("<h2>Saved Decks</h2>");
+    expect(usedOnly).toContain("<h2>Used in Battles");
+
+    expect(await page("")).toContain('<a id="deck-clear" class="btn btn-ghost" href="/decks" data-live-swap="true" hidden="">');
+  });
+
+  test("mode options offer war sub-modes by tag under their group", () => {
+    const row = (modeLabel: string, modeTags: string[]) =>
+      ({ type: "", mode: "", modeLabel, modeTags, games: 1, wins: 1, losses: 0, draws: 0, winRate: 1 }) as const;
+    expect(
+      deckModeOptions([
+        row("Trophy Road", ["Trophy Road"]),
+        row("Clan War · Battle", ["Clan War", "Battle"]),
+        row("Clan War · Touchdown", ["Clan War", "Touchdown"]),
+      ]),
+    ).toEqual([
+      { value: "Trophy Road", text: "Trophy Road" },
+      { value: "Clan War", text: "Clan War · All" },
+      { value: "Battle", text: "Clan War · Battle" },
+      { value: "Touchdown", text: "Clan War · Touchdown" },
+    ]);
   });
 
   test("without a saved match the equipped deck shows in use under Used", async () => {
