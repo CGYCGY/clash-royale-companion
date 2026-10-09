@@ -3,6 +3,7 @@ import { z } from "zod";
 import { currentUser, requireUser } from "../../auth/middleware";
 import { normalizeTag } from "../../cr/tag";
 import { buildCollection } from "../../domain/collection";
+import { deckSlotForms } from "../../domain/deckSlots";
 import { notFound } from "../../errors";
 import { parseJson, parseQuery, parseWith } from "../../http/validate";
 import { averageElixir } from "../../repos/battles";
@@ -16,11 +17,13 @@ const deckFields = {
   name: z.string().trim().min(1).max(80),
   cards: z.array(z.string().max(64)).max(16),
   notes: z.string().max(5000),
+  slot3Form: z.enum(["evo", "hero"]).nullable(),
 };
 
 const createSchema = z.object({
   ...deckFields,
   notes: deckFields.notes.optional(),
+  slot3Form: deckFields.slot3Form.optional(),
   source: z.enum(["manual", "ai"]).optional(),
 });
 
@@ -29,20 +32,26 @@ const patchSchema = z
     name: deckFields.name.optional(),
     cards: deckFields.cards.optional(),
     notes: deckFields.notes.optional(),
+    slot3Form: deckFields.slot3Form.optional(),
   })
-  .refine((p) => p.name !== undefined || p.cards !== undefined || p.notes !== undefined, "nothing to update");
+  .refine(
+    (p) => p.name !== undefined || p.cards !== undefined || p.notes !== undefined || p.slot3Form !== undefined,
+    "nothing to update",
+  );
 
 function withDetails(deck: DeckRecord, catalog: Map<string, CardRecord>) {
+  const forms = deckSlotForms(deck.cards, catalog, deck.slot3Form);
   return {
     ...deck,
     avgElixir: averageElixir(deck.cards, catalog),
-    cardDetails: deck.cards.map((name) => {
+    cardDetails: deck.cards.map((name, i) => {
       const card = catalog.get(name);
       return {
         name,
         elixirCost: card?.elixirCost ?? null,
         rarity: card?.rarity ?? null,
         iconUrl: card?.iconUrl ?? null,
+        form: forms[i]?.active ?? null,
       };
     }),
   };

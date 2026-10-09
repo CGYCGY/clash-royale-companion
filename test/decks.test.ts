@@ -67,3 +67,24 @@ describe("deck CRUD", () => {
     expect(listDecks(alice.id)).toHaveLength(0);
   });
 });
+
+describe("slot 3 form", () => {
+  // Knight has Evo + Hero, Giant only Hero, Archers only Evo.
+  const deckWith = (slot3: string) => ["Hog Rider", "Musketeer", slot3, "Ice Spirit", "Skeletons", "Cannon", "Fireball", "The Log"];
+
+  test("persists, defaults to null, and normalises forms the card can't take", () => {
+    expect(createDeck(alice.id, { name: "a", cards: deckWith("Knight") }).slot3Form).toBeNull();
+    const hero = createDeck(alice.id, { name: "b", cards: deckWith("Knight"), slot3Form: "hero" });
+    expect(getDeck(alice.id, hero.id)!.slot3Form).toBe("hero");
+    expect(createDeck(alice.id, { name: "c", cards: deckWith("Archers"), slot3Form: "hero" }).slot3Form).toBeNull();
+    expect(createDeck(alice.id, { name: "d", cards: deckWith("Giant"), slot3Form: "evo" }).slot3Form).toBeNull();
+  });
+
+  test("update keeps it when omitted, clears it with null, and drops it when the card changes", () => {
+    const deck = createDeck(alice.id, { name: "a", cards: deckWith("Knight"), slot3Form: "hero" });
+    expect(updateDeck(alice.id, deck.id, { name: "renamed" }).slot3Form).toBe("hero");
+    expect(updateDeck(alice.id, deck.id, { slot3Form: null }).slot3Form).toBeNull();
+    expect(updateDeck(alice.id, deck.id, { slot3Form: "evo" }).slot3Form).toBe("evo");
+    expect(updateDeck(alice.id, deck.id, { cards: deckWith("Giant") }).slot3Form).toBeNull();
+  });
+});

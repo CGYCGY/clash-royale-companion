@@ -6,6 +6,7 @@ import type { DeckRecord } from "../repos/decks";
 import type { PlayerRecord, Snapshot } from "../repos/players";
 import type { PlayerResources } from "../repos/resources";
 import { type Collection, type CollectionEntry, RARITY_ORDER } from "./collection";
+import { deckSlotForms } from "./deckSlots";
 import { formsLabel, formsOwnership } from "./evolution";
 import { nextKingTower } from "./kingTower";
 
@@ -260,12 +261,20 @@ function collectionSection({ collection, snapshot }: ContextInput): string {
   return parts.join("\n");
 }
 
-function savedDecks({ decks }: ContextInput): string {
+const FORM_LABEL = { evo: "Evo", hero: "Hero" } as const;
+
+function savedDecks({ decks, collection }: ContextInput): string {
   if (!decks.length) return "## Saved decks\n\nNone.";
+  const catalog = new Map(collection.entries.map((e) => [e.name, e]));
   const items = decks.map((d) => {
+    const forms = deckSlotForms(d.cards, catalog, d.slot3Form);
+    const cards = d.cards.map((name, i) => {
+      const form = forms[i]?.active;
+      return form ? `${name} (${FORM_LABEL[form]})` : name;
+    });
     const notes = d.notes.trim().replace(/\s*\n\s*/g, " ");
     const clipped = notes.length > DECK_NOTES_CHARS ? `${notes.slice(0, DECK_NOTES_CHARS)}…` : notes;
-    return `- **${d.name}** (${d.source}): ${d.cards.join(", ")}${clipped ? `\n  Notes: ${clipped}` : ""}`;
+    return `- **${d.name}** (${d.source}): ${cards.join(", ")}${clipped ? `\n  Notes: ${clipped}` : ""}`;
   });
   return `## Saved decks\n\n${items.join("\n")}`;
 }

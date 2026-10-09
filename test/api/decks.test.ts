@@ -16,7 +16,13 @@ import {
 
 type DeckJson = DeckRecord & {
   avgElixir: number | null;
-  cardDetails: { name: string; elixirCost: number | null; rarity: string | null; iconUrl: string | null }[];
+  cardDetails: {
+    name: string;
+    elixirCost: number | null;
+    rarity: string | null;
+    iconUrl: string | null;
+    form: "evo" | "hero" | null;
+  }[];
 };
 
 const HOG = ["hog rider", "Musketeer", "Ice Golem", "Ice Spirit", "Skeletons", "Cannon", "Fireball", "The Log"];
@@ -93,6 +99,22 @@ describe("decks CRUD", () => {
     expect((await create(apiKey, { name: "From AI", cards: HOG })).source).toBe("ai");
     expect((await create(session, { name: "By hand", cards: HOG })).source).toBe("manual");
     expect((await create(apiKey, { name: "Explicit", cards: HOG, source: "manual" })).source).toBe("manual");
+  });
+
+  test("slot3Form is accepted on create and patch, and cardDetails carry each slot's form", async () => {
+    const cards = ["Knight", "Giant", "Valkyrie", "Hog Rider", "Ice Spirit", "Cannon", "Fireball", "The Log"];
+    const deck = await create(apiKey, { name: "Forms", cards, slot3Form: "hero" });
+    expect(deck.slot3Form).toBe("hero");
+    expect(deck.cardDetails.map((d) => d.form)).toEqual(["evo", null, "hero", null, null, null, null, null]);
+
+    const res = await env.app.request(`/api/decks/${deck.id}`, jsonInit("PATCH", apiKey, { slot3Form: null }));
+    expect(res.status).toBe(200);
+    const patched = ((await res.json()) as { deck: DeckJson }).deck;
+    expect(patched.slot3Form).toBeNull();
+    expect(patched.cardDetails[2]!.form).toBe("evo");
+
+    const bad = await env.app.request(`/api/decks/${deck.id}`, jsonInit("PATCH", apiKey, { slot3Form: "super" }));
+    expect(((await bad.json()) as ErrorJson).error.code).toBe("validation_error");
   });
 
   test("decks are private to their owner", async () => {

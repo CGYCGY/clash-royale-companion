@@ -1,9 +1,11 @@
 import { getDb } from "../db";
 import { AppError, notFound } from "../errors";
 import { nowIso } from "../util";
-import { listCards } from "./cards";
+import { cardForms } from "../domain/evolution";
+import { getCardByName, listCards } from "./cards";
 
 export type DeckSource = "manual" | "ai";
+export type SlotForm = "evo" | "hero";
 
 export interface DeckRecord {
   id: number;
@@ -14,6 +16,8 @@ export interface DeckRecord {
   /** Markdown. */
   notes: string;
   source: DeckSource;
+  /** Form of the card in slot 3, the hybrid Evo/Hero slot; null = default. */
+  slot3Form: SlotForm | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -25,6 +29,7 @@ interface DeckRow {
   cards: string;
   notes: string;
   source: DeckSource;
+  slot3_form: SlotForm | null;
   created_at: string;
   updated_at: string;
 }
@@ -36,6 +41,7 @@ const toRecord = (r: DeckRow): DeckRecord => ({
   cards: JSON.parse(r.cards) as string[],
   notes: r.notes,
   source: r.source,
+  slot3Form: r.slot3_form,
   createdAt: r.created_at,
   updatedAt: r.updated_at,
 });
@@ -75,17 +81,34 @@ export interface DeckInput {
   cards: string[];
   notes?: string;
   source?: DeckSource;
+  slot3Form?: SlotForm | null;
+}
+
+// Stored as null when the slot-3 card can't take the form, so a card swap never leaves a stale choice.
+function normalizeSlot3Form(cards: string[], form: SlotForm | null): SlotForm | null {
+  const name = cards[2];
+  if (!form || !name) return null;
+  return cardForms(getCardByName(name)?.maxEvolutionLevel)[form] ? form : null;
 }
 
 export function createDeck(userId: number, input: DeckInput): DeckRecord {
   const cards = validateDeckCards(input.cards);
   const now = nowIso();
   const row = getDb()
-    .query<DeckRow, [number, string, string, string, DeckSource, string, string]>(
-      `INSERT INTO decks (user_id, name, cards, notes, source, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *`,
+    .query<DeckRow, [number, string, string, string, DeckSource, SlotForm | null, string, string]>(
+      `INSERT INTO decks (user_id, name, cards, notes, source, slot3_form, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`,
     )
-    .get(userId, input.name.trim(), JSON.stringify(cards), input.notes ?? "", input.source ?? "manual", now, now)!;
+    .get(
+      userId,
+      input.name.trim(),
+      JSON.stringify(cards),
+      input.notes ?? "",
+      input.source ?? "manual",
+      normalizeSlot3Form(cards, input.slot3Form ?? null),
+      now,
+      now,
+    )!;
   return toRecord(row);
 }
 
@@ -106,9 +129,10 @@ export function updateDeck(userId: number, id: number, patch: Partial<DeckInput>
   const existing = getDeck(userId, id);
   if (!existing) throw notFound("Deck");
   const cards = patch.cards ? validateDeckCards(patch.cards) : existing.cards;
+  const slot3Form = patch.slot3Form === undefined ? existing.slot3Form : patch.slot3Form;
   const row = getDb()
-    .query<DeckRow, [string, string, string, DeckSource, string, number, number]>(
-      `UPDATE decks SET name = ?, cards = ?, notes = ?, source = ?, updated_at = ?
+    .query<DeckRow, [string, string, string, DeckSource, SlotForm | null, string, number, number]>(
+      `UPDATE decks SET name = ?, cards = ?, notes = ?, source = ?, slot3_form = ?, updated_at = ?
        WHERE id = ? AND user_id = ? RETURNING *`,
     )
     .get(
@@ -116,6 +140,7 @@ export function updateDeck(userId: number, id: number, patch: Partial<DeckInput>
       JSON.stringify(cards),
       patch.notes ?? existing.notes,
       patch.source ?? existing.source,
+      normalizeSlot3Form(cards, slot3Form),
       nowIso(),
       id,
       userId,

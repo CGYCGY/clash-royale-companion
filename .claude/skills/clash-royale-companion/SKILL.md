@@ -101,7 +101,11 @@ Deck endpoints accept only exact catalog names. Matching ignores case but nothin
 More rules:
 
 - **Evolutions and Heroes are not separate cards.** "Evo Knight" and "Hero Knight" are both `Knight`. A deck
-  lists the base card, and the game decides which slots use the Evo or Hero form.
+  lists the base card, and its slot decides the form.
+- **Card order matters.** Slots 1 and 2 are Evo slots: a card there with an Evo plays as its Evo. Slot 3 is a
+  hybrid slot that plays its card as Evo or Hero, chosen with `slot3Form` (`"evo"`, `"hero"`, or null, which
+  means Evo when the card has both). Slots 4 to 8 play the base card. Put the cards you want evolved or as a
+  Hero first, and read `cardDetails[].form` to see the form each slot ends up using.
 - **Tower troops can't go in a deck.** Tower Princess, Cannoneer, Dagger Duchess and the others have
   `kind: "support"`.
 - **A deck has exactly 8 distinct cards.** A bad deck returns `400 invalid_deck` with
@@ -131,9 +135,9 @@ UTC. `{tag}` is a player tag without `#`.
 | GET | `/api/players/{tag}/context.md` | | `text/markdown`, the full coaching context |
 | GET | `/api/players/{tag}/context` | | `{ markdown }`, the same document as JSON |
 | GET | `/api/decks` | | `{ decks: Deck[] }` |
-| POST | `/api/decks` | `{ name, cards: string[8], notes? }` | `201 { deck }` |
+| POST | `/api/decks` | `{ name, cards: string[8], notes?, slot3Form? }` | `201 { deck }`. A `slot3Form` the slot-3 card can't take is saved as null |
 | GET | `/api/decks/{id}` | | `{ deck }` |
-| PATCH | `/api/decks/{id}` | any of `{ name, cards, notes }` | `{ deck }` |
+| PATCH | `/api/decks/{id}` | any of `{ name, cards, notes, slot3Form }` | `{ deck }`. `slot3Form: null` clears the choice |
 | DELETE | `/api/decks/{id}` | | `204` |
 | GET | `/api/decks/{id}/check` | `tag` | `{ fetchedAt, lastSeenAt, cards: [{ name, level, maxLevel, owned, evolutionLevel }], avgElixir, missing: string[] }`. If the player has no snapshot yet, `fetchedAt` and `lastSeenAt` are null, `owned`, `level` and `evolutionLevel` are null, `missing` is empty and `note` is `"no snapshot yet"`: ownership is unknown, so do not call the cards missing |
 | GET | `/api/cards` | `kind` (`card\|support`, optional) | `{ cards: [{ id, name, kind, rarity, elixirCost, maxLevel, maxEvolutionLevel, iconUrl, iconUrlEvo, iconUrlHero, updatedAt }] }` |
@@ -162,8 +166,9 @@ Shapes:
   unowned cards. `count` is the copies held. `countNeeded` and `goldNeeded` are the cost of the next level,
   and both are null when the card is unowned or maxed. `copiesToMax` is the copies still to collect beyond
   `count`. `goldToMax` is the gold from the current level to max, and it is 0 when the card is maxed.
-- **Deck**: `{ id, name, cards, notes, source: "manual" | "ai", createdAt, updatedAt, avgElixir,
-  cardDetails: [{ name, elixirCost, rarity, iconUrl }] }`.
+- **Deck**: `{ id, name, cards, notes, source: "manual" | "ai", slot3Form: "evo" | "hero" | null, createdAt,
+  updatedAt, avgElixir, cardDetails: [{ name, elixirCost, rarity, iconUrl, form: "evo" | "hero" | null }] }`.
+  `form` is the form that slot plays, per the slot rule above.
 
 ### Errors
 

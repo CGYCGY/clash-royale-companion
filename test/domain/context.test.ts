@@ -79,6 +79,7 @@ describe("renderContextMarkdown", () => {
       cards: ["Hog Rider", "Musketeer", "Ice Golem", "Ice Spirit", "Skeletons", "Cannon", "Fireball", "The Log"],
       notes: `Line one\nline two ${"x".repeat(400)}`,
       source: "ai",
+      slot3Form: "hero",
       createdAt: snapshot.fetchedAt,
       updatedAt: snapshot.fetchedAt,
     };
@@ -133,7 +134,9 @@ describe("renderContextMarkdown", () => {
     expect(md).toContain("Missing cards: Mirror, Archer Queen");
     expect(md).toContain("Tower troops: Tower Princess 14/16, Cannoneer 12/16 (upgrade ready)");
     expect(md.match(/^- .+ → /gm)).toHaveLength(17);
-    expect(md).toContain("**Hog | cycle** (ai)");
+    expect(md).toContain(
+      "**Hog | cycle** (ai): Hog Rider, Musketeer (Evo), Ice Golem (Hero), Ice Spirit, Skeletons, Cannon, Fireball, The Log",
+    );
     expect(md).toContain("Notes: Line one line two");
     expect(md).not.toContain("x".repeat(301));
     expect(md).toContain("> ## Budget\n> F2P, no pass this season.");
