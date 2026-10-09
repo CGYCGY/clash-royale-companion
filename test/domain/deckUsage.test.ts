@@ -7,6 +7,7 @@ import {
   savedDeckVariantKey,
   type UsedDeckStats,
   variantFormsLabel,
+  variantSlotOrder,
   variantsByRecency,
 } from "../../src/domain/deckUsage";
 import { type DeckVariantStats, type VariantCard, variantKeyOf } from "../../src/repos/battles";
@@ -167,9 +168,67 @@ describe("variants", () => {
 
   test("forms label", () => {
     expect(variantFormsLabel(forms(["Musketeer", "Skeletons", "Cannon"], { Skeletons: 1, Musketeer: 2 }))).toBe(
-      "Hero Musketeer · Evo Skeletons",
+      "Evo Skeletons · Hero Musketeer",
     );
     expect(variantFormsLabel(forms(A, {}))).toBe("Base forms");
+  });
+
+  describe("slot order", () => {
+    const SORTED = [...A].sort();
+    const order = (levels: Record<string, number>) =>
+      variantSlotOrder(forms(SORTED, levels)).map((c) => (c.evolutionLevel ? `${c.name}:${c.evolutionLevel}` : c.name));
+    const baseExcept = (...names: string[]) => SORTED.filter((n) => !names.includes(n));
+
+    test("Evo only leads, the base cards keep their order", () => {
+      expect(order({ Skeletons: 1 })).toEqual(["Skeletons:1", ...baseExcept("Skeletons")]);
+    });
+
+    test("Hero only stays in slot 2, a base card fills the empty Evo slot", () => {
+      expect(order({ Musketeer: 2 })).toEqual(["Cannon", "Musketeer:2", ...baseExcept("Musketeer", "Cannon")]);
+    });
+
+    test("Evo in slot 1, Hero in slot 2, whatever their names sort as", () => {
+      expect(order({ Skeletons: 1, Cannon: 2 })).toEqual(["Skeletons:1", "Cannon:2", ...baseExcept("Skeletons", "Cannon")]);
+      expect(order({ Skeletons: 1, Musketeer: 2, "Ice Golem": 2 })).toEqual([
+        "Skeletons:1",
+        "Ice Golem:2",
+        "Musketeer:2",
+        ...baseExcept("Skeletons", "Ice Golem", "Musketeer"),
+      ]);
+    });
+
+    test("a second Evo takes the Wild slot, a base card fills the empty Hero slot", () => {
+      expect(order({ Skeletons: 1, Cannon: 1 })).toEqual([
+        "Cannon:1",
+        "Fireball",
+        "Skeletons:1",
+        ...baseExcept("Skeletons", "Cannon", "Fireball"),
+      ]);
+    });
+
+    test("base only keeps the input order", () => {
+      expect(order({})).toEqual(SORTED);
+    });
+
+    test("a both-forms card takes the Wild slot after the Evo and the Hero", () => {
+      expect(order({ Cannon: 3, Skeletons: 1, Musketeer: 2 })).toEqual([
+        "Skeletons:1",
+        "Musketeer:2",
+        "Cannon:3",
+        ...baseExcept("Skeletons", "Musketeer", "Cannon"),
+      ]);
+    });
+
+    test("surplus special cards follow in input order; none is dropped", () => {
+      const levels = { Cannon: 1, Fireball: 1, "Hog Rider": 3, Musketeer: 2 };
+      expect(order(levels)).toEqual([
+        "Cannon:1",
+        "Musketeer:2",
+        "Fireball:1",
+        "Hog Rider:3",
+        ...baseExcept("Cannon", "Fireball", "Hog Rider", "Musketeer"),
+      ]);
+    });
   });
 
   test("classifyVariants marks the equipped and saved variants, newest first", () => {

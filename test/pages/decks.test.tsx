@@ -485,7 +485,7 @@ describe("deck pages", () => {
       expect(evo).toContain("<strong>15</strong> games");
       expect(evo).toContain("8W 6L 1D");
       expect(hero).toStartWith(`" data-variant-key="${HERO_KEY}">`);
-      expect(hero).toContain('<span class="variant-forms">Hero Ice Golem · Evo Ice Spirit · Evo + Hero Musketeer</span>');
+      expect(hero).toContain('<span class="variant-forms">Evo Ice Spirit · Hero Ice Golem · Evo + Hero Musketeer</span>');
       expect(hero).toContain("<strong>1</strong> game</span>");
       expect(hero).toContain("0W 1L 0D");
       expect(html).not.toContain("Played in this form only so far.");
@@ -504,6 +504,14 @@ describe("deck pages", () => {
       expect(hog).toMatch(/<figure class="card-icon size-sm evolved" title="Ice Spirit">/);
       expect(hog).not.toContain('class="card-icon size-sm hero"');
       expect(hog).toContain('data-modal="Used Deck">Details</a><span class="muted small">2 forms</span>');
+    });
+
+    test("the header grid lays the cards out by slot: Evo, then the empty Hero slot, then the Wild Evo", async () => {
+      await linkWithForms();
+      const dialog = await (await get(`${href(HOG_KEY)}&partial=1`)).text();
+      const header = dialog.split("<h2>Forms Played</h2>")[0]!;
+      const titles = [...header.matchAll(/<figure class="card-icon size-md[^"]*" title="([^"]+)">/g)].map((m) => m[1]);
+      expect(titles).toEqual(["Ice Spirit", "Cannon", "Musketeer", "Fireball", "Hog Rider", "Ice Golem", "Skeletons", "The Log"]);
     });
 
     test("a variant card is tagged Saved as when a saved deck's slot forms make it", async () => {

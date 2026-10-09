@@ -95,9 +95,26 @@ export function equippedVariantKey(currentDeck: { name: string; evolutionLevel?:
   return savedDeckVariantKey({ cards: names, slot3Form: null }, owned);
 }
 
+const isEvoOnly = (c: VariantCard) => (c.evolutionLevel & 3) === 1;
+const isHeroOnly = (c: VariantCard) => (c.evolutionLevel & 3) === 2;
+
+/**
+ * Variant keys sort cards by name, so this puts them back in in-game slot order: the first Evo in slot 1, the
+ * first Hero in slot 2, any other special form next (the Wild slot 3), then the base cards in input order. An
+ * empty Evo or Hero slot takes the next base card, as the game shows it, so a Hero still sits second.
+ */
+export function variantSlotOrder(cards: VariantCard[]): VariantCard[] {
+  const evo = cards.find(isEvoOnly);
+  const hero = cards.find(isHeroOnly);
+  const base = cards.filter((c) => (c.evolutionLevel & 3) === 0);
+  const wild = cards.filter((c) => (c.evolutionLevel & 3) !== 0 && c !== evo && c !== hero);
+  const lead = [evo ?? base.shift(), hero ?? base.shift()].filter((c): c is VariantCard => c !== undefined);
+  return [...lead, ...wild, ...base];
+}
+
 /** "Evo Skeletons · Hero Musketeer", or "Base forms" when no card is in a special form. */
 export function variantFormsLabel(cards: VariantCard[]): string {
-  const parts = cards.filter((c) => c.evolutionLevel > 0).map((c) => `${formsLabel(c.evolutionLevel)} ${c.name}`);
+  const parts = variantSlotOrder(cards).filter((c) => c.evolutionLevel > 0).map((c) => `${formsLabel(c.evolutionLevel)} ${c.name}`);
   return parts.length ? parts.join(" · ") : "Base forms";
 }
 

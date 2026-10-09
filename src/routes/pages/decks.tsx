@@ -11,6 +11,7 @@ import {
   latestVariant,
   type UsedDeckStats,
   variantFormsLabel,
+  variantSlotOrder,
 } from "../../domain/deckUsage";
 import { AppError, notFound } from "../../errors";
 import { resolvePlayer } from "../../http/currentPlayer";
@@ -175,7 +176,7 @@ function DeckStats({
 const usedDeckHref = (deckKey: string) => `/decks/used?deck=${encodeURIComponent(deckKey)}`;
 
 const variantViews = (cards: VariantCard[], catalog: Map<string, CardRecord>) =>
-  cards.map((c) => toCardView(c, catalog));
+  variantSlotOrder(cards).map((c) => toCardView(c, catalog));
 
 function DetailsLink({ deckKey, forms }: { deckKey: string; forms: number }) {
   return (
