@@ -2,7 +2,7 @@ import { displayLevel } from "../cr/levels";
 import type { BattleCard, BattleLogEntry, BattleParticipant } from "../cr/types";
 import { parseBattleTime } from "../cr/types";
 import { getDb } from "../db";
-import { battleModeLabel } from "../domain/battleModes";
+import { type BattleMode, battleMode, modeMatches } from "../domain/battleModes";
 import { daysAgoIso, ratio } from "../util";
 import { type CardRecord, cardsById, cardsMap } from "./cards";
 import { eventTitles } from "./events";
@@ -28,6 +28,8 @@ export interface BattleRecord {
   eventTag: string | null;
   /** Readable mode, resolved at read time so a later /events fetch relabels old battles. */
   modeLabel: string;
+  /** Groups the mode belongs to, broadest first, e.g. ["Clan War", "Touchdown"]. */
+  modeTags: string[];
   arenaName: string | null;
   opponentTag: string;
   /** For 2v2, both opponents joined with " & ". */
@@ -70,6 +72,7 @@ const LIST_COLUMNS =
 
 function toRecord(r: BattleRow, titles: ReadonlyMap<string, string>): BattleRecord {
   const teamDeck = JSON.parse(r.team_deck) as DeckCard[];
+  const mode = battleMode({ type: r.type, gameModeName: r.game_mode_name, eventTag: r.event_tag }, titles);
   return {
     id: r.id,
     playerTag: r.player_tag,
@@ -77,7 +80,8 @@ function toRecord(r: BattleRow, titles: ReadonlyMap<string, string>): BattleReco
     type: r.type,
     gameModeName: r.game_mode_name,
     eventTag: r.event_tag,
-    modeLabel: battleModeLabel({ type: r.type, gameModeName: r.game_mode_name, eventTag: r.event_tag }, titles),
+    modeLabel: mode.label,
+    modeTags: mode.tags,
     arenaName: r.arena_name,
     opponentTag: r.opponent_tag,
     opponentName: r.opponent_name,
@@ -182,7 +186,7 @@ export interface BattleFilter {
   since?: string;
   until?: string;
   /**
-   * A mode label (e.g. "Royale Shuffle"), or for older links and API clients the raw battle `type`
+   * A mode label (e.g. "Clan War · Touchdown"), a mode tag (e.g. "Clan War"), or for older links and API clients the raw battle `type`
    * (e.g. "pathOfLegend") or `gameModeName` (e.g. "Ladder").
    */
   mode?: string;
@@ -197,34 +201,33 @@ interface ModeCombo {
   event_tag: string | null;
 }
 
-/** Each distinct type/mode/event the player has battles in, with its label. */
-function modeCombos(tag: string, titles: ReadonlyMap<string, string>): (ModeCombo & { label: string })[] {
+/** Each distinct type/mode/event the player has battles in, with its mode. */
+function modeCombos(tag: string, titles: ReadonlyMap<string, string>): (ModeCombo & { mode: BattleMode })[] {
   return getDb()
     .query<ModeCombo, [string]>("SELECT DISTINCT type, game_mode_name, event_tag FROM battles WHERE player_tag = ?")
     .all(tag)
     .map((c) => ({
       ...c,
-      label: battleModeLabel({ type: c.type, gameModeName: c.game_mode_name, eventTag: c.event_tag }, titles),
+      mode: battleMode({ type: c.type, gameModeName: c.game_mode_name, eventTag: c.event_tag }, titles),
     }));
 }
 
 /**
- * The label a `mode` filter value stands for: itself when it is a label, else the label of the
+ * The label or tag a `mode` filter value stands for: itself when it is one, else the label of the
  * first raw type or game mode it matches (so old ?mode=Ladder links select "Trophy Road").
  */
 export function modeLabelFor(tag: string, mode: string): string | null {
   const combos = modeCombos(tag, eventTitles());
-  const hit =
-    combos.find((c) => c.label === mode) ?? combos.find((c) => c.type === mode || c.game_mode_name === mode);
-  return hit?.label ?? null;
+  if (combos.some((c) => modeMatches(c.mode, mode))) return mode;
+  return combos.find((c) => c.type === mode || c.game_mode_name === mode)?.mode.label ?? null;
 }
 
-// Labels are computed in JS, so a label filter becomes the OR of the raw combinations that carry it.
+// Modes are computed in JS, so a label or tag filter becomes the OR of the raw combinations that carry it.
 function modeClause(tag: string, mode: string): { sql: string; params: (string | null)[] } {
   const parts = ["type = ?", "game_mode_name = ?"];
   const params: (string | null)[] = [mode, mode];
   for (const c of modeCombos(tag, eventTitles())) {
-    if (c.label !== mode) continue;
+    if (!modeMatches(c.mode, mode)) continue;
     parts.push("(type = ? AND game_mode_name = ? AND event_tag IS ?)");
     params.push(c.type, c.game_mode_name, c.event_tag);
   }
@@ -308,7 +311,7 @@ export interface BattleStats {
    * One row per mode label, most games first. `type`/`mode` are the raw values of the label's
    * most-played combination, kept for API clients from before labels existed.
    */
-  byMode: (Tally & { type: string; mode: string; modeLabel: string })[];
+  byMode: (Tally & { type: string; mode: string; modeLabel: string; modeTags: string[] })[];
   /** Most games first. `lastPlayed` is the newest battle_time with the deck. */
   byDeck: (Tally & { deckKey: string; cards: string[]; avgElixir: number | null; lastPlayed: string })[];
 }
@@ -352,7 +355,7 @@ export function getBattleStats(tag: string, { sinceDays, mode }: { sinceDays?: n
     )
     .get(...params)!;
   const titles = eventTitles();
-  const byLabel = new Map<string, TallyRow & { type: string; mode: string }>();
+  const byLabel = new Map<string, TallyRow & { type: string; mode: string; tags: string[] }>();
   const comboRows = db
     .query<TallyRow & { type: string; mode: string; event_tag: string | null }, SqlParam[]>(
       `SELECT type, game_mode_name AS mode, event_tag, ${TALLY_SQL} FROM battles
@@ -360,10 +363,10 @@ export function getBattleStats(tag: string, { sinceDays, mode }: { sinceDays?: n
     )
     .all(...params);
   for (const r of comboRows) {
-    const label = battleModeLabel({ type: r.type, gameModeName: r.mode, eventTag: r.event_tag }, titles);
+    const { label, tags } = battleMode({ type: r.type, gameModeName: r.mode, eventTag: r.event_tag }, titles);
     const acc = byLabel.get(label);
     if (!acc) {
-      byLabel.set(label, { type: r.type, mode: r.mode, games: r.games, wins: r.wins ?? 0, losses: r.losses ?? 0, draws: r.draws ?? 0 });
+      byLabel.set(label, { type: r.type, mode: r.mode, tags, games: r.games, wins: r.wins ?? 0, losses: r.losses ?? 0, draws: r.draws ?? 0 });
       continue;
     }
     acc.games += r.games;
@@ -372,7 +375,7 @@ export function getBattleStats(tag: string, { sinceDays, mode }: { sinceDays?: n
     acc.draws += r.draws ?? 0;
   }
   const byMode = [...byLabel.entries()]
-    .map(([modeLabel, r]) => ({ type: r.type, mode: r.mode, modeLabel, ...tally(r) }))
+    .map(([modeLabel, r]) => ({ type: r.type, mode: r.mode, modeLabel, modeTags: r.tags, ...tally(r) }))
     .sort((a, b) => b.games - a.games || a.modeLabel.localeCompare(b.modeLabel));
   const byDeck = db
     .query<TallyRow & { deck_key: string; last_played: string }, SqlParam[]>(

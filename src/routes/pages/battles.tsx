@@ -9,6 +9,7 @@ import {
   type BattleFilter,
   countBattles,
   getBattle,
+  type BattleStats,
   getBattleStats,
   listBattles,
   modeLabelFor,
@@ -43,6 +44,22 @@ const filterSchema = z.object({
   page: z.coerce.number().int().min(1).max(10_000).default(1).catch(1),
 });
 type Filters = z.infer<typeof filterSchema>;
+
+/**
+ * One option per mode label, most played first, with a group's sub-modes kept together under an
+ * "All" option, so "Clan War" (every war battle) is selectable next to "Clan War · Touchdown".
+ */
+export function modeFilterOptions(byMode: BattleStats["byMode"]): { value: string; text: string }[] {
+  const groups = new Map<string, string[]>();
+  for (const m of byMode) {
+    const group = m.modeTags[0] ?? m.modeLabel;
+    groups.set(group, [...(groups.get(group) ?? []), m.modeLabel]);
+  }
+  return [...groups].flatMap(([group, labels]) => [
+    ...(labels.some((l) => l !== group) ? [{ value: group, text: `${group} · All` }] : []),
+    ...labels.map((l) => ({ value: l, text: l })),
+  ]);
+}
 
 function battlesHref(f: Filters, page: number): string {
   return `/battles?${queryString(f, page)}`;
@@ -214,7 +231,7 @@ export const battlePages = new Hono<AppEnv>()
     const battles = listBattles(player.tag, { ...filter, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE });
     // The result filter is deliberately left out: under result=win the tiles would just read 100%.
     const stats = getBattleStats(player.tag, { sinceDays, mode: filter.mode });
-    const modes = getBattleStats(player.tag).byMode;
+    const modeOptions = modeFilterOptions(getBattleStats(player.tag).byMode);
     const catalog = cardsMap();
     const windowLabel = sinceDays === undefined ? "All time" : `Last ${sinceDays} days`;
     const recentDecks = stats.byDeck
@@ -232,9 +249,9 @@ export const battlePages = new Hono<AppEnv>()
             <label for="mode">Mode</label>
             <select id="mode" name="mode">
               <option value="">All Modes</option>
-              {modes.map((m) => (
-                <option value={m.modeLabel} selected={f.mode === m.modeLabel}>
-                  {m.modeLabel}
+              {modeOptions.map((o) => (
+                <option value={o.value} selected={f.mode === o.value}>
+                  {o.text}
                 </option>
               ))}
             </select>

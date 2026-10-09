@@ -199,16 +199,22 @@ Codes are 12 chars, case-insensitive.
 **repos/battles**
 - `insertBattles(tag, entries: BattleLogEntry[]) -> added` (INSERT OR IGNORE on player_tag+battle_time+opponent_tag)
 - `listBattles(tag, { since?, until?, mode?, result?, limit? (50, max 500), offset? }) -> BattleRecord[]`, newest first.
-  `mode` matches a mode label ("Royale Shuffle"), a raw `type` ("pathOfLegend") or a raw `gameModeName` ("Ladder").
-- `BattleRecord` has `eventTag` (stored column) and `modeLabel`, computed at read time by
-  `battleModeLabel` in `src/domain/battleModes.ts`: the `/events` title for the eventTag, else a fixed map
-  (pathOfLegend → Ranked, PvP Ladder → Trophy Road, riverRace*/boatBattle → Clan War, TeamVsTeam → 2v2, …),
-  else the humanized game mode id. Because it's computed on read, fetching new titles relabels old battles.
-  A label filter becomes the OR of the raw type/mode/event combinations that carry it.
-- `modeLabelFor(tag, mode) -> label | null` maps an old raw `?mode=` value to its label (the Battles page uses it).
+  `mode` matches a mode label ("Clan War · Touchdown"), a mode tag ("Clan War", "Touchdown"), a raw `type`
+  ("pathOfLegend") or a raw `gameModeName` ("Ladder").
+- `BattleRecord` has `eventTag` (stored column), `modeLabel` and `modeTags`, computed at read time by
+  `battleMode` in `src/domain/battleModes.ts`: the `/events` title for the eventTag, else a fixed map
+  (pathOfLegend → Ranked, PvP Ladder → Trophy Road, TeamVsTeam → 2v2, …), else the humanized game mode id.
+  War battles (riverRace*, boatBattle) are split by kind: "Clan War · Battle", "Clan War · Duel",
+  "Clan War · Boat Battle", or the special mode a war battle ran ("Touchdown_ClanWar" → "Clan War · Touchdown").
+  `modeTags` lists the groups broadest first: ["Clan War", "Touchdown"], or just ["Clan War"] for a plain
+  war battle; other modes have their label as the only tag. Because it's computed on read, fetching new
+  titles relabels old battles. A label or tag filter becomes the OR of the raw type/mode/event combinations
+  that carry it.
+- `modeLabelFor(tag, mode) -> label | null` returns a label or tag unchanged and maps an old raw `?mode=` value
+  to its label (the Battles page uses it). The page's mode dropdown adds a "Clan War · All" option for the tag.
 - `countBattles(tag, filter)`, `getBattle(tag, id) -> BattleRecord & { raw }`
 - `getBattleStats(tag, { sinceDays?, mode? }) -> { sinceDays, total, wins, losses, draws, winRate, netTrophies, byMode[], byDeck[] }`.
-  Each byMode entry has `{ type, mode, modeLabel, games, wins, losses, draws, winRate }`, one per label; `type`
+  Each byMode entry has `{ type, mode, modeLabel, modeTags, games, wins, losses, draws, winRate }`, one per label; `type`
   and `mode` are the label's most-played raw combination. Each byDeck entry has
   `{ deckKey, cards, games, wins, losses, draws, winRate, avgElixir | null, lastPlayed }`. winRate is 0..1.
 - `BattleRecord.teamDeck` / `opponentDeck` are `DeckCard[] = { id, name, level, evolutionLevel }`.

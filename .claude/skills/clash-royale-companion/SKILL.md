@@ -55,8 +55,8 @@ curl -sS -H "Authorization: Bearer $CR_COMPANION_API_KEY" "$CR_COMPANION_URL/api
 4. **Drill down only when needed.**
    - `GET /api/players/{tag}/battles?since=...&mode=...&result=...` for specific matches.
    - `GET /api/players/{tag}/stats?days=N` for win rates by mode and by deck, plus trophy history. Add
-     `&mode=Ranked` (or any `modeLabel`, such as `Trophy Road` or `Royale Shuffle`) to get deck win rates
-     for one mode only.
+     `&mode=Ranked` (or any `modeLabel` or mode tag, such as `Trophy Road`, `Clan War` or
+     `Clan War · Touchdown`) to get deck win rates for one mode only.
    - `GET /api/players/{tag}/cards` for every card's level and upgrade cost. Each card has `countNeeded` and
      `goldNeeded` for its next level, `copiesToMax` and `goldToMax` for reaching `maxLevel`, and
      `upgradeReady`. Use these for upgrade priorities and gold budgets. Sum `goldNeeded` over the cards
@@ -143,13 +143,17 @@ Shapes:
 - **Player**: `{ tag, userId, name, addedAt, lastSyncedAt, lastSyncError }`.
 - **DeckCard**: `{ id, name, level, evolutionLevel, ... }`. `level` is the in-game display level.
   `evolutionLevel` is a bitmask: 0 = none, 1 = Evo, 2 = Hero, 3 = both. It is not a count.
-- **Battle**: `{ id, battleTime, type, gameModeName, eventTag, modeLabel, arenaName, opponentTag, opponentName,
-  result, teamCrowns, opponentCrowns, teamDeck: DeckCard[], opponentDeck: DeckCard[], deckKey, trophyChange,
-  isTwoVsTwo }`. Name modes by `modeLabel` ("Ranked", "Trophy Road", "Clan War", "2v2", "Royale Shuffle",
-  …). `type` (`PvP`, `pathOfLegend`, `trail`, `unknown`, …) and `gameModeName` (`Ladder`,
-  `RR_Heist_Friendly`, …) are raw upstream ids. The `mode` filter accepts a `modeLabel` or either raw value.
+- **Battle**: `{ id, battleTime, type, gameModeName, eventTag, modeLabel, modeTags, arenaName, opponentTag,
+  opponentName, result, teamCrowns, opponentCrowns, teamDeck: DeckCard[], opponentDeck: DeckCard[], deckKey,
+  trophyChange, isTwoVsTwo }`. Name modes by `modeLabel` ("Ranked", "Trophy Road", "2v2", "Royale Shuffle",
+  …). War battles are split by kind: "Clan War · Battle", "Clan War · Duel", "Clan War · Boat Battle", or
+  the special mode the war ran, such as "Clan War · Touchdown". `modeTags` groups the mode, broadest first:
+  `["Clan War", "Touchdown"]`, `["Clan War"]` for a plain war battle, and `[modeLabel]` for anything else.
+  In Touchdown, crowns are touchdowns scored, not towers. `type` (`PvP`, `pathOfLegend`, `trail`, `unknown`,
+  …) and `gameModeName` (`Ladder`, `Touchdown_ClanWar`, …) are raw upstream ids. The `mode` filter accepts a
+  `modeLabel`, a mode tag (`Clan War` selects every war battle) or either raw value.
   In 2v2, `teamDeck` has 16 cards with the player's 8 first.
-- **byMode entry**: `{ type, mode, modeLabel, games, wins, losses, draws, winRate }`, one per `modeLabel`.
+- **byMode entry**: `{ type, mode, modeLabel, modeTags, games, wins, losses, draws, winRate }`, one per `modeLabel`.
 - **byDeck entry**: `{ deckKey, cards, games, wins, losses, draws, winRate, avgElixir, lastPlayed }`. `winRate` is 0 to 1; `lastPlayed` is the newest battle time with the deck.
 - **CollectionEntry**: `{ name, rarity, elixirCost, owned, level, maxLevel, count, countNeeded, goldNeeded,
   copiesToMax, goldToMax, upgradeReady, evolutionLevel, maxEvolutionLevel, iconUrlHero, kind }`. Both

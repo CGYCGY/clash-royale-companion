@@ -171,19 +171,20 @@ describe("getBattleStats", () => {
     const s = getBattleStats(FIXTURE_TAG);
     expect(s).toMatchObject({ sinceDays: null, total: 10, wins: 6, losses: 3, draws: 1, winRate: 0.6, netTrophies: 34 });
     expect(s.byMode).toEqual([
-      { type: "PvP", mode: "Ladder", modeLabel: "Trophy Road", games: 5, wins: 3, losses: 2, draws: 0, winRate: 0.6 },
+      { type: "PvP", mode: "Ladder", modeLabel: "Trophy Road", modeTags: ["Trophy Road"], games: 5, wins: 3, losses: 2, draws: 0, winRate: 0.6 },
       {
         type: "pathOfLegend",
         mode: "Ranked1v1_NewArena2",
         modeLabel: "Ranked",
+        modeTags: ["Ranked"],
         games: 3,
         wins: 2,
         losses: 0,
         draws: 1,
         winRate: 0.667,
       },
-      { type: "clanMate2v2", mode: "TeamVsTeam", modeLabel: "2v2", games: 1, wins: 1, losses: 0, draws: 0, winRate: 1 },
-      { type: "friendly", mode: "Friendly", modeLabel: "Friendly", games: 1, wins: 0, losses: 1, draws: 0, winRate: 0 },
+      { type: "clanMate2v2", mode: "TeamVsTeam", modeLabel: "2v2", modeTags: ["2v2"], games: 1, wins: 1, losses: 0, draws: 0, winRate: 1 },
+      { type: "friendly", mode: "Friendly", modeLabel: "Friendly", modeTags: ["Friendly"], games: 1, wins: 0, losses: 1, draws: 0, winRate: 0 },
     ]);
     expect(s.byDeck).toHaveLength(2);
     expect(s.byDeck[0]).toMatchObject({ deckKey: HOG, games: 8, wins: 5, losses: 2, draws: 1, winRate: 0.625, avgElixir: 2.63 });
@@ -200,19 +201,28 @@ describe("getBattleStats", () => {
     expect(getBattleStats(FIXTURE_TAG, { mode: "nope" }).total).toBe(0);
   });
 
-  test("modes merge by label; a label, a raw type, or a raw game mode all filter", () => {
+  test("modes merge by label; a label, a tag, a raw type, or a raw game mode all filter", () => {
     upsertEvents(loadFixture<GameEvent[]>("events"));
     insertBattles(FIXTURE_TAG, loadFixture<BattleLogEntry[]>("battlelog-modes"));
     const s = getBattleStats(FIXTURE_TAG);
     const shuffle = s.byMode.find((m) => m.modeLabel === "Royale Shuffle")!;
     expect(shuffle).toMatchObject({ type: "unknown", games: 2 });
-    expect(s.byMode.find((m) => m.modeLabel === "Clan War")).toMatchObject({ games: 3 });
+    // Each war sub-mode is its own row; the "Clan War" tag still selects all of them.
+    expect(s.byMode.filter((m) => m.modeTags[0] === "Clan War").map((m) => m.modeLabel).sort()).toEqual([
+      "Clan War · Boat Battle",
+      "Clan War · Duel",
+      "Clan War · Ramp Up Elixir",
+    ]);
     expect(s.byMode.map((m) => m.modeLabel)).toEqual([...new Set(s.byMode.map((m) => m.modeLabel))]);
     expect(countBattles(FIXTURE_TAG, { mode: "Royale Shuffle" })).toBe(2);
     expect(countBattles(FIXTURE_TAG, { mode: "RR_Heist_Friendly" })).toBe(1);
     expect(countBattles(FIXTURE_TAG, { mode: "unknown" })).toBe(2);
     expect(getBattleStats(FIXTURE_TAG, { mode: "Clan War" }).total).toBe(3);
-    expect(modeLabelFor(FIXTURE_TAG, "boatBattle")).toBe("Clan War");
+    expect(getBattleStats(FIXTURE_TAG, { mode: "Clan War · Duel" }).total).toBe(1);
+    expect(countBattles(FIXTURE_TAG, { mode: "Ramp Up Elixir" })).toBe(1);
+    expect(listBattles(FIXTURE_TAG, { mode: "boatBattle" })[0]!.modeTags).toEqual(["Clan War", "Boat Battle"]);
+    expect(modeLabelFor(FIXTURE_TAG, "boatBattle")).toBe("Clan War · Boat Battle");
+    expect(modeLabelFor(FIXTURE_TAG, "Clan War")).toBe("Clan War");
     expect(modeLabelFor(FIXTURE_TAG, "Royale Shuffle")).toBe("Royale Shuffle");
     expect(modeLabelFor(FIXTURE_TAG, "nope")).toBeNull();
     const [gambit] = listBattles(FIXTURE_TAG, { mode: "Princess Gambit Tournament" });

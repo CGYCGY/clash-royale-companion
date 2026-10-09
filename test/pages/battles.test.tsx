@@ -171,13 +171,16 @@ describe("battles pages", () => {
     const options = [...html.matchAll(/<option value="([^"]*)"(?: selected="")?>([^<]*)<\/option>/g)]
       .map((m) => m[2]!)
       .slice(1, -8);
-    // Most games first, ties alphabetical.
+    // Most games first, ties alphabetical; war sub-modes stay together under their "All" option.
     expect(options).toEqual([
       "Trophy Road",
-      "Clan War",
       "Ranked",
       "2v2",
       "Royale Shuffle",
+      "Clan War · All",
+      "Clan War · Boat Battle",
+      "Clan War · Duel",
+      "Clan War · Ramp Up Elixir",
       "Classic 2v2",
       "Friendly",
       "Princess Gambit Tournament",
@@ -198,6 +201,7 @@ describe("battles pages", () => {
     expect(battleRows((await get("/battles?days=all&mode=2v2")).html)).toBe(2);
     expect(battleRows((await get("/battles?days=all&mode=Classic+2v2")).html)).toBe(1);
     expect(battleRows((await get("/battles?days=all&mode=Clan+War")).html)).toBe(3);
+    expect(battleRows((await get("/battles?days=all&mode=Clan+War+%C2%B7+Duel")).html)).toBe(1);
 
     const [heist] = listBattles(FIXTURE_TAG, { mode: "RR_Heist_Friendly" });
     expect(heist!.modeLabel).toBe("Royale Shuffle");
