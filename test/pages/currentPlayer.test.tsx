@@ -83,17 +83,23 @@ describe("current player", () => {
     expect(foreign.headers.getSetCookie().join()).not.toContain("cr_player");
   });
 
-  test("the deck level check uses the current player's collection", async () => {
+  test("deck page levels come from the current player's collection", async () => {
+    // Give the alt account a lower Hog Rider so the two collections differ.
+    env.client.player = {
+      ...env.client.player,
+      cards: env.client.player.cards.map((c) => (c.name === "Hog Rider" ? { ...c, level: c.level - 2 } : c)),
+    };
+    await syncPlayer(ALT_TAG, env.client);
     const deck = createDeck(user.id, {
       name: "Hog",
       cards: ["Hog Rider", "Musketeer", "Valkyrie", "Ice Spirit", "Skeletons", "Cannon", "Fireball", "The Log"],
       notes: "",
       source: "manual",
     });
-    const header = (html: string) => /<th class="align-right">([^<]*)<\/th>/.exec(html)?.[1];
-    expect(header(await (await get(`/decks/${deck.id}`)).text())).toBe("Sparky");
-    expect(header(await (await get(`/decks/${deck.id}`, `cr_player=${ALT}`)).text())).toBe("AltAccount");
-    expect(header(await (await get(`/decks/${deck.id}/edit`, `cr_player=${ALT}`)).text())).toBe("AltAccount");
+    const hogLevel = (html: string) => Number(/<option value="Hog Rider"[^>]*data-level="(\d+)"/.exec(html)?.[1]);
+    const main = hogLevel(await (await get(`/decks/${deck.id}`)).text());
+    const alt = hogLevel(await (await get(`/decks/${deck.id}?edit=1`, `cr_player=${ALT}`)).text());
+    expect(main - alt).toBe(2);
   });
 });
 

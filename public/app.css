@@ -1074,12 +1074,6 @@ details pre {
   max-height: 480px;
 }
 
-.card-inputs {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0.5rem;
-}
-
 .inline-form {
   display: flex;
   flex-wrap: wrap;
@@ -1203,18 +1197,21 @@ details pre {
   display: flex;
   gap: 0.25rem;
 }
-.form-badge {
+.form-badge,
+.form-tag {
   font-size: 0.65rem;
   color: var(--muted);
   border: 1px solid var(--border);
   border-radius: 999px;
   padding: 0 0.4rem;
 }
-.form-badge.form-evo.unlocked {
+.form-badge.form-evo.unlocked,
+.form-tag.form-evo {
   color: var(--evo);
   border-color: var(--evo);
 }
-.form-badge.form-hero.unlocked {
+.form-badge.form-hero.unlocked,
+.form-tag.form-hero {
   color: var(--hero);
   border-color: var(--hero);
 }
@@ -1242,9 +1239,6 @@ details pre {
   .deck-grid.size-sm {
     grid-template-columns: repeat(8, 30px);
     gap: 2px;
-  }
-  .card-inputs {
-    grid-template-columns: repeat(2, 1fr);
   }
   .filters .field {
     min-width: 0;
@@ -1587,11 +1581,6 @@ label.switch {
 .icon-btn-danger:focus-visible {
   color: var(--loss);
 }
-.level-card {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.6rem;
-}
 
 /* Collapsed form behind a button (Settings > Change Password) */
 .disclosure > summary {
@@ -1720,4 +1709,116 @@ label.switch {
 }
 .resources-save {
   align-self: end;
+}
+
+/* Deck page: one form, toggled between view and edit by data-mode (app.js; ?edit=1 without JS). */
+[data-mode="view"] .edit-only,
+[data-mode="edit"] .view-only {
+  display: none;
+}
+.deck-head {
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 1rem;
+}
+.deck-head h1 {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.deck-head .deck-name-input {
+  flex: 1 1 14rem;
+  max-width: 24rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+.deck-head label.switch {
+  margin: 0;
+}
+.deck-slots {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+.deck-slot {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+.deck-slot .card-icon {
+  width: 100%;
+}
+.deck-slot .card-forms {
+  display: none;
+}
+.deck-slot .card-level {
+  font-size: clamp(0.6rem, 11cqw, 0.95rem);
+}
+.deck-slot .card-fallback {
+  font-size: clamp(0.55rem, 10cqw, 0.85rem);
+}
+.slot-forms {
+  display: flex;
+  justify-content: center;
+  gap: 0.25rem;
+  /* Reserved so a tile without tags lines up with its neighbours. */
+  min-height: clamp(1.1rem, 16cqw, 1.5rem);
+}
+.slot-forms .form-tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: clamp(0.55rem, 10cqw, 0.85rem);
+  font-weight: 600;
+  margin: 0;
+  cursor: pointer;
+}
+.slot-forms .form-tag[hidden] {
+  display: none;
+}
+.slot-forms .form-tag:not(.is-active):not(:has(:checked)) {
+  opacity: 0.4;
+}
+.slot-forms input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  pointer-events: none;
+}
+.slot-forms .form-tag:has(:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+[data-mode="view"] .slot-forms {
+  pointer-events: none;
+}
+.slot-from {
+  /* Fixed, so a "from Lv n" line never shifts its tile's input below the neighbours'. */
+  height: 1.2em;
+  line-height: 1.2;
+  overflow: hidden;
+  text-align: center;
+  font-size: clamp(0.6rem, 10cqw, 0.8rem);
+  white-space: nowrap;
+}
+.deck-slot input[type="text"] {
+  padding: 0.3rem 0.4rem;
+  font-size: 0.85rem;
+}
+.deck-slot.not-owned .card-icon {
+  border-color: var(--loss);
+}
+.deck-slot.not-owned img {
+  filter: grayscale(1);
+  opacity: 0.6;
+}
+.deck-page .deck-meta {
+  margin-top: 1rem;
+}
+@media (max-width: 720px) {
+  .deck-slots {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }

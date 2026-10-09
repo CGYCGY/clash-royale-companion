@@ -101,6 +101,236 @@ const localizeTimes = (root) => {
 };
 localizeTimes(document);
 
+// Deck page (src/routes/pages/decks.tsx): one form with a view and an edit mode. The datalist doubles as
+// the client-side card catalog, so tiles redraw as cards are typed; the server renders the same markup.
+// Set when a deck saved inside the dialog, so closing it refreshes the deck list behind it.
+let deckSavedInDialog = false;
+const FORM_BITS = { evo: 1, hero: 2 };
+const FORM_LABELS = { evo: "Evo", hero: "Hero" };
+// Mirrors deckSlotForms in src/domain/deckSlots.ts: slots 1–2 Evo only, slot 3 Evo and/or Hero.
+const slotAvailable = (index, forms) => {
+  if (index > 2) return [];
+  return ["evo", "hero"].filter((f) => forms & FORM_BITS[f] && (f === "evo" || index === 2));
+};
+
+const wireDeckPage = (root) => {
+  for (const form of root.querySelectorAll("form[data-deck-page]:not([data-wired])")) {
+    form.setAttribute("data-wired", "");
+    const deckId = form.dataset.deckId;
+    const options = new Map();
+    for (const o of form.querySelectorAll("#card-names option")) options.set(o.value.toLowerCase(), o);
+    const tiles = [...form.querySelectorAll(".deck-slot")];
+    const levelToggle = form.querySelector("[data-level-toggle]");
+    const avgEl = form.querySelector("[data-avg-elixir]");
+
+    const optionFor = (tile) => options.get(tile.querySelector('input[name="cards"]').value.trim().toLowerCase());
+
+    // Kept outside the DOM: retyping slot 3 passes through names with no forms, which empties the radios.
+    const savedSlot3 = form.querySelector('input[name="slot3Form"]:checked')?.value ?? "evo";
+    let slot3Choice = savedSlot3;
+
+    const renderForms = (tile, index, opt) => {
+      const box = tile.querySelector(".slot-forms");
+      const available = opt ? slotAvailable(index, Number(opt.dataset.forms)) : [];
+      box.textContent = "";
+      for (const f of available) {
+        if (available.length > 1) {
+          const label = document.createElement("label");
+          label.className = `form-tag form-${f}`;
+          const radio = Object.assign(document.createElement("input"), { type: "radio", name: "slot3Form", value: f });
+          radio.checked = f === (available.includes(slot3Choice) ? slot3Choice : "evo");
+          radio.disabled = form.dataset.mode !== "edit";
+          label.append(radio, FORM_LABELS[f]);
+          box.append(label);
+        } else {
+          const span = document.createElement("span");
+          span.className = `form-tag form-${f} is-active`;
+          span.textContent = FORM_LABELS[f];
+          box.append(span);
+        }
+      }
+    };
+
+    const activeForm = (tile) => {
+      const tags = tile.querySelectorAll(".slot-forms .form-tag");
+      if (tags.length > 1) return tile.querySelector(".slot-forms input:checked")?.value ?? null;
+      return tags[0] ? (tags[0].classList.contains("form-hero") ? "hero" : "evo") : null;
+    };
+
+    const renderArt = (tile, opt) => {
+      const fig = tile.querySelector(".card-icon");
+      const name = opt ? opt.value : tile.querySelector('input[name="cards"]').value.trim();
+      const active = opt ? activeForm(tile) : null;
+      const src = opt && ((active === "evo" && opt.dataset.iconEvo) || (active === "hero" && opt.dataset.iconHero) || opt.dataset.icon);
+      fig.classList.toggle("evolved", active === "evo");
+      fig.classList.toggle("hero", active === "hero");
+      fig.classList.remove("img-failed");
+      fig.title = name;
+      fig.textContent = "";
+      if (src) {
+        const img = Object.assign(document.createElement("img"), { src, alt: name, loading: "lazy" });
+        fig.append(img);
+      }
+      const fallback = document.createElement("span");
+      fallback.className = "card-fallback";
+      fallback.textContent = name;
+      fig.append(fallback);
+    };
+
+    // Levels show what the held copies already pay for, like Collection's Max Out sort ("from Lv n").
+    const renderLevels = (tile, opt) => {
+      const on = form.hasAttribute("data-levels") && opt?.dataset.owned !== undefined;
+      const owned = on && opt.dataset.owned === "1";
+      const fig = tile.querySelector(".card-icon");
+      const from = tile.querySelector(".slot-from");
+      tile.classList.toggle("not-owned", on && !owned);
+      fig.querySelector(".card-level")?.remove();
+      from.textContent = "";
+      const have = Number(opt?.dataset.have ?? 0);
+      for (const tag of tile.querySelectorAll(".slot-forms .form-tag")) {
+        const f = tag.classList.contains("form-hero") ? "hero" : "evo";
+        tag.hidden = on && !(owned && have & FORM_BITS[f]);
+      }
+      if (!owned || !opt.dataset.to) return;
+      const badge = document.createElement("span");
+      badge.className = "card-level";
+      badge.textContent = `Lv ${opt.dataset.to}`;
+      fig.append(badge);
+      if (Number(opt.dataset.to) > Number(opt.dataset.level)) from.textContent = `from Lv ${opt.dataset.level}`;
+    };
+
+    // Mirrors averageElixir + formatElixir on the server over the known cards: one without a cost (Mirror) blanks it.
+    const renderAvg = () => {
+      const known = tiles.map(optionFor).filter(Boolean);
+      const blank = !known.length || known.some((o) => o.dataset.elixir === undefined);
+      const sum = known.reduce((total, o) => total + Number(o.dataset.elixir), 0);
+      if (avgEl) avgEl.textContent = blank ? "–" : (sum / known.length).toFixed(1);
+    };
+
+    const renderTile = (tile, { forms = true } = {}) => {
+      const opt = optionFor(tile);
+      if (forms) renderForms(tile, Number(tile.dataset.slot), opt);
+      renderArt(tile, opt);
+      renderLevels(tile, opt);
+    };
+    const renderAll = () => {
+      for (const tile of tiles) renderTile(tile);
+      renderAvg();
+    };
+
+    const setMode = (mode) => {
+      form.dataset.mode = mode;
+      for (const radio of form.querySelectorAll('input[name="slot3Form"]')) radio.disabled = mode !== "edit";
+    };
+
+    form.addEventListener("input", (e) => {
+      const tile = e.target.closest(".deck-slot");
+      if (!tile || e.target.name !== "cards") return;
+      renderTile(tile);
+      renderAvg();
+    });
+    form.addEventListener("change", (e) => {
+      const tile = e.target.closest(".deck-slot");
+      if (!tile || e.target.name !== "slot3Form") return;
+      slot3Choice = e.target.value;
+      renderTile(tile, { forms: false });
+    });
+    levelToggle?.addEventListener("change", () => {
+      form.toggleAttribute("data-levels", levelToggle.checked);
+      for (const tile of tiles) renderLevels(tile, optionFor(tile));
+    });
+
+    form.querySelector("[data-deck-edit]")?.addEventListener("click", (e) => {
+      if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+      e.preventDefault();
+      setMode("edit");
+      form.elements.name?.focus();
+    });
+    if (deckId) {
+      const viewUrl = new URL(form.action);
+      // Drop ?edit=1 so a reload shows the deck, not the editor.
+      const inDialog = Boolean(form.closest("dialog"));
+      const leaveEditUrl = () => {
+        const path = viewUrl.pathname;
+        if (inDialog ? !history.state?.battleModal : location.pathname !== path) return;
+        const state = inDialog ? { ...history.state, battleModal: path } : history.state;
+        history.replaceState(state, "", path);
+        if (inDialog) form.closest("dialog").querySelector(".modal-full").href = path;
+      };
+
+      // Swaps in the server's partial for this deck; null when the caller should fall back to a navigation.
+      const swap = async (init) => {
+        const url = new URL(viewUrl);
+        url.searchParams.set("partial", "1");
+        let res;
+        try {
+          res = await fetch(url, { ...init, credentials: "same-origin", headers: { Accept: "text/html" } });
+        } catch {
+          return null;
+        }
+        if (res.redirected) {
+          location.href = form.action;
+          return res;
+        }
+        const levels = levelToggle?.checked;
+        const holder = document.createElement("div");
+        holder.innerHTML = await res.text();
+        const fresh = holder.firstElementChild;
+        if (!fresh?.matches("form[data-deck-page]")) return null;
+        form.replaceWith(fresh);
+        const freshToggle = fresh.querySelector("[data-level-toggle]");
+        if (freshToggle && levels) freshToggle.checked = true;
+        wireDeckPage(fresh.parentElement);
+        if (freshToggle && levels) freshToggle.dispatchEvent(new Event("change"));
+        localizeTimes(fresh);
+        for (const img of fresh.querySelectorAll(".card-icon img")) {
+          if (img.complete && img.naturalWidth === 0) markBroken(img);
+        }
+        return res;
+      };
+
+      const cancel = form.querySelector("[data-deck-cancel]");
+      cancel?.addEventListener("click", async (e) => {
+        if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+        e.preventDefault();
+        // After a failed save the form's defaults are the rejected values, so reset() can't bring back the deck.
+        if (form.querySelector(".flash-error")) {
+          if (!(await swap({ method: "GET" }))) location.href = cancel.href;
+          else leaveEditUrl();
+          return;
+        }
+        const levels = levelToggle?.checked;
+        form.reset();
+        // reset() also unchecks the level switch, which is a view setting rather than deck data.
+        if (levelToggle) levelToggle.checked = levels;
+        // Radios rebuilt for a since-changed card have no server default for reset() to restore.
+        slot3Choice = savedSlot3;
+        renderAll();
+        setMode("view");
+        leaveEditUrl();
+      });
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const btn = form.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        btn.setAttribute("aria-busy", "true");
+        const res = await swap({ method: "POST", body: new FormData(form) });
+        if (!res) {
+          form.submit();
+          return;
+        }
+        if (!res.ok || res.redirected) return;
+        if (inDialog) deckSavedInDialog = true;
+        leaveEditUrl();
+      });
+    }
+
+    // Edit mode was chosen by the server; the radios must follow it after a client-side swap too.
+    setMode(form.dataset.mode);
+  }
+};
+wireDeckPage(document);
+
 // New API key: copy button inside the input, plus a best-effort copy on load.
 const copyText = async (input) => {
   try {
@@ -336,7 +566,9 @@ if (modalTemplate && "HTMLDialogElement" in window) {
     fullLink.href = href;
     setStatus(`<p class="muted">Loading ${kind.toLowerCase()}…</p>`, true);
     try {
-      const res = await fetch(`${href}?partial=1`, { credentials: "same-origin", headers: { Accept: "text/html" } });
+      const url = new URL(href, location.href);
+      url.searchParams.set("partial", "1");
+      const res = await fetch(url, { credentials: "same-origin", headers: { Accept: "text/html" } });
       if (id !== request) return;
       // A redirect means the session ended (login page); let the full page handle it.
       if (res.redirected) {
@@ -346,6 +578,7 @@ if (modalTemplate && "HTMLDialogElement" in window) {
       if (!res.ok) throw new Error(String(res.status));
       body.innerHTML = await res.text();
       localizeTimes(body);
+      wireDeckPage(body);
       const heading = body.querySelector("h1[id]");
       if (heading) dialog.setAttribute("aria-labelledby", heading.id);
       body.setAttribute("aria-busy", "false");
@@ -377,6 +610,11 @@ if (modalTemplate && "HTMLDialogElement" in window) {
     document.body.classList.remove("modal-open");
     request++;
     body.innerHTML = "";
+    if (deckSavedInDialog) {
+      deckSavedInDialog = false;
+      // liveShown, not location: history.back() below hasn't landed yet, so location is still the deck.
+      if (document.querySelector(".live-results")) liveSwap(new URL(liveShown, location.href));
+    }
     if (ownsEntry) {
       ownsEntry = false;
       history.back();
@@ -470,6 +708,7 @@ const liveSwap = async (url, { push = false } = {}) => {
     else history.replaceState(history.state, "", liveShown);
     wireBattleRows(document);
     localizeTimes(document);
+    wireDeckPage(document);
     return true;
   } catch (err) {
     if (err.name !== "AbortError") location.href = url.href;

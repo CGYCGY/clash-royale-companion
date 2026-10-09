@@ -2,7 +2,8 @@ import type { Context } from "hono";
 import { Hono } from "hono";
 import { z } from "zod";
 import { currentUser, requireUser } from "../../auth/middleware";
-import { buildCollection, type CollectionEntry } from "../../domain/collection";
+import { buildCollection, type CollectionEntry, projectAffordable } from "../../domain/collection";
+import { deckSlotForms, type SlotForms, slotFormsBitmask } from "../../domain/deckSlots";
 import { classifyDecks, type UsedDeckStats } from "../../domain/deckUsage";
 import { AppError, notFound } from "../../errors";
 import { resolvePlayer } from "../../http/currentPlayer";
@@ -10,13 +11,22 @@ import { setFlash } from "../../http/flash";
 import { parseForm, parseQuery } from "../../http/validate";
 import { averageElixir, type BattleStats, getBattleStats } from "../../repos/battles";
 import { cardsMap, listCards } from "../../repos/cards";
-import { createDeck, DECK_SIZE, type DeckRecord, deleteDeck, getDeck, listDecks, updateDeck } from "../../repos/decks";
-import { getLatestSnapshot, type PlayerRecord } from "../../repos/players";
+import {
+  createDeck,
+  DECK_SIZE,
+  type DeckRecord,
+  deleteDeck,
+  getDeck,
+  listDecks,
+  type SlotForm,
+  updateDeck,
+} from "../../repos/decks";
+import { getLatestSnapshot } from "../../repos/players";
 import type { AppEnv } from "../../types";
 import { formatElixir, namedCardViews } from "../../views/cardViews";
-import { CardIcon, DeckGrid, EmptyState, InfoTip, LocalTime, localTitle, ModeTags } from "../../views/components";
+import { CardIcon, DeckGrid, EmptyState, InfoTip, LocalTime, localTitle, ModeTags, toCardView } from "../../views/components";
 import { formatPercent, formatRelative } from "../../views/format";
-import { ArrowLeftIcon, PencilIcon, TrashIcon } from "../../views/icons";
+import { ArrowLeftIcon, CheckIcon, CloseIcon, PencilIcon, TrashIcon } from "../../views/icons";
 import { renderPage } from "../../views/render";
 import { formError, idParam } from "./shared";
 
@@ -24,12 +34,14 @@ const deckSchema = z.object({
   name: z.string().trim().min(1, "Give the deck a name").max(100),
   cards: z.union([z.string(), z.array(z.string())]).default([]),
   notes: z.string().max(20_000).default(""),
+  slot3Form: z.enum(["evo", "hero"]).optional().catch(undefined),
 });
 
 interface DeckFormValues {
   name: string;
   cards: string[];
   notes: string;
+  slot3Form: SlotForm | null;
 }
 
 function SourceBadge({ source }: { source: DeckRecord["source"] }) {
@@ -140,142 +152,228 @@ function Notes({ notes }: { notes: string }) {
   );
 }
 
-interface PlayerLevels {
-  player: PlayerRecord;
-  byName: Map<string, CollectionEntry> | null;
+interface DeckError {
+  message: string;
+  unknown?: string[];
+  duplicates?: string[];
 }
 
 /**
- * Decks belong to the user, not to a player, so the same deck is checked against whichever player is
- * current in the header (empty when none is linked).
+ * Every playable card, which app.js reads as its client-side catalog to redraw tiles as cards are typed.
+ * Level data comes from the player current in the header: decks belong to the user, not to a player.
  */
-function currentPlayerLevels(c: Context<AppEnv>): PlayerLevels[] {
-  const player = resolvePlayer(c).current;
-  if (!player) return [];
-  const snap = getLatestSnapshot(player.tag);
-  const byName = snap ? new Map(buildCollection(snap.player, listCards()).entries.map((e) => [e.name, e])) : null;
-  return [{ player, byName }];
-}
-
-function LevelCell({ entry }: { entry: CollectionEntry | undefined }) {
-  if (!entry || !entry.owned || entry.level === null) return <span class="neg">not owned</span>;
-  const maxed = entry.level >= entry.maxLevel;
+function CardDatalist({ byName }: { byName: Map<string, CollectionEntry> | null }) {
   return (
-    <span class={maxed ? "pos" : undefined}>
-      {entry.level}
-      <span class="muted"> / {entry.maxLevel}</span>
-    </span>
+    <datalist id="card-names">
+      {listCards({ kind: "card" }).map((card) => {
+        const e = byName?.get(card.name);
+        const to = e && e.level !== null ? projectAffordable(e).level : null;
+        return (
+          <option
+            value={card.name}
+            data-icon={card.iconUrl ?? undefined}
+            data-icon-evo={card.iconUrlEvo ?? undefined}
+            data-icon-hero={card.iconUrlHero ?? undefined}
+            data-forms={String(card.maxEvolutionLevel ?? 0)}
+            data-elixir={card.elixirCost === null ? undefined : String(card.elixirCost)}
+            data-owned={e ? (e.owned ? "1" : "0") : undefined}
+            data-level={e?.level == null ? undefined : String(e.level)}
+            data-max={e ? String(e.maxLevel) : undefined}
+            data-to={to === null ? undefined : String(to)}
+            data-have={e?.owned ? String(e.evolutionLevel) : undefined}
+          />
+        );
+      })}
+    </datalist>
   );
 }
 
-function LevelCheck({ cards, levels }: { cards: string[]; levels: PlayerLevels[] }) {
-  if (!levels.length) return <p class="muted">Link a player in Settings to compare card levels.</p>;
-  const views = namedCardViews(cards, cardsMap());
+const FORM_LABELS = { evo: "Evo", hero: "Hero" } as const;
+
+/** app.js (slotFormsHtml) builds the same markup when a card changes, so keep the two in step. */
+function SlotFormTags({ forms, editing }: { forms: SlotForms; editing: boolean }) {
   return (
-    <div class="table-wrap">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Card</th>
-            {levels.map((l) => (
-              <th class="align-right">{l.player.name || l.player.tag}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {cards.map((name, i) => (
-            <tr>
-              <td>
-                <span class="level-card">
-                  <CardIcon card={views[i]!} size="xs" />
-                  {name}
-                </span>
-              </td>
-              {levels.map((l) => (
-                <td class="align-right">
-                  {l.byName ? <LevelCell entry={l.byName.get(name)} /> : <span class="muted">no data</span>}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div class="slot-forms">
+      {forms.available.length > 1
+        ? forms.available.map((f) => (
+            <label class={`form-tag form-${f}`}>
+              <input type="radio" name="slot3Form" value={f} checked={forms.active === f} disabled={!editing} />
+              {FORM_LABELS[f]}
+            </label>
+          ))
+        : forms.available.map((f) => <span class={`form-tag form-${f} is-active`}>{FORM_LABELS[f]}</span>)}
     </div>
   );
 }
 
-function DeckForm({
-  action,
+function DeckPage({
+  deck,
   values,
+  editing,
   error,
   levels,
 }: {
-  action: string;
+  deck?: DeckRecord;
   values: DeckFormValues;
-  error?: { message: string; unknown?: string[]; duplicates?: string[] };
-  levels?: PlayerLevels[];
+  editing: boolean;
+  error?: DeckError;
+  /** Null when no player with a snapshot is linked; then there is no level switch. */
+  levels: Map<string, CollectionEntry> | null;
 }) {
-  const cardNames = listCards({ kind: "card" }).map((c) => c.name);
+  const catalog = cardsMap();
+  const byLower = new Map([...catalog.keys()].map((n) => [n.toLowerCase(), n]));
   const slots = Array.from({ length: DECK_SIZE }, (_, i) => values.cards[i] ?? "");
+  // Submitted values may differ in case from the catalog; the repo matches them case-insensitively too.
+  const names = slots.map((v) => byLower.get(v.trim().toLowerCase()) ?? v.trim());
+  const forms = deckSlotForms(names, catalog, values.slot3Form);
+  const known = names.filter((n) => catalog.has(n));
+  const action = deck ? `/decks/${deck.id}` : "/decks";
   return (
-    <form method="post" action={action} class="stack deck-form">
-      {error && (
-        <div class="flash flash-error" role="alert">
-          <p>{error.message}</p>
-          {error.unknown?.length ? <p>Unknown cards: {error.unknown.join(", ")}</p> : null}
-          {error.duplicates?.length ? <p>Duplicates: {error.duplicates.join(", ")}</p> : null}
+    <form
+      method="post"
+      action={action}
+      class="stack deck-page"
+      data-deck-page
+      data-mode={editing ? "edit" : "view"}
+      data-deck-id={deck ? String(deck.id) : undefined}
+    >
+      <section class="card">
+        <div class="row deck-head">
+          <h1 id="deck-detail-title" class="view-only">
+            {deck?.name ?? "New deck"}
+          </h1>
+          <input
+            type="text"
+            name="name"
+            class="edit-only deck-name-input"
+            value={values.name}
+            maxlength={100}
+            required
+            placeholder="New deck"
+            aria-label="Deck name"
+            autocomplete="off"
+          />
+          {deck && <SourceBadge source={deck.source} />}
+          <div class="spacer" />
+          {levels && (
+            <label class="switch">
+              <input type="checkbox" role="switch" data-level-toggle />
+              Levels
+            </label>
+          )}
+          {deck && (
+            <a class="icon-btn view-only" href={`${action}?edit=1`} data-deck-edit aria-label="Edit deck" title="Edit">
+              <PencilIcon />
+            </a>
+          )}
+          <button type="submit" class="icon-btn edit-only" aria-label="Save deck" title="Save">
+            <CheckIcon />
+          </button>
+          <a class="icon-btn edit-only" href={deck ? action : "/decks"} data-deck-cancel aria-label="Cancel" title="Cancel">
+            <CloseIcon />
+          </a>
         </div>
-      )}
-      <div class="field">
-        <label for="name">Name</label>
-        <input type="text" id="name" name="name" value={values.name} maxlength={100} required />
-      </div>
-      <fieldset class="field">
-        <legend>Cards</legend>
-        <datalist id="card-names">
-          {cardNames.map((n) => (
-            <option value={n} />
-          ))}
-        </datalist>
-        <div class="card-inputs">
-          {slots.map((v, i) => (
-            <input
-              type="text"
-              name="cards"
-              value={v}
-              list="card-names"
-              aria-label={`Card ${i + 1}`}
-              autocomplete="off"
-            />
-          ))}
+        {error && (
+          <div class="flash flash-error" role="alert">
+            <p>{error.message}</p>
+            {error.unknown?.length ? <p>Unknown cards: {error.unknown.join(", ")}</p> : null}
+            {error.duplicates?.length ? <p>Duplicates: {error.duplicates.join(", ")}</p> : null}
+          </div>
+        )}
+        <div class="deck-slots">
+          {slots.map((raw, i) => {
+            const name = names[i]!;
+            const view = toCardView({ name, evolutionLevel: slotFormsBitmask(forms[i]!) }, catalog);
+            return (
+              <div class="deck-slot" data-slot={String(i)}>
+                <SlotFormTags forms={forms[i]!} editing={editing} />
+                <CardIcon card={view} />
+                <div class="slot-from muted small" />
+                <input
+                  type="text"
+                  name="cards"
+                  class="edit-only"
+                  list="card-names"
+                  value={raw}
+                  autocomplete="off"
+                  aria-label={`Card ${i + 1}`}
+                />
+              </div>
+            );
+          })}
         </div>
-      </fieldset>
-      <div class="field">
-        <label for="notes">Notes</label>
-        <textarea id="notes" name="notes" maxlength={20000}>
+        <div class="row deck-meta">
+          <span>
+            Avg elixir <strong data-avg-elixir>{formatElixir(averageElixir(known, catalog))}</strong>
+          </span>
+          <div class="spacer" />
+          {deck && (
+            <span class="muted small">
+              Created <LocalTime iso={deck.createdAt} /> · updated <LocalTime iso={deck.updatedAt} />
+            </span>
+          )}
+        </div>
+      </section>
+      <section class="card">
+        <h2>Notes</h2>
+        <div class="view-only">
+          <Notes notes={deck?.notes ?? ""} />
+        </div>
+        <textarea name="notes" class="edit-only" maxlength={20000} aria-label="Notes">
           {values.notes}
         </textarea>
-      </div>
-      {levels && (
-        <div class="field">
-          <h3>Your Levels</h3>
-          <LevelCheck cards={values.cards.filter(Boolean)} levels={levels} />
-        </div>
-      )}
-      <div class="row">
-        <button type="submit">Save Deck</button>
-        <a class="btn btn-secondary" href="/decks">
-          Cancel
-        </a>
-      </div>
+      </section>
+      <CardDatalist byName={levels} />
     </form>
   );
 }
 
+function currentLevels(c: Context<AppEnv>): Map<string, CollectionEntry> | null {
+  const player = resolvePlayer(c).current;
+  const snap = player ? getLatestSnapshot(player.tag) : null;
+  return snap ? new Map(buildCollection(snap.player, listCards()).entries.map((e) => [e.name, e])) : null;
+}
+
+const isPartial = (c: Context<AppEnv>) => c.req.query("partial") === "1";
+
+function renderDeckPage(
+  c: Context<AppEnv>,
+  opts: { deck?: DeckRecord; values: DeckFormValues; editing: boolean; error?: DeckError },
+) {
+  const status = opts.error ? 400 : 200;
+  const page = <DeckPage {...opts} levels={currentLevels(c)} />;
+  // app.js loads this into the dialog and swaps it in after an in-place save; the query string keeps it a
+  // separate cache entry from the page.
+  if (isPartial(c)) {
+    c.header("Cache-Control", "no-store");
+    return c.html(page, status);
+  }
+  const title = !opts.deck ? "New Deck" : opts.editing ? `Edit ${opts.deck.name}` : opts.deck.name;
+  return renderPage(
+    c,
+    { title, active: "decks", status },
+    <div class="stack">
+      <p>
+        <a class="btn btn-ghost btn-small" href="/decks">
+          <ArrowLeftIcon /> Back to Decks
+        </a>
+      </p>
+      {page}
+    </div>,
+  );
+}
+
+const deckValues = (d: DeckRecord): DeckFormValues => ({
+  name: d.name,
+  cards: d.cards,
+  notes: d.notes,
+  slot3Form: d.slot3Form,
+});
+
 async function readDeckForm(c: Context<AppEnv>): Promise<DeckFormValues> {
   const form = await parseForm(c, deckSchema);
   const cards = (Array.isArray(form.cards) ? form.cards : [form.cards]).map((s) => s.trim()).filter(Boolean);
-  return { name: form.name, cards, notes: form.notes };
+  return { name: form.name, cards, notes: form.notes, slot3Form: form.slot3Form ?? null };
 }
 
 /** Raw submitted values for re-rendering when schema validation itself failed. */
@@ -283,10 +381,11 @@ async function rawDeckValues(c: Context<AppEnv>): Promise<DeckFormValues> {
   const body = await c.req.parseBody({ all: true });
   const str = (v: unknown) => (typeof v === "string" ? v : "");
   const cards = Array.isArray(body.cards) ? body.cards.map(str) : [str(body.cards)];
-  return { name: str(body.name), cards, notes: str(body.notes) };
+  const form = str(body.slot3Form);
+  return { name: str(body.name), cards, notes: str(body.notes), slot3Form: form === "evo" || form === "hero" ? form : null };
 }
 
-function deckFormError(err: unknown) {
+function deckFormError(err: unknown): DeckError {
   if (err instanceof AppError && err.code === "invalid_deck") {
     const d = err.details as { unknown?: string[]; duplicates?: string[]; count?: number } | undefined;
     const countMsg =
@@ -298,26 +397,6 @@ function deckFormError(err: unknown) {
   return { message: formError(err) };
 }
 
-function renderDeckForm(
-  c: Context<AppEnv>,
-  opts: { deck?: DeckRecord; values: DeckFormValues; error?: ReturnType<typeof deckFormError> },
-) {
-  const title = opts.deck ? `Edit ${opts.deck.name}` : "New Deck";
-  return renderPage(
-    c,
-    { title, active: "decks", status: opts.error ? 400 : 200 },
-    <div class="card">
-      <h1>{title}</h1>
-      <DeckForm
-        action={opts.deck ? `/decks/${opts.deck.id}` : "/decks"}
-        values={opts.values}
-        error={opts.error}
-        levels={opts.deck ? currentPlayerLevels(c) : undefined}
-      />
-    </div>,
-  );
-}
-
 async function saveDeck(c: Context<AppEnv>, deck?: DeckRecord) {
   let values: DeckFormValues | undefined;
   try {
@@ -325,11 +404,12 @@ async function saveDeck(c: Context<AppEnv>, deck?: DeckRecord) {
     const userId = currentUser(c).id;
     const input = { ...values, source: "manual" as const };
     const saved = deck ? updateDeck(userId, deck.id, input) : createDeck(userId, input);
+    if (deck && isPartial(c)) return renderDeckPage(c, { deck: saved, values: deckValues(saved), editing: false });
     setFlash(c, "success", `Saved "${saved.name}".`);
     return c.redirect(`/decks/${saved.id}`);
   } catch (err) {
     const error = deckFormError(err);
-    return renderDeckForm(c, { deck, values: values ?? (await rawDeckValues(c)), error });
+    return renderDeckPage(c, { deck, values: values ?? (await rawDeckValues(c)), editing: true, error });
   }
 }
 
@@ -450,7 +530,13 @@ export const deckPages = new Hono<AppEnv>()
                         <p class="muted excerpt">{d.notes.length > 140 ? `${d.notes.slice(0, 140)}…` : d.notes}</p>
                       )}
                       <div class="row deck-actions">
-                        <a class="icon-btn" href={`/decks/${d.id}/edit`} aria-label={`Edit ${d.name}`} title="Edit">
+                        <a
+                          class="icon-btn"
+                          href={`/decks/${d.id}?edit=1`}
+                          data-modal="Deck"
+                          aria-label={`Edit ${d.name}`}
+                          title="Edit"
+                        >
                           <PencilIcon />
                         </a>
                         <form
@@ -534,65 +620,16 @@ export const deckPages = new Hono<AppEnv>()
       </div>,
     );
   })
-  .get("/decks/new", (c) => renderDeckForm(c, { values: { name: "", cards: [], notes: "" } }))
+  .get("/decks/new", (c) =>
+    renderDeckPage(c, { values: { name: "", cards: [], notes: "", slot3Form: null }, editing: true }),
+  )
   .post("/decks", (c) => saveDeck(c))
   .get("/decks/:id{[0-9]+}", (c) => {
     const deck = loadDeck(c);
-    const catalog = cardsMap();
-    const levels = currentPlayerLevels(c);
-    const detail = (
-      <div class="stack">
-        <section class="card">
-          <div class="row">
-            <h1 id="deck-detail-title">{deck.name}</h1>
-            <SourceBadge source={deck.source} />
-            <div class="spacer" />
-            <a class="btn btn-secondary" href={`/decks/${deck.id}/edit`}>
-              Edit
-            </a>
-          </div>
-          <DeckGrid cards={namedCardViews(deck.cards, catalog)} size="md" />
-          <div class="row deck-meta">
-            <span>
-              Avg elixir <strong>{formatElixir(averageElixir(deck.cards, catalog))}</strong>
-            </span>
-            <span class="muted small">
-              Created <LocalTime iso={deck.createdAt} /> · updated <LocalTime iso={deck.updatedAt} />
-            </span>
-          </div>
-        </section>
-        <section class="card">
-          <h2>Notes</h2>
-          <Notes notes={deck.notes} />
-        </section>
-        <section class="card">
-          <h2>Level Check</h2>
-          <LevelCheck cards={deck.cards} levels={levels} />
-        </section>
-      </div>
-    );
-    // app.js loads this into the dialog; the query string keeps it a separate cache entry from the page.
-    if (c.req.query("partial") === "1") {
-      c.header("Cache-Control", "no-store");
-      return c.html(detail);
-    }
-    return renderPage(
-      c,
-      { title: deck.name, active: "decks" },
-      <div class="stack">
-        <p>
-          <a class="btn btn-ghost btn-small" href="/decks">
-            <ArrowLeftIcon /> Back to Decks
-          </a>
-        </p>
-        {detail}
-      </div>,
-    );
+    return renderDeckPage(c, { deck, values: deckValues(deck), editing: c.req.query("edit") === "1" });
   })
-  .get("/decks/:id{[0-9]+}/edit", (c) => {
-    const deck = loadDeck(c);
-    return renderDeckForm(c, { deck, values: { name: deck.name, cards: deck.cards, notes: deck.notes } });
-  })
+  // The old edit page; links to it may live in bookmarks and the AI's notes.
+  .get("/decks/:id{[0-9]+}/edit", (c) => c.redirect(`/decks/${loadDeck(c).id}?edit=1`))
   .post("/decks/:id{[0-9]+}", (c) => saveDeck(c, loadDeck(c)))
   .post("/decks/:id{[0-9]+}/delete", (c) => {
     const deck = loadDeck(c);
