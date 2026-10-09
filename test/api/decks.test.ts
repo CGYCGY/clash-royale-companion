@@ -117,6 +117,32 @@ describe("decks CRUD", () => {
     expect(((await bad.json()) as ErrorJson).error.code).toBe("validation_error");
   });
 
+  test("tags are accepted on create and patch, listed, and validated", async () => {
+    const deck = await create(apiKey, { name: "War", cards: HOG, tags: ["Clan War", " clan war ", "Touchdown"] });
+    expect(deck.tags).toEqual(["Clan War", "Touchdown"]);
+    expect((await create(apiKey, { name: "Plain", cards: HOG })).tags).toEqual([]);
+
+    const res = await env.app.request(`/api/decks/${deck.id}`, jsonInit("PATCH", apiKey, { tags: ["Triple Elixir"] }));
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { deck: DeckJson }).deck.tags).toEqual(["Triple Elixir"]);
+
+    const renamed = await env.app.request(`/api/decks/${deck.id}`, jsonInit("PATCH", apiKey, { name: "War 2" }));
+    expect(((await renamed.json()) as { deck: DeckJson }).deck.tags).toEqual(["Triple Elixir"]);
+
+    const list = (await (await env.app.request("/api/decks", { headers: apiKey })).json()) as { decks: DeckJson[] };
+    expect(list.decks.find((d) => d.id === deck.id)!.tags).toEqual(["Triple Elixir"]);
+
+    const cleared = await env.app.request(`/api/decks/${deck.id}`, jsonInit("PATCH", apiKey, { tags: [] }));
+    expect(cleared.status).toBe(200);
+    expect(((await cleared.json()) as { deck: DeckJson }).deck.tags).toEqual([]);
+
+    for (const tags of [["x".repeat(31)], Array.from({ length: 11 }, (_, i) => `t${i}`), "Clan War"]) {
+      const bad = await env.app.request(`/api/decks/${deck.id}`, jsonInit("PATCH", apiKey, { tags }));
+      expect(bad.status).toBe(400);
+      expect(((await bad.json()) as ErrorJson).error.code).toBe("validation_error");
+    }
+  });
+
   test("decks are private to their owner", async () => {
     const deck = await create(session, { name: "Mine", cards: HOG });
     const bob = apiKeyHeaders(makeUser("bob"));

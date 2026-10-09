@@ -26,7 +26,7 @@ process in one Docker container.
   level and for max level. Upgrade-ready cards show how many levels the copies you hold cover right now.
 - Decks: your saved decks next to the decks the current player used in battles, with win rates, and the
   equipped deck marked in use. Each deck is tagged with the modes it was played in (Trophy Road, Clan War,
-  Touchdown, ...), and filters narrow the list by mode or to saved or used decks. Deck builder with average elixir and a level check against your collection.
+  Touchdown, ...), and saved decks can be tagged with the modes they're meant for. Filters narrow the list by mode or to saved or used decks. Deck builder with average elixir and a level check against your collection.
 - Settings to link player tags, keep notes per player, manage API keys, and change your username or password.
 
 **JSON API** under `/api`

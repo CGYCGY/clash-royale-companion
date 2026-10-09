@@ -8,7 +8,16 @@ import { notFound } from "../../errors";
 import { parseJson, parseQuery, parseWith } from "../../http/validate";
 import { averageElixir } from "../../repos/battles";
 import { type CardRecord, cardsMap, listCards } from "../../repos/cards";
-import { createDeck, type DeckRecord, deleteDeck, getDeck, listDecks, updateDeck } from "../../repos/decks";
+import {
+  createDeck,
+  type DeckRecord,
+  deleteDeck,
+  getDeck,
+  listDecks,
+  MAX_DECK_TAG_CHARS,
+  MAX_DECK_TAGS,
+  updateDeck,
+} from "../../repos/decks";
 import { assertPlayerOwnedBy, getLatestSnapshot } from "../../repos/players";
 import type { AppEnv } from "../../types";
 
@@ -18,12 +27,14 @@ const deckFields = {
   cards: z.array(z.string().max(64)).max(16),
   notes: z.string().max(5000),
   slot3Form: z.enum(["evo", "hero"]).nullable(),
+  tags: z.array(z.string().max(MAX_DECK_TAG_CHARS)).max(MAX_DECK_TAGS),
 };
 
 const createSchema = z.object({
   ...deckFields,
   notes: deckFields.notes.optional(),
   slot3Form: deckFields.slot3Form.optional(),
+  tags: deckFields.tags.optional(),
   source: z.enum(["manual", "ai"]).optional(),
 });
 
@@ -33,11 +44,9 @@ const patchSchema = z
     cards: deckFields.cards.optional(),
     notes: deckFields.notes.optional(),
     slot3Form: deckFields.slot3Form.optional(),
+    tags: deckFields.tags.optional(),
   })
-  .refine(
-    (p) => p.name !== undefined || p.cards !== undefined || p.notes !== undefined || p.slot3Form !== undefined,
-    "nothing to update",
-  );
+  .refine((p) => Object.values(p).some((v) => v !== undefined), "nothing to update");
 
 function withDetails(deck: DeckRecord, catalog: Map<string, CardRecord>) {
   const forms = deckSlotForms(deck.cards, catalog, deck.slot3Form);

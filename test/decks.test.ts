@@ -1,6 +1,16 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { AppError } from "../src/errors";
-import { createDeck, deleteDeck, getDeck, listDecks, updateDeck, validateDeckCards } from "../src/repos/decks";
+import {
+  createDeck,
+  deleteDeck,
+  getDeck,
+  listDecks,
+  MAX_DECK_TAG_CHARS,
+  MAX_DECK_TAGS,
+  normalizeDeckTags,
+  updateDeck,
+  validateDeckCards,
+} from "../src/repos/decks";
 import type { User } from "../src/types";
 import { makeTestDb, makeUser, seedCards } from "./helpers";
 
@@ -86,5 +96,34 @@ describe("slot 3 form", () => {
     expect(updateDeck(alice.id, deck.id, { slot3Form: null }).slot3Form).toBeNull();
     expect(updateDeck(alice.id, deck.id, { slot3Form: "evo" }).slot3Form).toBe("evo");
     expect(updateDeck(alice.id, deck.id, { cards: deckWith("Giant") }).slot3Form).toBeNull();
+  });
+});
+
+describe("deck tags", () => {
+  test("normalizeDeckTags trims, collapses spaces, drops empties and case-insensitive dupes", () => {
+    expect(normalizeDeckTags(["  Clan   War ", "", "   ", "clan war", "Triple Elixir", "TRIPLE elixir"])).toEqual([
+      "Clan War",
+      "Triple Elixir",
+    ]);
+  });
+
+  test("normalizeDeckTags truncates long tags and caps the count", () => {
+    expect(normalizeDeckTags(["x".repeat(MAX_DECK_TAG_CHARS + 5)])).toEqual(["x".repeat(MAX_DECK_TAG_CHARS)]);
+    const many = Array.from({ length: MAX_DECK_TAGS + 3 }, (_, i) => `Mode ${i}`);
+    expect(normalizeDeckTags(many)).toEqual(many.slice(0, MAX_DECK_TAGS));
+  });
+
+  test("create stores normalized tags, defaulting to none", () => {
+    expect(createDeck(alice.id, { name: "a", cards: HOG }).tags).toEqual([]);
+    const deck = createDeck(alice.id, { name: "b", cards: HOG, tags: [" Clan War", "clan war", "Touchdown"] });
+    expect(getDeck(alice.id, deck.id)!.tags).toEqual(["Clan War", "Touchdown"]);
+  });
+
+  test("update keeps tags when omitted, replaces them when given, and clears them with []", () => {
+    const deck = createDeck(alice.id, { name: "a", cards: HOG, tags: ["Clan War"] });
+    expect(updateDeck(alice.id, deck.id, { name: "renamed" }).tags).toEqual(["Clan War"]);
+    expect(updateDeck(alice.id, deck.id, { tags: ["Triple Elixir", " triple ELIXIR "] }).tags).toEqual(["Triple Elixir"]);
+    expect(updateDeck(alice.id, deck.id, { tags: [] }).tags).toEqual([]);
+    expect(getDeck(alice.id, deck.id)!.tags).toEqual([]);
   });
 });

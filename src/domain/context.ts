@@ -274,7 +274,8 @@ function savedDecks({ decks, collection }: ContextInput): string {
     });
     const notes = d.notes.trim().replace(/\s*\n\s*/g, " ");
     const clipped = notes.length > DECK_NOTES_CHARS ? `${notes.slice(0, DECK_NOTES_CHARS)}…` : notes;
-    return `- **${d.name}** (${d.source}): ${cards.join(", ")}${clipped ? `\n  Notes: ${clipped}` : ""}`;
+    const modes = d.tags.length ? `\n  Modes: ${d.tags.join(", ")}` : "";
+    return `- **${d.name}** (${d.source}): ${cards.join(", ")}${modes}${clipped ? `\n  Notes: ${clipped}` : ""}`;
   });
   return `## Saved decks\n\n${items.join("\n")}`;
 }

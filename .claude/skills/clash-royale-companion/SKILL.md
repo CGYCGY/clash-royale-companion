@@ -136,9 +136,9 @@ UTC. `{tag}` is a player tag without `#`.
 | GET | `/api/players/{tag}/context.md` | | `text/markdown`, the full coaching context |
 | GET | `/api/players/{tag}/context` | | `{ markdown }`, the same document as JSON |
 | GET | `/api/decks` | | `{ decks: Deck[] }` |
-| POST | `/api/decks` | `{ name, cards: string[8], notes?, slot3Form? }` | `201 { deck }`. A `slot3Form` the slot-3 card can't take is saved as null |
+| POST | `/api/decks` | `{ name, cards: string[8], notes?, slot3Form?, tags? }` | `201 { deck }`. A `slot3Form` the slot-3 card can't take is saved as null |
 | GET | `/api/decks/{id}` | | `{ deck }` |
-| PATCH | `/api/decks/{id}` | any of `{ name, cards, notes, slot3Form }` | `{ deck }`. `slot3Form: null` clears the choice |
+| PATCH | `/api/decks/{id}` | any of `{ name, cards, notes, slot3Form, tags }` | `{ deck }`. `slot3Form: null` clears the choice. `tags` replaces the whole list and `[]` clears it |
 | DELETE | `/api/decks/{id}` | | `204` |
 | GET | `/api/decks/{id}/check` | `tag` | `{ fetchedAt, lastSeenAt, cards: [{ name, level, maxLevel, owned, evolutionLevel }], avgElixir, missing: string[] }`. If the player has no snapshot yet, `fetchedAt` and `lastSeenAt` are null, `owned`, `level` and `evolutionLevel` are null, `missing` is empty and `note` is `"no snapshot yet"`: ownership is unknown, so do not call the cards missing |
 | GET | `/api/cards` | `kind` (`card\|support`, optional) | `{ cards: [{ id, name, kind, rarity, elixirCost, maxLevel, maxEvolutionLevel, iconUrl, iconUrlEvo, iconUrlHero, updatedAt }] }` |
@@ -167,9 +167,11 @@ Shapes:
   unowned cards. `count` is the copies held. `countNeeded` and `goldNeeded` are the cost of the next level,
   and both are null when the card is unowned or maxed. `copiesToMax` is the copies still to collect beyond
   `count`. `goldToMax` is the gold from the current level to max, and it is 0 when the card is maxed.
-- **Deck**: `{ id, name, cards, notes, source: "manual" | "ai", slot3Form: "evo" | "hero" | null, createdAt,
-  updatedAt, avgElixir, cardDetails: [{ name, elixirCost, rarity, iconUrl, form: "evo" | "hero" | null }] }`.
-  `form` is the form that slot plays, per the slot rule above.
+- **Deck**: `{ id, name, cards, notes, source: "manual" | "ai", slot3Form: "evo" | "hero" | null, tags: string[],
+  createdAt, updatedAt, avgElixir, cardDetails: [{ name, elixirCost, rarity, iconUrl, form: "evo" | "hero" | null }] }`.
+  `form` is the form that slot plays, per the slot rule above. `tags` are the user's own mode tags for the deck,
+  in the same vocabulary as byDeck `modeTags` ("Clan War", "Triple Elixir", …); at most 10, each up to 30
+  characters. When the user says a deck is for a mode, pass it in `tags`.
 
 ### Errors
 

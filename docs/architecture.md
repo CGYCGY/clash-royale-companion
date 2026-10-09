@@ -240,9 +240,11 @@ Codes are 12 chars, case-insensitive.
 `nextKingTower(player) -> { level, cards, minLevel, have } | null`.
 
 **repos/decks**: `validateDeckCards(names) -> canonicalNames` throws `invalid_deck` with
-`details { unknown, duplicates, count }`. Also `createDeck(userId, { name, cards, notes?, source? })`,
-`listDecks(userId)`, `getDeck(userId, id)`, `updateDeck(userId, id, patch)` (404 if not the owner's), and
-`deleteDeck(userId, id) -> boolean`.
+`details { unknown, duplicates, count }`. Also `createDeck(userId, { name, cards, notes?, source?, slot3Form?, tags? })`,
+`listDecks(userId)`, `getDeck(userId, id)`, `updateDeck(userId, id, patch)` (404 if not the owner's; omitted
+`tags` keep the stored ones, `[]` clears them), and `deleteDeck(userId, id) -> boolean`. `tags` are the user's
+mode tags for the deck, stored as a JSON array and cleaned by `normalizeDeckTags` (trimmed, deduped
+case-insensitively, at most `MAX_DECK_TAGS` of `MAX_DECK_TAG_CHARS` chars each).
 
 **repos/notes**: `getNotes(tag) -> { content, updatedAt } | null`, `setNotes(tag, content)`. There is one
 markdown note per player.
