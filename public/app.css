@@ -1537,8 +1537,9 @@ label.switch {
   color: var(--draw);
 }
 .tag-mode {
-  color: var(--muted);
-  border-color: var(--border);
+  color: var(--accent-hover);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
   font-weight: 600;
   letter-spacing: 0;
   text-transform: none;
