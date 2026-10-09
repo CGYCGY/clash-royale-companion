@@ -9,7 +9,7 @@ import { getCrClient } from "../cr/client";
 import { normalizeTag } from "../cr/tag";
 import { getDb, migrate } from "../db";
 import { getPlayer, listAllPlayers } from "../repos/players";
-import { syncAll, syncPlayer } from "../sync";
+import { syncAll, syncCardImages, syncPlayer } from "../sync";
 import { pruneSnapshots } from "../sync/retention";
 
 const USAGE = `Usage: bun run cli <command> [options]
@@ -30,6 +30,7 @@ Commands:
   player list                               List tracked players with owner and last sync
   sync <tag>                                Sync one tracked player now (ignores the cooldown)
   sync --all                                Sync every tracked player now
+  sync images                               Re-download official card images into CARD_IMAGE_DIR
   snapshot prune                            Apply opt-in snapshot thinning (SNAPSHOT_KEEP_*; 0 = off)
   stats                                     Row counts per table and database file size
 
@@ -38,7 +39,7 @@ Options:
 
 Write tags without "#" (the shell treats "#..." as a comment), e.g. sync 9QJUGC2R.
 Reads DATABASE_PATH and SNAPSHOT_KEEP_* from the environment; sync also needs CR_API_TOKEN
-(and CR_API_BASE when using a proxy or the mock API).`;
+(and CR_API_BASE when using a proxy or the mock API); sync images needs neither, only CARD_IMAGE_DIR.`;
 
 function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`;
@@ -201,7 +202,13 @@ async function main(argv: string[]): Promise<number> {
         );
         return r.failed || r.rateLimited ? 1 : 0;
       }
-      if (!sub) throw new Error("sync <tag> | sync --all");
+      // Tags only use 0289CGJLPQRUVY, so the word "images" can never be a tag.
+      if (sub === "images") {
+        const r = await syncCardImages();
+        console.log(`Card images: ${r.downloaded} downloaded, ${r.skipped} skipped (override), ${r.failed} failed.`);
+        return r.failed ? 1 : 0;
+      }
+      if (!sub) throw new Error("sync <tag> | sync --all | sync images");
       const tag = normalizeTag(sub);
       if (!getPlayer(tag)) throw new Error(`${tag} is not tracked. Link it from the web UI first.`);
       const r = await syncPlayer(tag, getCrClient());

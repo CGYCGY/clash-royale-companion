@@ -280,6 +280,12 @@ markdown note per player.
   `runSyncJob` on `SYNC_CRON` (reloads the card catalog and event titles first if either table is empty, then
   `syncAll`) and `runDailyJob` at 04:17 (opt-in snapshot thinning, card catalog, event titles, session purge;
   each step runs even if another fails). Startup also loads each of the two when its table is empty.
+- `syncCardImages({ fetchImpl?, concurrency? }) -> { downloaded, skipped, failed }` downloads every card form's
+  official art (URLs from `cards.data`, via `listCardOfficialIcons` in `repos/cardIcons.ts`) into `CARD_IMAGE_DIR`,
+  4 at a time. Forms with a `public/cards/` override are skipped; a failed or non-PNG download keeps the old file
+  (temp file + rename); the image index is rescanned at the end. The scheduler runs it as `runCardImagesJob`
+  on Sundays at 04:41, startup runs it (after the catalog loads) when the cache has no PNGs, and the CLI has
+  `sync images`.
 
 `client` defaults to `getCrClient()`, built from config. In tests, pass `FakeCrClient` from `test/helpers.ts`.
 The scheduler is in-process, so run exactly one app instance per database.

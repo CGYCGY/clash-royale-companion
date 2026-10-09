@@ -6,10 +6,12 @@ import { countCards } from "../repos/cards";
 import { countEvents } from "../repos/events";
 import { type SyncAllResult, syncAll } from "./syncAll";
 import { pruneSnapshots } from "./retention";
+import { type SyncCardImagesResult, syncCardImages } from "./syncCardImages";
 import { syncCards } from "./syncCards";
 import { syncEvents } from "./syncEvents";
 
 const DAILY_CRON = "17 4 * * *";
+const CARD_IMAGES_CRON = "41 4 * * 0";
 
 const errText = (err: unknown): string => (err instanceof Error ? err.message : String(err));
 
@@ -59,6 +61,15 @@ export async function runDailyJob(
   return { cards, events, purged, pruned };
 }
 
+export async function runCardImagesJob(): Promise<SyncCardImagesResult> {
+  const started = Date.now();
+  const r = await syncCardImages();
+  console.log(
+    `[scheduler] card images refreshed (${r.downloaded} downloaded, ${r.skipped} skipped, ${r.failed} failed) in ${Date.now() - started}ms`,
+  );
+  return r;
+}
+
 /**
  * In-process jobs. `protect` makes croner skip a tick while the previous run is still going,
  * so a slow sync can't overlap itself. Only start this in one process per database.
@@ -82,14 +93,23 @@ export function startScheduler(client: CrApi): { stop(): void } {
     },
   );
 
+  const images = new Cron(
+    CARD_IMAGES_CRON,
+    { name: "card-images", protect: true, catch: onError("card-images") },
+    async () => {
+      await runCardImagesJob();
+    },
+  );
+
   console.log(
-    `[scheduler] started: players "${config.SYNC_CRON}" (next ${players.nextRun()?.toISOString()}), maintenance "${DAILY_CRON}"`,
+    `[scheduler] started: players "${config.SYNC_CRON}" (next ${players.nextRun()?.toISOString()}), maintenance "${DAILY_CRON}", card images "${CARD_IMAGES_CRON}"`,
   );
 
   return {
     stop() {
       players.stop();
       daily.stop();
+      images.stop();
     },
   };
 }

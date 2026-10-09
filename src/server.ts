@@ -4,7 +4,7 @@ import { getCrClient } from "./cr/client";
 import { closeDatabase, getDb, migrate } from "./db";
 import { countCards } from "./repos/cards";
 import { countEvents } from "./repos/events";
-import { startScheduler, syncCards, syncEvents } from "./sync";
+import { cardImageCacheEmpty, startScheduler, syncCardImages, syncCards, syncEvents } from "./sync";
 
 requireEnv("CR_API_TOKEN");
 
@@ -13,13 +13,28 @@ if (applied.length) console.log(`[db] applied migrations: ${applied.join(", ")}`
 
 const client = getCrClient();
 
+const fillCardImages = (): Promise<void> =>
+  syncCardImages()
+    .then((r) =>
+      console.log(`[startup] card images cached (${r.downloaded} downloaded, ${r.skipped} skipped, ${r.failed} failed)`),
+    )
+    .catch((err: unknown) =>
+      console.error("[startup] card image cache fill failed:", err instanceof Error ? err.message : err),
+    );
+const imagesEmpty = cardImageCacheEmpty();
+
 if (countCards() === 0) {
   // Not awaited: the server should come up even if the API is unreachable at boot.
   syncCards(client)
-    .then((n) => console.log(`[startup] card catalog loaded (${n} cards)`))
+    .then(async (n) => {
+      console.log(`[startup] card catalog loaded (${n} cards)`);
+      if (imagesEmpty) await fillCardImages();
+    })
     .catch((err: unknown) =>
       console.error("[startup] card catalog sync failed:", err instanceof Error ? err.message : err),
     );
+} else if (imagesEmpty) {
+  void fillCardImages();
 }
 
 if (countEvents() === 0) {

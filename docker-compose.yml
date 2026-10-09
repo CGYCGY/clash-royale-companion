@@ -26,6 +26,7 @@ services:
       # Fixed inside the container: the port mapping, healthcheck and volume depend on them.
       PORT: "3000"
       DATABASE_PATH: /data/app.db
+      CARD_IMAGE_DIR: /data/cards
     volumes:
       - cr-data:/data
 

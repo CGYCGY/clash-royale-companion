@@ -217,6 +217,7 @@ Any other agent can follow `.claude/skills/clash-royale-companion/SKILL.md` as p
 | `CR_API_BASE` | `https://api.clashroyale.com/v1` | API base URL. Use `https://proxy.royaleapi.dev/v1` or the local mock. |
 | `APP_URL` | unset | Public URL. When it starts with `https://`, session cookies are `Secure`, and its origin passes the CSRF check behind a proxy. |
 | `DATABASE_PATH` | `./data/app.db`, or `/data/app.db` in Docker | SQLite file. Its directory is created if missing. |
+| `CARD_IMAGE_DIR` | `./data/cards`, or `/data/cards` in Docker | Local copy of the official card art, refreshed weekly. Images in `public/cards/` take priority. |
 | `PORT` | `3000` | HTTP port. Keep `3000` in Docker. |
 | `SYNC_CRON` | `0 3 * * *` | Schedule for syncing all players, in the server's timezone. Daily at 03:00 by default. Use hourly (`0 * * * *`) if someone plays more than about 25 battles a day, since the API only keeps the last 25. |
 | `TZ` | `UTC` | Timezone for the cron schedule, e.g. `Asia/Kuala_Lumpur`. |
@@ -265,11 +266,22 @@ player's last sync and error.
 volume would sync twice and contend for SQLite locks. Keep the replica count at 1. Coolify's rolling update
 briefly runs the old and new container together. That is harmless, because battles are de-duplicated.
 
+**Card images.** Each card image comes from the first of these that has it:
+
+1. `public/cards/`, overrides committed to the repo. They are never refreshed.
+2. `CARD_IMAGE_DIR`, the local copy of the official art, refreshed weekly.
+3. The official Supercell URL from the API.
+
+Files are named `<cardId>.png`, `<cardId>-evo.png` and `<cardId>-hero.png`. Card ids come from `GET /api/cards`.
+Because an override is never refreshed, it is how you pin art the API gets wrong. The shipped example is
+`26000012-evo.png`, since the API serves the base art for the Skeleton Army evolution.
+
 **Admin tokens.** `bun run cli admin-token list` shows each token's id, name, prefix, creation time, last use,
 and revocation. Revoke one with `bun run cli admin-token revoke <id>`.
 
 **Manual sync.** `bun run cli sync <tag>` and `bun run cli sync --all` sync without the cooldown. Write the
 tag without `#`, because the shell treats `#` as the start of a comment.
+`bun run cli sync images` re-downloads the official card art into `CARD_IMAGE_DIR` (see Card images above).
 
 ## Limitations
 

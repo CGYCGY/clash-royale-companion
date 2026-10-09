@@ -10,7 +10,8 @@ RUN bun install --frozen-lockfile --production
 FROM oven/bun:1.4-slim AS runtime
 ENV NODE_ENV=production \
     PORT=3000 \
-    DATABASE_PATH=/data/app.db
+    DATABASE_PATH=/data/app.db \
+    CARD_IMAGE_DIR=/data/cards
 WORKDIR /app
 
 # The image ships a non-root `bun` user (uid 1000). /data must exist and be owned by it before
