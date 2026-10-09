@@ -26,8 +26,9 @@ The CR API key is bound to an IP allowlist. From a dev machine, create a key for
 ```
 src/
   server.ts            Entry: requires env, migrate(), card sync if empty, scheduler, Bun.serve, SIGTERM.
-  app.tsx              createApp(): static, HTML cache header, csrf, authenticate, flash, registerRoutes, 404 + error handlers.
+  app.tsx              createApp(): static, /cards images, HTML cache header, csrf, authenticate, flash, registerRoutes, 404 + error handlers.
   config.ts            `config` (zod-parsed env), requireEnv("CR_API_TOKEN").
+  cardImages.ts        Card art lookup: public/cards override > CARD_IMAGE_DIR cache > official URL (resolveCardIcon).
   errors.ts            AppError(code, message, status, details?) + errorBody().
   types.ts             User, AuthMethod, Flash, AppEnv (use `new Hono<AppEnv>()` everywhere).
   util.ts              nowIso, daysAgoIso, sleep, ratio.
@@ -43,6 +44,7 @@ src/
   domain/              collection.ts (collection entries, sortCollection), upgradeTable.ts (copies/gold, upgradableNow),
                        deckUsage.ts (saved vs used vs equipped decks), context.ts (AI context markdown).
   routes/index.ts      registerRoutes(app): THE place routers are mounted.
+  routes/cards.ts      GET /cards/:file, indexed card images only. Mounted in createApp before auth, not in registerRoutes.
   routes/api/*.ts      JSON routers, mounted under /api.
   routes/pages/*.tsx   HTML routers, mounted under /.
   views/               Layout.tsx, render.tsx (renderPage), components.tsx, format.ts.
@@ -51,6 +53,7 @@ public/                Served at /static/* (app.css dark theme; app.js: copy but
                        spinner and cooldown countdown, player menu keyboard support, live filter forms, clickable
                        battle rows opening the detail in a <dialog>). Reference files with assetUrl("app.css"):
                        Cloudflare caches /static by URL, so only the ?v=<content hash> URL is sent as immutable.
+public/cards/          Card art overrides (<cardId>[-evo|-hero].png), served at /cards/, never refreshed.
 test/                  *.test.ts(x), helpers.ts, fixtures/{player,battlelog,battlelog-modes,cards,events}.json.
 ```
 
@@ -237,7 +240,8 @@ Codes are 12 chars, case-insensitive.
 **repos/cards**: `upsertCards(items, kind)`, `listCards({ kind? })`, `countCards()`,
 `getCardByName(name)` (case-insensitive), `getCardById(id)`, `cardsMap() -> Map<name, CardRecord>`,
 `cardsById()`. `kind: "card" | "support"`, where support means tower troops. `elixirCost` is null for Mirror.
-`iconUrlEvo` / `iconUrlHero` hold the Evolution and Hero art.
+`iconUrlEvo` / `iconUrlHero` hold the Evolution and Hero art. All three icon fields go through `resolveCardIcon`,
+so they are `/cards/<file>?v=...` when a local file exists; the DB columns keep the official URLs.
 
 **repos/events**: `upsertEvents(events)` (never deletes, so titles of ended events survive), `countEvents()`,
 `eventTitles() -> Map<eventTag, title>`.

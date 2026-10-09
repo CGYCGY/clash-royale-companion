@@ -1,3 +1,4 @@
+import { resolveCardIcon } from "../cardImages";
 import type { CatalogCard, Rarity } from "../cr/types";
 import { getDb } from "../db";
 import { nowIso } from "../util";
@@ -44,9 +45,10 @@ const toRecord = (r: CardRow): CardRecord => ({
   elixirCost: r.elixir_cost,
   maxLevel: r.max_level,
   maxEvolutionLevel: r.max_evolution_level,
-  iconUrl: r.icon_url,
-  iconUrlEvo: r.icon_url_evo,
-  iconUrlHero: r.icon_url_hero,
+  // Columns keep the official URLs; local art is resolved on read so a cache refresh needs no DB write.
+  iconUrl: resolveCardIcon(r.id, "base", r.icon_url),
+  iconUrlEvo: resolveCardIcon(r.id, "evo", r.icon_url_evo),
+  iconUrlHero: resolveCardIcon(r.id, "hero", r.icon_url_hero),
   updatedAt: r.updated_at,
 });
 

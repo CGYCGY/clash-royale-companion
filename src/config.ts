@@ -4,6 +4,7 @@ const envSchema = z.object({
   CR_API_TOKEN: z.string().optional(),
   CR_API_BASE: z.url().default("https://api.clashroyale.com/v1"),
   DATABASE_PATH: z.string().default("./data/app.db"),
+  CARD_IMAGE_DIR: z.string().default("./data/cards"),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   SYNC_CRON: z.string().default("0 3 * * *"),
   SYNC_COOLDOWN_SECONDS: z.coerce.number().int().min(0).default(60),

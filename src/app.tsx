@@ -7,6 +7,7 @@ import { noSharedCacheForHtml, staticAssets } from "./http/assets";
 import { csrfProtection } from "./http/csrf";
 import { flashMiddleware } from "./http/flash";
 import { registerRoutes } from "./routes";
+import { cardImageRoutes } from "./routes/cards";
 import type { AppEnv } from "./types";
 import { renderPage } from "./views/render";
 
@@ -15,6 +16,7 @@ export function createApp(): Hono<AppEnv> {
 
   // Before auth so asset requests don't hit the database.
   app.use("/static/*", staticAssets());
+  app.route("/", cardImageRoutes);
   app.use(noSharedCacheForHtml);
   app.use(csrfProtection);
   app.use(authenticate);
