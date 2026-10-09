@@ -1,4 +1,6 @@
 // Progressive enhancement only; every page must work without this file.
+// Lets CSS hide no-JS fallbacks (the deck page's typed card inputs) once this file runs.
+document.documentElement.classList.add("js");
 
 // Card art is hotlinked from Supercell's CDN. Show the card name instead of a broken image.
 // This script is deferred, so some images may have failed before the listener existed.
@@ -111,6 +113,174 @@ const FORM_LABELS = { evo: "Evo", hero: "Hero" };
 const SLOT_FORMS = [["evo"], ["hero"], ["evo", "hero"]];
 const slotAvailable = (index, forms) => (SLOT_FORMS[index] ?? []).filter((f) => forms & FORM_BITS[f]);
 
+// Redraws a .card-icon (deck tile or picker card) for a datalist option shown in `shown` form (or base).
+const fillCardIcon = (fig, name, opt, shown) => {
+  const src = opt && ((shown === "evo" && opt.dataset.iconEvo) || (shown === "hero" && opt.dataset.iconHero) || opt.dataset.icon);
+  fig.classList.toggle("evolved", shown === "evo");
+  fig.classList.toggle("hero", shown === "hero");
+  fig.classList.remove("img-failed");
+  fig.title = name;
+  fig.textContent = "";
+  if (src) fig.append(Object.assign(document.createElement("img"), { src, alt: name, loading: "lazy" }));
+  const fallback = document.createElement("span");
+  fallback.className = "card-fallback";
+  fallback.textContent = name;
+  fig.append(fallback);
+};
+
+// Levels show what the held copies already pay for, like Collection's Max Out sort ("from Lv n").
+// Pass the option only for an owned card.
+const renderLevelBadge = (fig, fromEl, opt) => {
+  fig.querySelector(".card-level")?.remove();
+  fromEl.textContent = "";
+  if (!opt?.dataset.to) return;
+  const badge = document.createElement("span");
+  badge.className = "card-level";
+  badge.textContent = `Lv ${opt.dataset.to}`;
+  fig.append(badge);
+  if (Number(opt.dataset.to) > Number(opt.dataset.level)) fromEl.textContent = `from Lv ${opt.dataset.level}`;
+};
+
+const SLOT_NAMES = ["Evo", "Hero", "Wild"];
+const RARITIES = ["common", "rare", "epic", "legendary", "champion"];
+const CARD_TYPES = ["troop", "spell", "building"];
+const capitalize = (s) => s[0].toUpperCase() + s.slice(1);
+const CLOSE_SVG =
+  '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+
+// Card picker for one deck slot, built from the deck page's datalist options. It lives on <body>, not in the
+// deck form, so its inputs never submit with the deck; when the deck is in the app dialog it stacks above it.
+const openCardPicker = ({ slot, options, onPick, returnFocus }) => {
+  const hasPlayer = options.some((o) => o.dataset.owned !== undefined);
+  const label = SLOT_NAMES[slot] ? `Slot ${slot + 1} · ${SLOT_NAMES[slot]}` : `Slot ${slot + 1}`;
+  const picker = document.createElement("dialog");
+  picker.className = "modal card-picker";
+  picker.setAttribute("aria-label", `Choose a card for ${label}`);
+  picker.innerHTML = `
+    <div class="modal-head">
+      <span class="modal-title"></span>
+      <div class="spacer"></div>
+      <button type="button" class="icon-btn" data-picker-close aria-label="Close" title="Close">${CLOSE_SVG}</button>
+    </div>
+    <div class="picker-filters">
+      <input type="search" placeholder="Search cards" aria-label="Search cards" autocomplete="off" />
+      <div class="picker-chips" role="group" aria-label="Rarity" data-filter="rarity"></div>
+      <div class="picker-chips" role="group" aria-label="Type" data-filter="kind"></div>
+    </div>
+    <div class="modal-body picker-grid" tabindex="-1"></div>`;
+  picker.querySelector(".modal-title").textContent = label;
+  const filters = picker.querySelector(".picker-filters");
+  const search = filters.querySelector('input[type="search"]');
+  const grid = picker.querySelector(".picker-grid");
+  const chosen = { rarity: new Set(), kind: new Set() };
+  for (const [key, values] of [["rarity", RARITIES], ["kind", CARD_TYPES]]) {
+    const box = filters.querySelector(`[data-filter="${key}"]`);
+    for (const v of values) {
+      const chip = Object.assign(document.createElement("button"), { type: "button", className: "picker-chip", textContent: capitalize(v) });
+      chip.dataset.value = v;
+      chip.setAttribute("aria-pressed", "false");
+      box.append(chip);
+    }
+  }
+  let allToggle = null;
+  if (hasPlayer) {
+    const sw = document.createElement("label");
+    sw.className = "switch";
+    sw.title = "Off: only cards you own, at your levels";
+    allToggle = Object.assign(document.createElement("input"), { type: "checkbox", checked: true });
+    allToggle.setAttribute("role", "switch");
+    sw.append(allToggle, "All");
+    filters.append(sw);
+  }
+
+  const renderGrid = () => {
+    const q = search.value.trim().toLowerCase();
+    const ownedOnly = allToggle ? !allToggle.checked : false;
+    grid.textContent = "";
+    for (const opt of options) {
+      const d = opt.dataset;
+      if (q && !opt.value.toLowerCase().includes(q)) continue;
+      if (chosen.rarity.size && !chosen.rarity.has(d.rarity)) continue;
+      if (chosen.kind.size && !chosen.kind.has(d.kind)) continue;
+      if (ownedOnly && d.owned !== "1") continue;
+      const held = ownedOnly ? Number(d.have ?? 0) : -1;
+      const forms = slotAvailable(slot, Number(d.forms)).filter((f) => held & FORM_BITS[f]);
+      const shown = forms[0] ?? null;
+
+      const card = document.createElement("div");
+      card.className = "picker-card";
+      card.dataset.value = opt.value;
+      const tags = document.createElement("div");
+      tags.className = "slot-forms";
+      for (const f of forms) {
+        // Two forms: each tag is its own choice. One: a plain label, and the whole card picks it.
+        const tag = document.createElement(forms.length > 1 ? "button" : "span");
+        tag.className = `form-tag form-${f}${f === shown ? " is-active" : ""}`;
+        tag.textContent = FORM_LABELS[f];
+        if (forms.length > 1) {
+          tag.type = "button";
+          tag.dataset.form = f;
+          tag.setAttribute("aria-label", `${opt.value}, ${FORM_LABELS[f]}`);
+        }
+        tags.append(tag);
+      }
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "picker-pick";
+      btn.dataset.form = shown ?? "";
+      // A span, not a figure: a button may only hold phrasing content.
+      const fig = document.createElement("span");
+      fig.className = "card-icon";
+      fillCardIcon(fig, opt.value, opt, shown);
+      btn.append(fig);
+      if (ownedOnly) {
+        const from = Object.assign(document.createElement("span"), { className: "slot-from muted small" });
+        renderLevelBadge(fig, from, opt);
+        btn.append(from);
+      }
+      btn.append(Object.assign(document.createElement("span"), { className: "coll-name", textContent: opt.value }));
+      card.append(tags, btn);
+      grid.append(card);
+    }
+    if (!grid.childElementCount) grid.innerHTML = '<p class="muted picker-empty">No cards match.</p>';
+  };
+
+  const hadModalOpen = document.body.classList.contains("modal-open");
+  const close = () => picker.open && picker.close();
+  picker.addEventListener("close", () => {
+    picker.remove();
+    if (!hadModalOpen) document.body.classList.remove("modal-open");
+    returnFocus?.focus();
+  });
+  // Escape and close events stay on this dialog: it is a sibling of the app dialog on <body>, not inside it.
+  picker.addEventListener("click", (e) => {
+    if (e.target === picker) return close();
+    if (e.target.closest("[data-picker-close]")) return close();
+    const chip = e.target.closest(".picker-chip");
+    if (chip) {
+      const set = chosen[chip.parentElement.dataset.filter];
+      const on = !set.has(chip.dataset.value);
+      if (on) set.add(chip.dataset.value);
+      else set.delete(chip.dataset.value);
+      chip.setAttribute("aria-pressed", String(on));
+      return renderGrid();
+    }
+    const card = e.target.closest(".picker-card");
+    if (!card) return;
+    const form = (e.target.closest("[data-form]") ?? card.querySelector(".picker-pick")).dataset.form;
+    close();
+    onPick(card.dataset.value, form || null);
+  });
+  search.addEventListener("input", renderGrid);
+  allToggle?.addEventListener("change", renderGrid);
+
+  renderGrid();
+  document.body.append(picker);
+  document.body.classList.add("modal-open");
+  picker.showModal();
+  search.focus();
+};
+
 const wireDeckPage = (root) => {
   for (const form of root.querySelectorAll("form[data-deck-page]:not([data-wired])")) {
     form.setAttribute("data-wired", "");
@@ -149,52 +319,49 @@ const wireDeckPage = (root) => {
       }
     };
 
+    const tagForm = (tag) => (tag.classList.contains("form-hero") ? "hero" : "evo");
+
+    // The deck's form for the slot, from the tags: the checked radio for two, the only tag otherwise.
     const activeForm = (tile) => {
       const tags = tile.querySelectorAll(".slot-forms .form-tag");
       if (tags.length > 1) return tile.querySelector(".slot-forms input:checked")?.value ?? null;
-      return tags[0] ? (tags[0].classList.contains("form-hero") ? "hero" : "evo") : null;
+      return tags[0] ? tagForm(tags[0]) : null;
     };
 
-    const renderArt = (tile, opt) => {
-      const fig = tile.querySelector(".card-icon");
+    // Null when My Cards is off or there is no player data, so every form counts as held.
+    const heldForms = (opt) => {
+      if (!form.hasAttribute("data-levels") || opt?.dataset.owned === undefined) return null;
+      return opt.dataset.owned === "1" ? Number(opt.dataset.have ?? 0) : 0;
+    };
+
+    // The form the tile shows: the deck's form, else (My Cards on) another form of this slot the player holds.
+    const effectiveForm = (tile, opt) => {
+      const active = activeForm(tile);
+      const held = heldForms(opt);
+      if (!active || held === null) return active;
+      const usable = [...tile.querySelectorAll(".slot-forms .form-tag")].map(tagForm).filter((f) => held & FORM_BITS[f]);
+      return usable.includes(active) ? active : (usable[0] ?? null);
+    };
+
+    const renderArt = (tile, opt, shown) => {
       const name = opt ? opt.value : tile.querySelector('input[name="cards"]').value.trim();
-      const active = opt ? activeForm(tile) : null;
-      const src = opt && ((active === "evo" && opt.dataset.iconEvo) || (active === "hero" && opt.dataset.iconHero) || opt.dataset.icon);
-      fig.classList.toggle("evolved", active === "evo");
-      fig.classList.toggle("hero", active === "hero");
-      fig.classList.remove("img-failed");
-      fig.title = name;
-      fig.textContent = "";
-      if (src) {
-        const img = Object.assign(document.createElement("img"), { src, alt: name, loading: "lazy" });
-        fig.append(img);
-      }
-      const fallback = document.createElement("span");
-      fallback.className = "card-fallback";
-      fallback.textContent = name;
-      fig.append(fallback);
+      fillCardIcon(tile.querySelector(".card-icon"), name, opt, opt ? shown : null);
     };
 
-    // Levels show what the held copies already pay for, like Collection's Max Out sort ("from Lv n").
-    const renderLevels = (tile, opt) => {
-      const on = form.hasAttribute("data-levels") && opt?.dataset.owned !== undefined;
+    // State 3 (not owned) outlines the tile red; state 2 (owned, lacks every form this slot offers) grey.
+    const renderLevels = (tile, opt, shown) => {
+      const held = heldForms(opt);
+      const on = held !== null;
       const owned = on && opt.dataset.owned === "1";
-      const fig = tile.querySelector(".card-icon");
-      const from = tile.querySelector(".slot-from");
       tile.classList.toggle("not-owned", on && !owned);
-      fig.querySelector(".card-level")?.remove();
-      from.textContent = "";
-      const have = Number(opt?.dataset.have ?? 0);
+      tile.classList.toggle("form-missing", owned && activeForm(tile) !== null && shown === null);
       for (const tag of tile.querySelectorAll(".slot-forms .form-tag")) {
-        const f = tag.classList.contains("form-hero") ? "hero" : "evo";
-        tag.hidden = on && !(owned && have & FORM_BITS[f]);
+        const f = tagForm(tag);
+        tag.hidden = on && !(held & FORM_BITS[f]);
+        // With two tags the checked radio lights one; My Cards may show the other, so light that instead.
+        if (tag.tagName === "LABEL") tag.classList.toggle("is-active", on && f === shown);
       }
-      if (!owned || !opt.dataset.to) return;
-      const badge = document.createElement("span");
-      badge.className = "card-level";
-      badge.textContent = `Lv ${opt.dataset.to}`;
-      fig.append(badge);
-      if (Number(opt.dataset.to) > Number(opt.dataset.level)) from.textContent = `from Lv ${opt.dataset.level}`;
+      renderLevelBadge(tile.querySelector(".card-icon"), tile.querySelector(".slot-from"), owned ? opt : null);
     };
 
     // Mirrors averageElixir + formatElixir on the server over the known cards: one without a cost (Mirror) blanks it.
@@ -208,8 +375,9 @@ const wireDeckPage = (root) => {
     const renderTile = (tile, { forms = true } = {}) => {
       const opt = optionFor(tile);
       if (forms) renderForms(tile, Number(tile.dataset.slot), opt);
-      renderArt(tile, opt);
-      renderLevels(tile, opt);
+      const shown = effectiveForm(tile, opt);
+      renderArt(tile, opt, shown);
+      renderLevels(tile, opt, shown);
     };
     const renderAll = () => {
       for (const tile of tiles) renderTile(tile);
@@ -219,7 +387,48 @@ const wireDeckPage = (root) => {
     const setMode = (mode) => {
       form.dataset.mode = mode;
       for (const radio of form.querySelectorAll('input[name="slot3Form"]')) radio.disabled = mode !== "edit";
+      for (const tile of tiles) {
+        const fig = tile.querySelector(".card-icon");
+        if (mode === "edit") {
+          fig.tabIndex = 0;
+          fig.setAttribute("role", "button");
+          fig.setAttribute("aria-label", `Choose card ${Number(tile.dataset.slot) + 1}`);
+        } else {
+          fig.removeAttribute("tabindex");
+          fig.removeAttribute("role");
+          fig.removeAttribute("aria-label");
+        }
+      }
     };
+
+    const pick = (tile, value, chosen) => {
+      tile.querySelector('input[name="cards"]').value = value;
+      if (Number(tile.dataset.slot) === 2 && chosen) slot3Choice = chosen;
+      renderTile(tile);
+      renderAvg();
+    };
+    const openPicker = (tile) => {
+      const inDeck = new Set(tiles.map((t) => t.querySelector('input[name="cards"]').value.trim().toLowerCase()));
+      openCardPicker({
+        slot: Number(tile.dataset.slot),
+        options: [...options.values()].filter((o) => !inDeck.has(o.value.toLowerCase())),
+        onPick: (value, chosen) => pick(tile, value, chosen),
+        returnFocus: tile.querySelector(".card-icon"),
+      });
+    };
+    // Click only: the drag-to-reorder handler swallows the click that ends a drag, which must not open this.
+    form.addEventListener("click", (e) => {
+      const tile = e.target.closest(".deck-slot");
+      if (!tile || form.dataset.mode !== "edit" || e.target.closest(".slot-forms, input")) return;
+      openPicker(tile);
+    });
+    form.addEventListener("keydown", (e) => {
+      if ((e.key !== "Enter" && e.key !== " ") || form.dataset.mode !== "edit") return;
+      const fig = e.target.closest(".deck-slot .card-icon");
+      if (!fig || fig !== e.target) return;
+      e.preventDefault();
+      openPicker(fig.closest(".deck-slot"));
+    });
 
     form.addEventListener("input", (e) => {
       const tile = e.target.closest(".deck-slot");
@@ -235,7 +444,7 @@ const wireDeckPage = (root) => {
     });
     levelToggle?.addEventListener("change", () => {
       form.toggleAttribute("data-levels", levelToggle.checked);
-      for (const tile of tiles) renderLevels(tile, optionFor(tile));
+      for (const tile of tiles) renderTile(tile, { forms: false });
     });
 
     form.querySelector("[data-deck-edit]")?.addEventListener("click", (e) => {

@@ -2,6 +2,7 @@ import type { Context } from "hono";
 import { Hono } from "hono";
 import { z } from "zod";
 import { currentUser, requireUser } from "../../auth/middleware";
+import { cardType } from "../../domain/cardType";
 import { buildCollection, type CollectionEntry, projectAffordable } from "../../domain/collection";
 import { deckSlotForms, type SlotForms, slotFormsBitmask } from "../../domain/deckSlots";
 import { classifyDecks, type UsedDeckStats } from "../../domain/deckUsage";
@@ -159,7 +160,8 @@ interface DeckError {
 }
 
 /**
- * Every playable card, which app.js reads as its client-side catalog to redraw tiles as cards are typed.
+ * Every playable card, which app.js reads as its client-side catalog: the card picker's grid and filters, and
+ * redrawing tiles as cards change.
  * Level data comes from the player current in the header: decks belong to the user, not to a player.
  */
 function CardDatalist({ byName }: { byName: Map<string, CollectionEntry> | null }) {
@@ -176,6 +178,8 @@ function CardDatalist({ byName }: { byName: Map<string, CollectionEntry> | null 
             data-icon-hero={card.iconUrlHero ?? undefined}
             data-forms={String(card.maxEvolutionLevel ?? 0)}
             data-elixir={card.elixirCost === null ? undefined : String(card.elixirCost)}
+            data-rarity={card.rarity}
+            data-kind={cardType(card.id) ?? undefined}
             data-owned={e ? (e.owned ? "1" : "0") : undefined}
             data-level={e?.level == null ? undefined : String(e.level)}
             data-max={e ? String(e.maxLevel) : undefined}
@@ -256,9 +260,9 @@ function DeckPage({
           {deck && <SourceBadge source={deck.source} />}
           <div class="spacer" />
           {levels && (
-            <label class="switch">
+            <label class="switch" title="Show your card levels and the forms you own">
               <input type="checkbox" role="switch" data-level-toggle />
-              Levels
+              My Cards
             </label>
           )}
           {deck && (

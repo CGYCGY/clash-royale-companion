@@ -71,8 +71,9 @@ describe("deck pages", () => {
     expect(view).toContain('<figure class="card-icon size-md evolved" title="Musketeer">');
     expect(view).not.toContain('class="card-level"');
     expect(view).toContain("Created <time");
-    // No linked player: no level switch.
+    // No linked player: no My Cards switch.
     expect(view).not.toContain("data-level-toggle");
+    expect(view).not.toContain("My Cards");
 
     const edit = await (await get(`/decks/${deck!.id}?edit=1`)).text();
     expect(edit).toContain('data-mode="edit"');
@@ -161,11 +162,14 @@ describe("deck pages", () => {
     expect(musk).toContain('data-icon-evo="');
     expect(musk).toContain('data-forms="3"');
     expect(musk).toContain('data-elixir="4"');
+    expect(musk).toContain('data-rarity="rare" data-kind="troop"');
+    expect(option(plain, "Fireball")).toContain('data-kind="spell"');
+    expect(option(plain, "Cannon")).toContain('data-kind="building"');
     expect(musk).not.toContain("data-owned");
 
     await linkFixturePlayer(user, env.client);
     const linked = await (await get(`/decks/${deck!.id}`)).text();
-    expect(linked).toContain('<label class="switch"><input type="checkbox" role="switch" data-level-toggle="true"/>Levels</label>');
+    expect(linked).toContain('<label class="switch" title="Show your card levels and the forms you own"><input type="checkbox" role="switch" data-level-toggle="true"/>My Cards</label>');
     const hog = option(linked, "Hog Rider");
     expect(hog).toContain('data-owned="1"');
     expect(hog).toMatch(/data-level="\d+" data-max="\d+" data-to="\d+" data-have="0"/);
