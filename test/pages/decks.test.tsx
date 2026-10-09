@@ -96,8 +96,12 @@ describe("deck pages", () => {
     expect(first).toContain('<span class="tag tag-in-use">In Use</span><span class="tag tag-saved">Saved</span>');
     expect(first).toContain("<strong>8</strong> games");
     expect(first).toContain("<strong>63%</strong> win");
+    expect(first).toContain(
+      '<div class="mode-tags" aria-label="Played in"><span class="tag tag-mode">Trophy Road</span><span class="tag tag-mode">Ranked</span>',
+    );
     expect(second).toStartWith('class="card deck-card deck-saved"');
     expect(second).toContain("no stored battles with this deck");
+    expect(second).not.toContain("mode-tags");
 
     // The matched deck isn't repeated under Used; the fixture's other deck is, as not in use.
     const usedCards = cards(used);

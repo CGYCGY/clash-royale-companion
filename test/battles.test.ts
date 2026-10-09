@@ -190,6 +190,24 @@ describe("getBattleStats", () => {
     expect(s.byDeck[0]).toMatchObject({ deckKey: HOG, games: 8, wins: 5, losses: 2, draws: 1, winRate: 0.625, avgElixir: 2.63 });
     expect(s.byDeck[0]!.cards).toHaveLength(8);
     expect(s.byDeck[1]).toMatchObject({ games: 2, wins: 1, winRate: 0.5, avgElixir: 3.75 });
+    // Most games first: 5 Trophy Road, 3 Ranked, then the single 2v2 and Friendly.
+    expect(s.byDeck[0]!.modeTags).toEqual(["Trophy Road", "Ranked", "2v2", "Friendly"]);
+    expect(s.byDeck[1]!.modeTags).toEqual(["Trophy Road"]);
+  });
+
+  test("a deck played only in war Touchdown is tagged Clan War and Touchdown", () => {
+    const touchdown = (battleTime: string) => ({
+      ...fixtureLadder(),
+      type: "riverRacePvP",
+      gameMode: { id: 72000321, name: "Touchdown_ClanWar" },
+      battleTime,
+    });
+    insertBattles(FIXTURE_TAG, [touchdown("20260920T100000.000Z"), touchdown("20260920T110000.000Z")]);
+    const [deck] = getBattleStats(FIXTURE_TAG, { mode: "Touchdown" }).byDeck;
+    expect(deck).toMatchObject({ deckKey: HOG, games: 2, modeTags: ["Clan War", "Touchdown"] });
+    // Unfiltered, the war tags rank by games among the deck's other modes, group before sub-mode.
+    const all = getBattleStats(FIXTURE_TAG).byDeck.find((d) => d.deckKey === HOG)!;
+    expect(all.modeTags).toEqual(["Trophy Road", "Ranked", "Clan War", "Touchdown", "2v2", "Friendly"]);
   });
 
   test("mode narrows totals, byMode, and byDeck like the list filter", () => {

@@ -11,6 +11,7 @@ const used = (cards: string[], lastPlayed: string, games = 4): UsedDeckStats => 
   cards: [...cards].sort(),
   avgElixir: 3,
   lastPlayed,
+  modeTags: ["Trophy Road"],
   games,
   wins: games / 2,
   losses: games / 2,

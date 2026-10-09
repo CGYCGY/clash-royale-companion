@@ -14,7 +14,7 @@ import { createDeck, DECK_SIZE, type DeckRecord, deleteDeck, getDeck, listDecks,
 import { getLatestSnapshot, type PlayerRecord } from "../../repos/players";
 import type { AppEnv } from "../../types";
 import { formatElixir, namedCardViews } from "../../views/cardViews";
-import { DeckGrid, EmptyState } from "../../views/components";
+import { DeckGrid, EmptyState, ModeTags } from "../../views/components";
 import { formatDateTime, formatPercent, formatRelative } from "../../views/format";
 import { ArrowLeftIcon } from "../../views/icons";
 import { renderPage } from "../../views/render";
@@ -56,26 +56,29 @@ function DeckStats({
   tracked: boolean;
 }) {
   return (
-    <div class="row deck-meta">
-      <span>
-        <strong>{formatElixir(avgElixir)}</strong> elixir
-      </span>
-      {stats ? (
-        <>
-          <span>
-            <strong>{stats.games}</strong> game{stats.games === 1 ? "" : "s"}
-          </span>
-          <span>
-            <strong>{formatPercent(stats.winRate)}</strong> win
-          </span>
-          <span class="muted small">
-            {stats.wins}W {stats.losses}L {stats.draws}D
-          </span>
-        </>
-      ) : (
-        tracked && <span class="muted small">no stored battles with this deck</span>
-      )}
-    </div>
+    <>
+      <div class="row deck-meta">
+        <span>
+          <strong>{formatElixir(avgElixir)}</strong> elixir
+        </span>
+        {stats ? (
+          <>
+            <span>
+              <strong>{stats.games}</strong> game{stats.games === 1 ? "" : "s"}
+            </span>
+            <span>
+              <strong>{formatPercent(stats.winRate)}</strong> win
+            </span>
+            <span class="muted small">
+              {stats.wins}W {stats.losses}L {stats.draws}D
+            </span>
+          </>
+        ) : (
+          tracked && <span class="muted small">no stored battles with this deck</span>
+        )}
+      </div>
+      {stats && <ModeTags tags={stats.modeTags} />}
+    </>
   );
 }
 

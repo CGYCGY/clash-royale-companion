@@ -216,7 +216,9 @@ Codes are 12 chars, case-insensitive.
 - `getBattleStats(tag, { sinceDays?, mode? }) -> { sinceDays, total, wins, losses, draws, winRate, netTrophies, byMode[], byDeck[] }`.
   Each byMode entry has `{ type, mode, modeLabel, modeTags, games, wins, losses, draws, winRate }`, one per label; `type`
   and `mode` are the label's most-played raw combination. Each byDeck entry has
-  `{ deckKey, cards, games, wins, losses, draws, winRate, avgElixir | null, lastPlayed }`. winRate is 0..1.
+  `{ deckKey, cards, games, wins, losses, draws, winRate, avgElixir | null, lastPlayed, modeTags }`. winRate is 0..1.
+  `modeTags` is every mode tag the deck was played under, most games first, e.g. ["Clan War", "Touchdown"].
+  The Decks and Battles pages show them on each deck, and context.md lists them in the top decks table.
 - `BattleRecord.teamDeck` / `opponentDeck` are `DeckCard[] = { id, name, level, evolutionLevel }`.
   `level` is already the in-game display level; `evolutionLevel` is the Evo/Hero bitmask (see below).
 - 2v2: `teamDeck` holds 16 cards with the tracked player's 8 first. `isTwoVsTwo` comes from the stored

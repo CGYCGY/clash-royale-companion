@@ -312,8 +312,17 @@ export interface BattleStats {
    * most-played combination, kept for API clients from before labels existed.
    */
   byMode: (Tally & { type: string; mode: string; modeLabel: string; modeTags: string[] })[];
-  /** Most games first. `lastPlayed` is the newest battle_time with the deck. */
-  byDeck: (Tally & { deckKey: string; cards: string[]; avgElixir: number | null; lastPlayed: string })[];
+  /**
+   * Most games first. `lastPlayed` is the newest battle_time with the deck. `modeTags` is every mode
+   * tag the deck was played under, most games first, e.g. ["Clan War", "Touchdown"].
+   */
+  byDeck: (Tally & {
+    deckKey: string;
+    cards: string[];
+    avgElixir: number | null;
+    lastPlayed: string;
+    modeTags: string[];
+  })[];
 }
 
 interface TallyRow {
@@ -383,6 +392,23 @@ export function getBattleStats(tag: string, { sinceDays, mode }: { sinceDays?: n
        WHERE ${sql} GROUP BY deck_key ORDER BY games DESC, deck_key`,
     )
     .all(...params);
+  const deckTagGames = new Map<string, Map<string, number>>();
+  const deckComboRows = db
+    .query<{ deck_key: string; type: string; mode: string; event_tag: string | null; games: number }, SqlParam[]>(
+      `SELECT deck_key, type, game_mode_name AS mode, event_tag, COUNT(*) AS games FROM battles
+       WHERE ${sql} GROUP BY deck_key, type, game_mode_name, event_tag`,
+    )
+    .all(...params);
+  for (const r of deckComboRows) {
+    const counts = deckTagGames.get(r.deck_key) ?? new Map<string, number>();
+    deckTagGames.set(r.deck_key, counts);
+    for (const t of battleMode({ type: r.type, gameModeName: r.mode, eventTag: r.event_tag }, titles).tags) {
+      counts.set(t, (counts.get(t) ?? 0) + r.games);
+    }
+  }
+  // A sub-mode tag never outnumbers its group tag, and the stable sort keeps the group first on a tie.
+  const deckTags = (key: string): string[] =>
+    [...(deckTagGames.get(key) ?? [])].sort(([, a], [, b]) => b - a).map(([t]) => t);
   const catalog = cardsMap();
   const t = tally(totals);
   return {
@@ -401,6 +427,7 @@ export function getBattleStats(tag: string, { sinceDays, mode }: { sinceDays?: n
         cards,
         avgElixir: averageElixir(cards, catalog),
         lastPlayed: r.last_played,
+        modeTags: deckTags(r.deck_key),
         ...tally(r),
       };
     }),

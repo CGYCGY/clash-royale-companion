@@ -154,7 +154,7 @@ Shapes:
   `modeLabel`, a mode tag (`Clan War` selects every war battle) or either raw value.
   In 2v2, `teamDeck` has 16 cards with the player's 8 first.
 - **byMode entry**: `{ type, mode, modeLabel, modeTags, games, wins, losses, draws, winRate }`, one per `modeLabel`.
-- **byDeck entry**: `{ deckKey, cards, games, wins, losses, draws, winRate, avgElixir, lastPlayed }`. `winRate` is 0 to 1; `lastPlayed` is the newest battle time with the deck.
+- **byDeck entry**: `{ deckKey, cards, games, wins, losses, draws, winRate, avgElixir, lastPlayed, modeTags }`. `winRate` is 0 to 1; `lastPlayed` is the newest battle time with the deck. `modeTags` lists every mode tag the deck was played under, most games first: a deck used only in war Touchdown has `["Clan War", "Touchdown"]`. Judge a deck by the modes it was played in, since a special-mode win rate says little about ladder.
 - **CollectionEntry**: `{ name, rarity, elixirCost, owned, level, maxLevel, count, countNeeded, goldNeeded,
   copiesToMax, goldToMax, upgradeReady, evolutionLevel, maxEvolutionLevel, iconUrlHero, kind }`. Both
   evolution fields are the Evo/Hero bitmask: `maxEvolutionLevel` is which forms the card has, `evolutionLevel`

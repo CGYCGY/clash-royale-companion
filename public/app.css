@@ -1536,6 +1536,18 @@ label.switch {
 .tag-used {
   color: var(--draw);
 }
+.tag-mode {
+  color: var(--muted);
+  border-color: var(--border);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.mode-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
 .deck-tags {
   display: inline-flex;
   flex-wrap: wrap;

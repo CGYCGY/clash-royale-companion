@@ -121,6 +121,8 @@ describe("renderContextMarkdown", () => {
     expect(md).toContain("Tower troop: Tower Princess (level 14)");
     expect(md).toContain("- Last 7 days: 10 battles");
     expect(md).toContain("| Ranked | 3 | 2-0-1 | 67% |");
+    expect(md).toContain("| Deck | Modes | Games | Win rate | Avg elixir |");
+    expect(md).toContain("| Trophy Road, Ranked, 2v2, Friendly | 8 | 63% | 2.63 |");
     expect(md).toMatch(/\| Ranked \| draw \| 1-1 \| Pekka Pete \|/);
     expect(md).toContain("| Trophy Road | win | 3-1 | BaitMaster |");
     expect(md).toContain("- Electro Wizard 13 → 14 (768/12 cards, 60,000 gold)");

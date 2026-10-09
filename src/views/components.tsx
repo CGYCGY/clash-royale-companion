@@ -145,3 +145,14 @@ export function InfoTip({ text, align = "end" }: { text: string; align?: "start"
     </span>
   );
 }
+
+export function ModeTags({ tags }: { tags: string[] }) {
+  if (!tags.length) return null;
+  return (
+    <div class="mode-tags" aria-label="Played in">
+      {tags.map((t) => (
+        <span class="tag tag-mode">{t}</span>
+      ))}
+    </div>
+  );
+}

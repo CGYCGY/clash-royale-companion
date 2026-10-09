@@ -164,10 +164,10 @@ function performance({ stats7, stats30 }: ContextInput): string {
       "Top decks (30 days):",
       "",
       table(
-        ["Deck", "Games", "Win rate", "Avg elixir"],
+        ["Deck", "Modes", "Games", "Win rate", "Avg elixir"],
         stats30.byDeck
           .slice(0, MAX_TOP_DECKS)
-          .map((d) => [d.cards.join(", "), d.games, pct(d.winRate), d.avgElixir?.toFixed(2)]),
+          .map((d) => [d.cards.join(", "), d.modeTags.join(", "), d.games, pct(d.winRate), d.avgElixir?.toFixed(2)]),
       ),
     );
   }
