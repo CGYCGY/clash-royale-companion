@@ -105,7 +105,7 @@ describe("decks CRUD", () => {
     const cards = ["Knight", "Giant", "Valkyrie", "Hog Rider", "Ice Spirit", "Cannon", "Fireball", "The Log"];
     const deck = await create(apiKey, { name: "Forms", cards, slot3Form: "hero" });
     expect(deck.slot3Form).toBe("hero");
-    expect(deck.cardDetails.map((d) => d.form)).toEqual(["evo", null, "hero", null, null, null, null, null]);
+    expect(deck.cardDetails.map((d) => d.form)).toEqual(["evo", "hero", "hero", null, null, null, null, null]);
 
     const res = await env.app.request(`/api/decks/${deck.id}`, jsonInit("PATCH", apiKey, { slot3Form: null }));
     expect(res.status).toBe(200);

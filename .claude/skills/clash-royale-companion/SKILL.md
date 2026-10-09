@@ -102,10 +102,11 @@ More rules:
 
 - **Evolutions and Heroes are not separate cards.** "Evo Knight" and "Hero Knight" are both `Knight`. A deck
   lists the base card, and its slot decides the form.
-- **Card order matters.** Slots 1 and 2 are Evo slots: a card there with an Evo plays as its Evo. Slot 3 is a
-  hybrid slot that plays its card as Evo or Hero, chosen with `slot3Form` (`"evo"`, `"hero"`, or null, which
-  means Evo when the card has both). Slots 4 to 8 play the base card. Put the cards you want evolved or as a
-  Hero first, and read `cardDetails[].form` to see the form each slot ends up using.
+- **Card order matters.** Slot 1 is the Evo slot: a card there with an Evo plays as its Evo. Slot 2 is the
+  Hero slot: a card there with a Hero form plays as its Hero. Slot 3 is the Wild slot that plays its card as
+  Evo or Hero, chosen with `slot3Form` (`"evo"`, `"hero"`, or null, which means Evo when the card has both).
+  Slots 4 to 8 play the base card. Put the Evo first, the Hero second, and read `cardDetails[].form` to see
+  the form each slot ends up using.
 - **Tower troops can't go in a deck.** Tower Princess, Cannoneer, Dagger Duchess and the others have
   `kind: "support"`.
 - **A deck has exactly 8 distinct cards.** A bad deck returns `400 invalid_deck` with

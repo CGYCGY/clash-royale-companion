@@ -107,11 +107,9 @@ localizeTimes(document);
 let deckSavedInDialog = false;
 const FORM_BITS = { evo: 1, hero: 2 };
 const FORM_LABELS = { evo: "Evo", hero: "Hero" };
-// Mirrors deckSlotForms in src/domain/deckSlots.ts: slots 1–2 Evo only, slot 3 Evo and/or Hero.
-const slotAvailable = (index, forms) => {
-  if (index > 2) return [];
-  return ["evo", "hero"].filter((f) => forms & FORM_BITS[f] && (f === "evo" || index === 2));
-};
+// Mirrors deckSlotForms in src/domain/deckSlots.ts: slot 1 Evo, slot 2 Hero, slot 3 (Wild) either.
+const SLOT_FORMS = [["evo"], ["hero"], ["evo", "hero"]];
+const slotAvailable = (index, forms) => (SLOT_FORMS[index] ?? []).filter((f) => forms & FORM_BITS[f]);
 
 const wireDeckPage = (root) => {
   for (const form of root.querySelectorAll("form[data-deck-page]:not([data-wired])")) {

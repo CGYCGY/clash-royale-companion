@@ -2,26 +2,22 @@ import type { SlotForm } from "../repos/decks";
 import { cardForms } from "./evolution";
 
 export interface SlotForms {
-  /** Forms this slot's card can take here: slots 1–2 only Evo, slot 3 Evo and/or Hero, the rest none. */
+  /** Forms this slot's card can take here: slot 1 Evo, slot 2 Hero, slot 3 Evo and/or Hero, the rest none. */
   available: SlotForm[];
   /** The form shown, null when none is available. */
   active: SlotForm | null;
 }
 
-// In game, slots 1–2 are Evolution slots and slot 3 is a hybrid slot (Evo or Hero); the others show the base card.
-const EVO_SLOTS = 2;
-const HYBRID_SLOT = 2;
+// Since the March 2026 rework a deck has one Evolution slot (1), one Hero slot (2) and one Wild slot (3) that
+// takes either form; the other five show the base card.
+const SLOT_FORMS: SlotForm[][] = [["evo"], ["hero"], ["evo", "hero"]];
 
 type FormCatalog = Map<string, { maxEvolutionLevel: number | null }>;
 
 export function deckSlotForms(cards: string[], catalog: FormCatalog, slot3Form: SlotForm | null): SlotForms[] {
   return cards.map((name, i) => {
     const can = cardForms(name ? catalog.get(name)?.maxEvolutionLevel : 0);
-    const available: SlotForm[] = [];
-    if (i < EVO_SLOTS || i === HYBRID_SLOT) {
-      if (can.evo) available.push("evo");
-      if (i === HYBRID_SLOT && can.hero) available.push("hero");
-    }
+    const available = (SLOT_FORMS[i] ?? []).filter((f) => can[f]);
     const active = available.length > 1 ? (slot3Form ?? "evo") : (available[0] ?? null);
     return { available, active };
   });

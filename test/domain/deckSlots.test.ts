@@ -27,11 +27,15 @@ describe("deckSlotForms", () => {
     });
   });
 
-  test("slots 1–2 only offer Evo, slots 4+ nothing, and short or blank lists work", () => {
-    const forms = deckSlotForms(["Knight", "Giant", "", "Knight"], cardsMap(), "hero");
+  test("slot 1 only offers Evo, slot 2 only Hero, slots 4+ nothing, and short or blank lists work", () => {
+    const forms = deckSlotForms(["Knight", "Knight", "", "Knight"], cardsMap(), "hero");
     expect(forms).toEqual([
       { available: ["evo"], active: "evo" },
+      { available: ["hero"], active: "hero" },
       { available: [], active: null },
+      { available: [], active: null },
+    ]);
+    expect(deckSlotForms(["Giant", "Archers"], cardsMap(), null)).toEqual([
       { available: [], active: null },
       { available: [], active: null },
     ]);

@@ -135,7 +135,7 @@ describe("renderContextMarkdown", () => {
     expect(md).toContain("Tower troops: Tower Princess 14/16, Cannoneer 12/16 (upgrade ready)");
     expect(md.match(/^- .+ → /gm)).toHaveLength(17);
     expect(md).toContain(
-      "**Hog | cycle** (ai): Hog Rider, Musketeer (Evo), Ice Golem (Hero), Ice Spirit, Skeletons, Cannon, Fireball, The Log",
+      "**Hog | cycle** (ai): Hog Rider, Musketeer (Hero), Ice Golem (Hero), Ice Spirit, Skeletons, Cannon, Fireball, The Log",
     );
     expect(md).toContain("Notes: Line one line two");
     expect(md).not.toContain("x".repeat(301));
