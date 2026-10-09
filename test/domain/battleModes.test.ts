@@ -35,7 +35,7 @@ describe("clan war sub-modes", () => {
   const mode = (type: string, gameModeName: string) => battleMode({ type, gameModeName, eventTag: null }, titles);
 
   test("each war battle kind gets its own label and a tag beside Clan War", () => {
-    expect(mode("riverRacePvP", "CW_Battle_1v1")).toEqual({ label: "Clan War · Battle", tags: ["Clan War"] });
+    expect(mode("riverRacePvP", "CW_Battle_1v1")).toEqual({ label: "Clan War · Battle", tags: ["Clan War", "Battle"] });
     expect(mode("riverRacePvP", "Touchdown_ClanWar")).toEqual({
       label: "Clan War · Touchdown",
       tags: ["Clan War", "Touchdown"],
@@ -44,7 +44,7 @@ describe("clan war sub-modes", () => {
     expect(mode("riverRaceDuel", "CW_Duel_1v1").label).toBe("Clan War · Duel");
     expect(mode("riverRaceDuelColosseum", "CW_Duel_1v1").label).toBe("Clan War · Colosseum Duel");
     expect(mode("boatBattle", "ClanWar_BoatBattle").tags).toEqual(["Clan War", "Boat Battle"]);
-    expect(mode("clanWarWarDay", "ClanWar")).toEqual({ label: "Clan War · Battle", tags: ["Clan War"] });
+    expect(mode("clanWarWarDay", "ClanWar")).toEqual({ label: "Clan War · Battle", tags: ["Clan War", "Battle"] });
   });
 
   test("a filter matches the exact label or any tag", () => {

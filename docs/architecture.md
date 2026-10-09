@@ -206,7 +206,7 @@ Codes are 12 chars, case-insensitive.
   (pathOfLegend → Ranked, PvP Ladder → Trophy Road, TeamVsTeam → 2v2, …), else the humanized game mode id.
   War battles (riverRace*, boatBattle) are split by kind: "Clan War · Battle", "Clan War · Duel",
   "Clan War · Boat Battle", or the special mode a war battle ran ("Touchdown_ClanWar" → "Clan War · Touchdown").
-  `modeTags` lists the groups broadest first: ["Clan War", "Touchdown"], or just ["Clan War"] for a plain
+  `modeTags` lists the groups broadest first: ["Clan War", "Touchdown"], or ["Clan War", "Battle"] for a plain
   war battle; other modes have their label as the only tag. Because it's computed on read, fetching new
   titles relabels old battles. A label or tag filter becomes the OR of the raw type/mode/event combinations
   that carry it.

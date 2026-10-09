@@ -64,7 +64,7 @@ export interface BattleMode {
   label: string;
   /**
    * Broad groups the battle belongs to, broadest first, e.g. ["Clan War", "Touchdown"]. A filter on
-   * any tag selects the battle. A plain war battle is just ["Clan War"]: "Battle" groups nothing.
+   * any tag selects the battle.
    */
   tags: string[];
 }
@@ -81,7 +81,7 @@ export function battleMode(b: ModeKey, eventTitles: ReadonlyMap<string, string>)
   if (title) return single(title);
   if (CLAN_WAR_TYPES.has(b.type)) {
     const variant = warVariant(b);
-    return { label: `Clan War · ${variant}`, tags: variant === "Battle" ? ["Clan War"] : ["Clan War", variant] };
+    return { label: `Clan War · ${variant}`, tags: ["Clan War", variant] };
   }
   if (b.gameModeName === "TeamVsTeam" || TWO_VS_TWO_TYPES.has(b.type)) return single("2v2");
   const byType = TYPE_LABELS[b.type];

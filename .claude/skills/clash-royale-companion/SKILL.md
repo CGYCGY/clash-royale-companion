@@ -148,7 +148,7 @@ Shapes:
   trophyChange, isTwoVsTwo }`. Name modes by `modeLabel` ("Ranked", "Trophy Road", "2v2", "Royale Shuffle",
   …). War battles are split by kind: "Clan War · Battle", "Clan War · Duel", "Clan War · Boat Battle", or
   the special mode the war ran, such as "Clan War · Touchdown". `modeTags` groups the mode, broadest first:
-  `["Clan War", "Touchdown"]`, `["Clan War"]` for a plain war battle, and `[modeLabel]` for anything else.
+  `["Clan War", "Touchdown"]`, `["Clan War", "Battle"]` for a plain war battle, and `[modeLabel]` for anything else.
   In Touchdown, crowns are touchdowns scored, not towers. `type` (`PvP`, `pathOfLegend`, `trail`, `unknown`,
   …) and `gameModeName` (`Ladder`, `Touchdown_ClanWar`, …) are raw upstream ids. The `mode` filter accepts a
   `modeLabel`, a mode tag (`Clan War` selects every war battle) or either raw value.
