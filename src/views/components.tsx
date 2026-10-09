@@ -33,7 +33,7 @@ export function toCardView(
   };
 }
 
-export type CardSize = "sm" | "md" | "lg";
+export type CardSize = "xs" | "sm" | "md" | "lg";
 
 export function CardIcon({ card, size = "md" }: { card: CardView; size?: CardSize }) {
   const { evo, hero } = cardForms(card.evolutionLevel);

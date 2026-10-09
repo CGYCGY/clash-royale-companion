@@ -14,9 +14,9 @@ import { createDeck, DECK_SIZE, type DeckRecord, deleteDeck, getDeck, listDecks,
 import { getLatestSnapshot, type PlayerRecord } from "../../repos/players";
 import type { AppEnv } from "../../types";
 import { formatElixir, namedCardViews } from "../../views/cardViews";
-import { DeckGrid, EmptyState, InfoTip, ModeTags } from "../../views/components";
+import { CardIcon, DeckGrid, EmptyState, InfoTip, ModeTags } from "../../views/components";
 import { formatDateTime, formatPercent, formatRelative } from "../../views/format";
-import { ArrowLeftIcon } from "../../views/icons";
+import { ArrowLeftIcon, PencilIcon, TrashIcon } from "../../views/icons";
 import { renderPage } from "../../views/render";
 import { formError, idParam } from "./shared";
 
@@ -170,6 +170,7 @@ function LevelCell({ entry }: { entry: CollectionEntry | undefined }) {
 
 function LevelCheck({ cards, levels }: { cards: string[]; levels: PlayerLevels[] }) {
   if (!levels.length) return <p class="muted">Link a player in Settings to compare card levels.</p>;
+  const views = namedCardViews(cards, cardsMap());
   return (
     <div class="table-wrap">
       <table class="table">
@@ -182,9 +183,14 @@ function LevelCheck({ cards, levels }: { cards: string[]; levels: PlayerLevels[]
           </tr>
         </thead>
         <tbody>
-          {cards.map((name) => (
+          {cards.map((name, i) => (
             <tr>
-              <td>{name}</td>
+              <td>
+                <span class="level-card">
+                  <CardIcon card={views[i]!} size="xs" />
+                  {name}
+                </span>
+              </td>
               {levels.map((l) => (
                 <td class="align-right">
                   {l.byName ? <LevelCell entry={l.byName.get(name)} /> : <span class="muted">no data</span>}
@@ -426,7 +432,9 @@ export const deckPages = new Hono<AppEnv>()
                     <article class={`card deck-card deck-saved${inUse ? " in-use" : ""}`}>
                       <div class="row deck-card-head">
                         <h3 class="deck-name">
-                          <a href={`/decks/${d.id}`}>{d.name}</a>
+                          <a href={`/decks/${d.id}`} data-modal="Deck">
+                            {d.name}
+                          </a>
                         </h3>
                         <div class="spacer" />
                         <span class="deck-tags">
@@ -442,8 +450,8 @@ export const deckPages = new Hono<AppEnv>()
                         <p class="muted excerpt">{d.notes.length > 140 ? `${d.notes.slice(0, 140)}…` : d.notes}</p>
                       )}
                       <div class="row deck-actions">
-                        <a class="btn btn-secondary btn-small" href={`/decks/${d.id}/edit`}>
-                          Edit
+                        <a class="icon-btn" href={`/decks/${d.id}/edit`} aria-label={`Edit ${d.name}`} title="Edit">
+                          <PencilIcon />
                         </a>
                         <form
                           method="post"
@@ -451,8 +459,13 @@ export const deckPages = new Hono<AppEnv>()
                           class="inline"
                           onsubmit="return confirm('Delete this deck?')"
                         >
-                          <button type="submit" class="btn-danger btn-small">
-                            Delete
+                          <button
+                            type="submit"
+                            class="icon-btn icon-btn-danger"
+                            aria-label={`Delete ${d.name}`}
+                            title="Delete"
+                          >
+                            <TrashIcon />
                           </button>
                         </form>
                         <div class="spacer" />
@@ -527,18 +540,11 @@ export const deckPages = new Hono<AppEnv>()
     const deck = loadDeck(c);
     const catalog = cardsMap();
     const levels = currentPlayerLevels(c);
-    return renderPage(
-      c,
-      { title: deck.name, active: "decks" },
+    const detail = (
       <div class="stack">
-        <p>
-          <a class="btn btn-ghost btn-small" href="/decks">
-            <ArrowLeftIcon /> Back to Decks
-          </a>
-        </p>
         <section class="card">
           <div class="row">
-            <h1>{deck.name}</h1>
+            <h1 id="deck-detail-title">{deck.name}</h1>
             <SourceBadge source={deck.source} />
             <div class="spacer" />
             <a class="btn btn-secondary" href={`/decks/${deck.id}/edit`}>
@@ -563,6 +569,23 @@ export const deckPages = new Hono<AppEnv>()
           <h2>Level Check</h2>
           <LevelCheck cards={deck.cards} levels={levels} />
         </section>
+      </div>
+    );
+    // app.js loads this into the dialog; the query string keeps it a separate cache entry from the page.
+    if (c.req.query("partial") === "1") {
+      c.header("Cache-Control", "no-store");
+      return c.html(detail);
+    }
+    return renderPage(
+      c,
+      { title: deck.name, active: "decks" },
+      <div class="stack">
+        <p>
+          <a class="btn btn-ghost btn-small" href="/decks">
+            <ArrowLeftIcon /> Back to Decks
+          </a>
+        </p>
+        {detail}
       </div>,
     );
   })

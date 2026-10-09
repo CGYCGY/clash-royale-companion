@@ -211,9 +211,9 @@ export function Layout({ title, user, flash, active, players, next = "/", syncWa
             {children}
           </main>
           {user && (
-            // Only app.js opens this (battle rows); without JS rows are plain links to the detail page.
+            // Only app.js opens this (battle rows, deck links); without JS they are plain links to the detail page.
             <template id="battle-modal-template">
-              <dialog class="modal" aria-labelledby="battle-detail-title" aria-label="Battle details">
+              <dialog class="modal" aria-labelledby="battle-detail-title" aria-label="Details">
                 <div class="modal-head">
                   <span class="modal-title">Battle</span>
                   <div class="spacer" />

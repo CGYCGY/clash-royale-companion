@@ -32,10 +32,22 @@ describe("deck pages", () => {
     expect(detail).toContain("&lt;b&gt;Not bold&lt;/b&gt;");
     expect(detail).toContain("Level Check");
     expect(detail).toContain("Sparky");
+    expect(detail).toContain("Back to Decks");
+    expect(detail).toMatch(/<span class="level-card"><figure class="card-icon size-xs" title="Hog Rider"><img [^>]*alt="Hog Rider"/);
+
+    // The dialog loads just the detail, without the page chrome.
+    const partial = await env.app.request(`/decks/${deck!.id}?partial=1`, { headers: { Cookie: cookie } });
+    expect(partial.headers.get("cache-control")).toBe("no-store");
+    const partialHtml = await partial.text();
+    expect(partialHtml).toStartWith('<div class="stack"><section class="card">');
+    expect(partialHtml).toContain('<h1 id="deck-detail-title">Hog 2.6</h1>');
+    expect(partialHtml).not.toContain("Back to Decks");
 
     const list = await (await env.app.request("/decks", { headers: { Cookie: cookie } })).text();
     expect(list).toContain("Hog 2.6");
-    expect(list).toContain(`/decks/${deck!.id}/edit`);
+    expect(list).toContain(`<a href="/decks/${deck!.id}" data-modal="Deck">Hog 2.6</a>`);
+    expect(list).toContain(`<a class="icon-btn" href="/decks/${deck!.id}/edit" aria-label="Edit Hog 2.6" title="Edit">`);
+    expect(list).toContain('class="icon-btn icon-btn-danger" aria-label="Delete Hog 2.6" title="Delete"');
 
     const edit = await env.app.request(`/decks/${deck!.id}/edit`, { headers: { Cookie: cookie } });
     expect(await edit.text()).toContain('value="Hog Rider"');

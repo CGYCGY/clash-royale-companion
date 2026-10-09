@@ -290,6 +290,7 @@ for (const menu of document.querySelectorAll("details.player-menu")) {
 // Battle rows: the time cell holds the real link (keyboard focus target, no-JS fallback, and what
 // ctrl/cmd/middle-click open in a new tab); a plain click anywhere on the row opens it in a dialog.
 // Assigned below when the dialog is supported; live filters call it on rows they swap in.
+// Links with data-modal="<Kind>" (saved deck names) open their page's ?partial=1 in the same dialog.
 let wireBattleRows = () => {};
 const modalTemplate = document.getElementById("battle-modal-template");
 if (modalTemplate && "HTMLDialogElement" in window) {
@@ -297,6 +298,7 @@ if (modalTemplate && "HTMLDialogElement" in window) {
   document.body.append(dialog);
   const body = dialog.querySelector(".modal-body");
   const fullLink = dialog.querySelector(".modal-full");
+  const titleEl = dialog.querySelector(".modal-title");
   let opener = null;
   let request = 0;
   // True while the dialog owns the history entry it pushed, so closing it should go back.
@@ -307,10 +309,10 @@ if (modalTemplate && "HTMLDialogElement" in window) {
     body.innerHTML = `<div class="modal-status">${html}</div>`;
   };
 
-  const load = async (href) => {
+  const load = async (href, kind) => {
     const id = ++request;
     fullLink.href = href;
-    setStatus('<p class="muted">Loading battle…</p>', true);
+    setStatus(`<p class="muted">Loading ${kind.toLowerCase()}…</p>`, true);
     try {
       const res = await fetch(`${href}?partial=1`, { credentials: "same-origin", headers: { Accept: "text/html" } });
       if (id !== request) return;
@@ -321,27 +323,31 @@ if (modalTemplate && "HTMLDialogElement" in window) {
       }
       if (!res.ok) throw new Error(String(res.status));
       body.innerHTML = await res.text();
+      const heading = body.querySelector("h1[id]");
+      if (heading) dialog.setAttribute("aria-labelledby", heading.id);
       body.setAttribute("aria-busy", "false");
       body.scrollTop = 0;
     } catch {
       if (id !== request) return;
-      setStatus('<p>Couldn’t load this battle.</p><p><a class="btn btn-secondary btn-small" href="">Open the battle page</a></p>', false);
+      const noun = kind.toLowerCase();
+      setStatus(`<p>Couldn’t load this ${noun}.</p><p><a class="btn btn-secondary btn-small" href="">Open the ${noun} page</a></p>`, false);
       body.querySelector(".modal-status a").href = href;
     }
     body.focus();
   };
 
-  const open = (href, link, { push = true } = {}) => {
+  const open = (href, link, { push = true, kind = "Battle" } = {}) => {
     opener = link;
+    titleEl.textContent = kind;
     if (!dialog.open) {
       dialog.showModal();
       document.body.classList.add("modal-open");
     }
     if (push) {
-      history.pushState({ battleModal: href }, "", href);
+      history.pushState({ battleModal: href, modalKind: kind }, "", href);
       ownsEntry = true;
     }
-    load(href);
+    load(href, kind);
   };
 
   dialog.addEventListener("close", () => {
@@ -365,7 +371,9 @@ if (modalTemplate && "HTMLDialogElement" in window) {
     if (href) {
       // Forward onto an entry we pushed earlier: reopen it without pushing again.
       ownsEntry = true;
-      open(href, document.querySelector(`.battle-row[data-href="${CSS.escape(href)}"]`), { push: false });
+      const sel = CSS.escape(href);
+      const link = document.querySelector(`.battle-row[data-href="${sel}"], a[data-modal][href="${sel}"]`);
+      open(href, link, { push: false, kind: e.state.modalKind ?? "Battle" });
     } else if (dialog.open) {
       ownsEntry = false;
       dialog.close();
@@ -402,6 +410,14 @@ if (modalTemplate && "HTMLDialogElement" in window) {
     }
   };
   wireBattleRows(document);
+
+  // Delegated, since live filters swap these links in and out.
+  document.addEventListener("click", (e) => {
+    const link = e.target.closest("a[data-modal]");
+    if (!link || modified(e)) return;
+    e.preventDefault();
+    open(link.getAttribute("href"), link, { kind: link.dataset.modal });
+  });
 }
 
 // Live results: fetch a page and swap every [data-live-swap] element by id, so the rest of the page (a
