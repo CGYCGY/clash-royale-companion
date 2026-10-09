@@ -779,6 +779,7 @@ export const deckPages = new Hono<AppEnv>()
                             {d.name}
                           </a>
                         </h3>
+                        <div class="spacer" />
                         <a
                           class="icon-btn"
                           href={`/decks/${d.id}?edit=1`}
@@ -791,12 +792,12 @@ export const deckPages = new Hono<AppEnv>()
                       </div>
                       <DeckGrid cards={namedCardViews(d.cards, catalog)} size="sm" />
                       <DeckStats stats={stats} avgElixir={averageElixir(d.cards, catalog)} tracked={player !== null} />
+                      {/* CSS clamps it to three lines; the cap only keeps a huge note out of every list row. */}
+                      {d.notes && <p class="muted excerpt">{d.notes.length > 600 ? `${d.notes.slice(0, 600)}…` : d.notes}</p>}
                       <ModeTags
                         tags={unionTags(d.tags, stats?.modeTags ?? [])}
                         label={d.tags.length ? "Modes" : undefined}
                       />
-                      {/* CSS clamps it to three lines; the cap only keeps a huge note out of every list row. */}
-                      {d.notes && <p class="muted excerpt">{d.notes.length > 600 ? `${d.notes.slice(0, 600)}…` : d.notes}</p>}
                       <div class="row deck-actions">
                         <div class="spacer" />
                         <form

@@ -430,7 +430,7 @@ describe("deck pages", () => {
       const html = await (await get("/decks")).text();
       const card = /<article class="card deck-card deck-saved.*?<\/article>/.exec(html)?.[0] ?? "";
       expect(card).toMatch(/<div class="row deck-card-head"><span class="deck-tags">.*?<\/span><div class="spacer"><\/div><span class="muted small">updated /);
-      expect(card).toMatch(/<div class="row deck-title"><h3 class="deck-name"><a [^>]+>Long<\/a><\/h3><a class="icon-btn" href="[^"]+\?edit=1"/);
+      expect(card).toMatch(/<div class="row deck-title"><h3 class="deck-name"><a [^>]+>Long<\/a><\/h3><div class="spacer"><\/div><a class="icon-btn" href="[^"]+\?edit=1"/);
       expect(card).toMatch(/<div class="row deck-actions"><div class="spacer"><\/div><form [^>]*action="\/decks\/\d+\/delete"[^]*<\/form><\/div><\/article>$/);
       expect(card).toContain(`<p class="muted excerpt">${"x".repeat(600)}…</p>`);
     });

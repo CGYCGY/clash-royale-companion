@@ -1594,6 +1594,15 @@ label.switch {
 .deck-actions {
   gap: 0.25rem;
 }
+/* Grid rows stretch every card to the tallest one; the column lets the actions sink to the bottom. */
+.deck-card.deck-saved {
+  display: flex;
+  flex-direction: column;
+}
+.deck-card.deck-saved > .deck-actions {
+  margin-top: auto;
+  padding-top: 0.6rem;
+}
 .deck-title {
   gap: 0.25rem;
   flex-wrap: nowrap;
