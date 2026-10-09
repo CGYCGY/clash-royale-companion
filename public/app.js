@@ -602,6 +602,36 @@ const wireDeckPage = (root) => {
       slot3Choice = e.target.value;
       renderTile(tile, { forms: false });
     });
+    const tagAdd = form.querySelector("[data-tag-add]");
+    const tagChoices = form.querySelector("[data-tag-choices]");
+    // Typed tags become checked chips; one matching an offered chip (any case) checks that chip instead.
+    const addTags = () => {
+      const typed = tagAdd.value.split(",").map((t) => t.trim().replace(/\s+/g, " ")).filter(Boolean);
+      for (const tag of typed) {
+        const boxes = [...tagChoices.querySelectorAll('input[name="tags"]')];
+        const existing = boxes.find((b) => b.value.toLowerCase() === tag.toLowerCase());
+        if (existing) {
+          existing.checked = true;
+          continue;
+        }
+        const label = document.createElement("label");
+        label.className = "tag-choice";
+        // reset() can't remove chips the server never rendered, so cancel drops these by this mark.
+        label.dataset.added = "";
+        const box = Object.assign(document.createElement("input"), { type: "checkbox", name: "tags", value: tag });
+        box.checked = true;
+        label.append(box, tag);
+        tagChoices.append(label);
+      }
+      tagAdd.value = "";
+    };
+    tagAdd?.addEventListener("keydown", (e) => {
+      if (e.isComposing || (e.key !== "Enter" && e.key !== ",")) return;
+      // Enter would otherwise submit the whole deck.
+      e.preventDefault();
+      addTags();
+    });
+
     levelToggle?.addEventListener("change", () => {
       form.toggleAttribute("data-levels", levelToggle.checked);
       for (const tile of tiles) renderTile(tile, { forms: false });
@@ -667,6 +697,7 @@ const wireDeckPage = (root) => {
           return;
         }
         const levels = levelToggle?.checked;
+        for (const chip of form.querySelectorAll(".tag-choice[data-added]")) chip.remove();
         form.reset();
         // reset() also unchecks the level switch, which is a view setting rather than deck data.
         if (levelToggle) levelToggle.checked = levels;

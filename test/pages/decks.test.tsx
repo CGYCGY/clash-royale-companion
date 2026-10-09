@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { listDecks } from "../../src/repos/decks";
-import { deckModeOptions } from "../../src/routes/pages/decks";
+import { deckModeOptions, unionTags, withDeckTagOptions } from "../../src/routes/pages/decks";
 import type { User } from "../../src/types";
 import { makeUser } from "../helpers";
 import { cookieFor, follow, formPost, linkFixturePlayer, type PageTestEnv, setupPages } from "./support";
@@ -235,6 +235,7 @@ describe("deck pages", () => {
     expect(first).toContain(
       '<div class="mode-tags" aria-label="Played in"><span class="tag tag-mode">Trophy Road</span><span class="tag tag-mode">Ranked</span>',
     );
+    expect(html).toContain('<label for="mode">Mode</label>');
     expect(second).toStartWith('class="card deck-card deck-saved"');
     expect(second).toContain("no stored battles with this deck");
     expect(second).not.toContain("mode-tags");
@@ -262,7 +263,7 @@ describe("deck pages", () => {
     expect(ranked).toContain('<a id="deck-clear" class="btn btn-ghost" href="/decks" data-live-swap="true">');
 
     const nowhere = await page("mode=Touchdown");
-    expect(nowhere).toContain("No saved deck was played in Touchdown.");
+    expect(nowhere).toContain("No saved deck is tagged or was played in Touchdown.");
     expect(nowhere).toContain("No other deck was played in Touchdown.");
 
     const savedOnly = await page("show=saved");
@@ -273,6 +274,97 @@ describe("deck pages", () => {
     expect(usedOnly).toContain("<h2>Used in Battles");
 
     expect(await page("")).toContain('<a id="deck-clear" class="btn btn-ghost" href="/decks" data-live-swap="true" hidden="">');
+  });
+
+  const chip = (html: string, value: string) =>
+    new RegExp(`<label class="tag-choice"><input type="checkbox" name="tags" value="${value}"([^>/]*)/?>`).exec(html)?.[1] ?? null;
+
+  test("mode tags round-trip through create and edit, from chips and comma-separated text", async () => {
+    await env.app.request("/decks", formPost(cookie, { name: "War", cards: HOG, tags: ["Clan War", "triple elixir, Clan war ,", ""] }));
+    const [deck] = listDecks(user.id);
+    expect(deck?.tags).toEqual(["Clan War", "triple elixir"]);
+
+    const view = await (await get(`/decks/${deck!.id}`)).text();
+    expect(view).toContain(
+      '<div class="view-only deck-modes"><div class="mode-tags" aria-label="Modes"><span class="tag tag-mode">Clan War</span><span class="tag tag-mode">triple elixir</span></div></div>',
+    );
+    const edit = await (await get(`/decks/${deck!.id}?edit=1`)).text();
+    expect(chip(edit, "Clan War")).toBe(' checked=""');
+    expect(chip(edit, "triple elixir")).toBe(' checked=""');
+    expect(edit).toContain('<input type="text" name="tags" class="tag-add" maxlength="30" placeholder="Add a mode…"');
+
+    await env.app.request(`/decks/${deck!.id}`, formPost(cookie, { name: "War", cards: HOG, tags: ["Clan War", "Touchdown"] }));
+    expect(listDecks(user.id)[0]?.tags).toEqual(["Clan War", "Touchdown"]);
+
+    // The page always submits the whole deck, so no chip checked means no tags, not "keep them".
+    await env.app.request(`/decks/${deck!.id}`, formPost(cookie, { name: "War", cards: HOG, tags: "" }));
+    expect(listDecks(user.id)[0]?.tags).toEqual([]);
+    await env.app.request(`/decks/${deck!.id}`, formPost(cookie, { name: "War", cards: HOG, tags: "Ranked" }));
+    await env.app.request(`/decks/${deck!.id}`, formPost(cookie, { name: "War", cards: HOG }));
+    expect(listDecks(user.id)[0]?.tags).toEqual([]);
+    expect(await (await get(`/decks/${deck!.id}`)).text()).not.toContain("deck-modes\"><div class=\"mode-tags");
+  });
+
+  test("a rejected save keeps the submitted tags checked", async () => {
+    const res = await env.app.request("/decks", formPost(cookie, { name: "Short", cards: ["Zap"], tags: "Clan War, Duel" }));
+    expect(res.status).toBe(400);
+    const html = await res.text();
+    expect(chip(html, "Clan War")).toBe(' checked=""');
+    expect(chip(html, "Duel")).toBe(' checked=""');
+  });
+
+  test("tag suggestions are the deck's own, then battle-stat modes, then other decks' tags", async () => {
+    await linkFixturePlayer(user, env.client);
+    await env.app.request("/decks", formPost(cookie, { name: "Other", cards: HOG, tags: "Mega Draft, ranked" }));
+    await env.app.request("/decks", formPost(cookie, { name: "Mine", cards: HOG, tags: "Duel" }));
+    const mine = listDecks(user.id).find((d) => d.name === "Mine")!;
+    const html = await (await get(`/decks/${mine.id}?edit=1`)).text();
+    const values = [...html.matchAll(/<label class="tag-choice"><input type="checkbox" name="tags" value="([^"]+)"/g)].map((m) => m[1]);
+    expect(values).toEqual(["Duel", "Trophy Road", "Ranked", "2v2", "Friendly", "Mega Draft"]);
+    expect(chip(html, "Duel")).toBe(' checked=""');
+    expect(chip(html, "Ranked")).toBe("");
+
+    const fresh = await (await get("/decks/new")).text();
+    expect(chip(fresh, "Duel")).toBe("");
+    expect(chip(fresh, "Mega Draft")).toBe("");
+  });
+
+  test("saved deck cards list their own tags before the modes they were played in", async () => {
+    await linkFixturePlayer(user, env.client);
+    const equipped = ["The Log", "Fireball", "Cannon", "Skeletons", "Ice Spirit", "Ice Golem", "Musketeer", "Hog Rider"];
+    await env.app.request("/decks", formPost(cookie, { name: "Hog 2.6", cards: equipped, tags: "Clan War, ranked" }));
+    const html = await (await env.app.request("/decks", { headers: { Cookie: cookie } })).text();
+    const card = /<article class="card deck-card deck-saved.*?<\/article>/.exec(html)?.[0] ?? "";
+    const tags = [...card.matchAll(/<span class="tag tag-mode">([^<]+)<\/span>/g)].map((m) => m[1]);
+    expect(tags).toEqual(["Clan War", "ranked", "Trophy Road", "2v2", "Friendly"]);
+    expect(card).toContain('<div class="mode-tags" aria-label="Modes">');
+  });
+
+  test("filtering by a tag no battle has played finds the tagged saved deck", async () => {
+    await env.app.request("/decks", formPost(cookie, { name: "War", cards: HOG, tags: "Triple Elixir" }));
+    await env.app.request("/decks", formPost(cookie, { name: "Plain", cards: HOG }));
+    const page = async (q: string) => (await env.app.request(`/decks?${q}`, { headers: { Cookie: cookie } })).text();
+
+    // No player is linked, so the tag is the only option.
+    const all = await page("");
+    expect(all).toContain('<option value="Triple Elixir">Triple Elixir</option>');
+    const tagged = await page("mode=triple%20elixir");
+    expect(tagged).toContain(">War</a>");
+    expect(tagged).not.toContain(">Plain</a>");
+    expect(await page("mode=Duel")).toContain("No saved deck is tagged or was played in Duel.");
+  });
+
+  test("tag options join the battle options, skipping ones already offered", () => {
+    const base = [
+      { value: "Clan War", text: "Clan War · All" },
+      { value: "Touchdown", text: "Clan War · Touchdown" },
+    ];
+    expect(withDeckTagOptions(base, ["touchdown", "Triple Elixir", "Duel", "duel"])).toEqual([
+      ...base,
+      { value: "Duel", text: "Duel" },
+      { value: "Triple Elixir", text: "Triple Elixir" },
+    ]);
+    expect(unionTags(["A", "b"], ["B", "c"])).toEqual(["A", "b", "c"]);
   });
 
   test("mode options offer war sub-modes by tag under their group", () => {

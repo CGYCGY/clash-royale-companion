@@ -158,10 +158,10 @@ export function InfoTip({
   );
 }
 
-export function ModeTags({ tags }: { tags: string[] }) {
+export function ModeTags({ tags, label = "Played in" }: { tags: string[]; label?: string }) {
   if (!tags.length) return null;
   return (
-    <div class="mode-tags" aria-label="Played in">
+    <div class="mode-tags" aria-label={label}>
       {tags.map((t) => (
         <span class="tag tag-mode">{t}</span>
       ))}

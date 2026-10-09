@@ -19,6 +19,8 @@ import {
   deleteDeck,
   getDeck,
   listDecks,
+  MAX_DECK_TAG_CHARS,
+  normalizeDeckTags,
   type SlotForm,
   updateDeck,
 } from "../../repos/decks";
@@ -36,6 +38,7 @@ const deckSchema = z.object({
   cards: z.union([z.string(), z.array(z.string())]).default([]),
   notes: z.string().max(20_000).default(""),
   slot3Form: z.enum(["evo", "hero"]).optional().catch(undefined),
+  tags: z.union([z.string(), z.array(z.string())]).default([]),
 });
 
 interface DeckFormValues {
@@ -43,6 +46,7 @@ interface DeckFormValues {
   cards: string[];
   notes: string;
   slot3Form: SlotForm | null;
+  tags: string[];
 }
 
 function SourceBadge({ source }: { source: DeckRecord["source"] }) {
@@ -73,6 +77,30 @@ export function deckModeOptions(byMode: BattleStats["byMode"]): { value: string;
     { value: group, text: subs.size ? `${group} · All` : group },
     ...[...subs].map((sub) => ({ value: sub, text: `${group} · ${sub}` })),
   ]);
+}
+
+/** Concatenates tag lists, dropping later case-insensitive repeats so the first spelling wins. */
+export function unionTags(...lists: string[][]): string[] {
+  const seen = new Set<string>();
+  return lists.flat().filter((t) => {
+    const key = t.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+/** Saved-deck tags no battle has produced yet still need to be filterable, so they join the battle options. */
+export function withDeckTagOptions(
+  options: { value: string; text: string }[],
+  tags: string[],
+): { value: string; text: string }[] {
+  const known = new Set(options.map((o) => o.value.toLowerCase()));
+  const extra = unionTags(tags)
+    .filter((t) => !known.has(t.toLowerCase()))
+    .map((t) => ({ value: t, text: t }))
+    .sort((a, b) => a.text.localeCompare(b.text));
+  return [...options, ...extra];
 }
 
 const DECK_TAG_LABELS = { "in-use": "In Use", saved: "Saved", used: "Used" } as const;
@@ -216,11 +244,14 @@ function DeckPage({
   editing,
   error,
   levels,
+  tagSuggestions,
 }: {
   deck?: DeckRecord;
   values: DeckFormValues;
   editing: boolean;
   error?: DeckError;
+  /** Offered as toggles besides the deck's own tags. */
+  tagSuggestions: string[];
   /** Null when no player with a snapshot is linked; then there is no level switch. */
   levels: Map<string, CollectionEntry> | null;
 }) {
@@ -232,6 +263,7 @@ function DeckPage({
   const forms = deckSlotForms(names, catalog, values.slot3Form);
   const known = names.filter((n) => catalog.has(n));
   const action = deck ? `/decks/${deck.id}` : "/decks";
+  const checkedTags = new Set(values.tags.map((t) => t.toLowerCase()));
   return (
     <form
       method="post"
@@ -317,6 +349,35 @@ function DeckPage({
             </span>
           )}
         </div>
+        {deck && deck.tags.length > 0 && (
+          <div class="view-only deck-modes">
+            <ModeTags tags={deck.tags} label="Modes" />
+          </div>
+        )}
+        <div class="edit-only deck-modes" role="group" aria-labelledby="deck-modes-label">
+          <span id="deck-modes-label" class="muted small">
+            Modes
+          </span>
+          <div class="tag-choices" data-tag-choices>
+            {unionTags(values.tags, tagSuggestions).map((t) => (
+              <label class="tag-choice">
+                <input type="checkbox" name="tags" value={t} checked={checkedTags.has(t.toLowerCase())} />
+                {t}
+              </label>
+            ))}
+          </div>
+          {/* Also named "tags": without JS its comma-separated text is split into tags on the server. */}
+          <input
+            type="text"
+            name="tags"
+            class="tag-add"
+            maxlength={MAX_DECK_TAG_CHARS}
+            placeholder="Add a mode…"
+            aria-label="Add a mode"
+            autocomplete="off"
+            data-tag-add
+          />
+        </div>
       </section>
       <section class="card">
         <h2>Notes</h2>
@@ -338,6 +399,14 @@ function currentLevels(c: Context<AppEnv>): Map<string, CollectionEntry> | null 
   return snap ? new Map(buildCollection(snap.player, listCards()).entries.map((e) => [e.name, e])) : null;
 }
 
+/** Modes the current player has battle stats for, then tags on the user's other decks. */
+function tagSuggestions(c: Context<AppEnv>, deck?: DeckRecord): string[] {
+  const player = resolvePlayer(c).current;
+  const played = player ? getBattleStats(player.tag).byMode.flatMap((m) => m.modeTags) : [];
+  const others = listDecks(currentUser(c).id).filter((d) => d.id !== deck?.id);
+  return unionTags(played, ...others.map((d) => d.tags));
+}
+
 const isPartial = (c: Context<AppEnv>) => c.req.query("partial") === "1";
 
 function renderDeckPage(
@@ -345,7 +414,7 @@ function renderDeckPage(
   opts: { deck?: DeckRecord; values: DeckFormValues; editing: boolean; error?: DeckError },
 ) {
   const status = opts.error ? 400 : 200;
-  const page = <DeckPage {...opts} levels={currentLevels(c)} />;
+  const page = <DeckPage {...opts} levels={currentLevels(c)} tagSuggestions={tagSuggestions(c, opts.deck)} />;
   // app.js loads this into the dialog and swaps it in after an in-place save; the query string keeps it a
   // separate cache entry from the page.
   if (isPartial(c)) {
@@ -372,12 +441,16 @@ const deckValues = (d: DeckRecord): DeckFormValues => ({
   cards: d.cards,
   notes: d.notes,
   slot3Form: d.slot3Form,
+  tags: d.tags,
 });
+
+const splitTags = (raw: string[]) => normalizeDeckTags(raw.flatMap((s) => s.split(",")));
 
 async function readDeckForm(c: Context<AppEnv>): Promise<DeckFormValues> {
   const form = await parseForm(c, deckSchema);
   const cards = (Array.isArray(form.cards) ? form.cards : [form.cards]).map((s) => s.trim()).filter(Boolean);
-  return { name: form.name, cards, notes: form.notes, slot3Form: form.slot3Form ?? null };
+  const tags = splitTags(Array.isArray(form.tags) ? form.tags : [form.tags]);
+  return { name: form.name, cards, notes: form.notes, slot3Form: form.slot3Form ?? null, tags };
 }
 
 /** Raw submitted values for re-rendering when schema validation itself failed. */
@@ -386,7 +459,14 @@ async function rawDeckValues(c: Context<AppEnv>): Promise<DeckFormValues> {
   const str = (v: unknown) => (typeof v === "string" ? v : "");
   const cards = Array.isArray(body.cards) ? body.cards.map(str) : [str(body.cards)];
   const form = str(body.slot3Form);
-  return { name: str(body.name), cards, notes: str(body.notes), slot3Form: form === "evo" || form === "hero" ? form : null };
+  const tags = splitTags(Array.isArray(body.tags) ? body.tags.map(str) : [str(body.tags)]);
+  return {
+    name: str(body.name),
+    cards,
+    notes: str(body.notes),
+    slot3Form: form === "evo" || form === "hero" ? form : null,
+    tags,
+  };
 }
 
 function deckFormError(err: unknown): DeckError {
@@ -432,12 +512,17 @@ export const deckPages = new Hono<AppEnv>()
     const snapshot = player ? getLatestSnapshot(player.tag) : null;
     const equipped = snapshot?.player.currentDeck?.map((card) => card.name) ?? null;
     const battleStats = player ? getBattleStats(player.tag) : null;
-    const usage = classifyDecks(listDecks(currentUser(c).id), battleStats?.byDeck ?? [], equipped);
+    const decks = listDecks(currentUser(c).id);
+    const usage = classifyDecks(decks, battleStats?.byDeck ?? [], equipped);
     const f = parseQuery(c, deckFilterSchema);
-    const modeOptions = battleStats ? deckModeOptions(battleStats.byMode) : [];
+    const modeOptions = withDeckTagOptions(
+      battleStats ? deckModeOptions(battleStats.byMode) : [],
+      decks.flatMap((d) => d.tags),
+    );
     const modeText = modeOptions.find((o) => o.value === f.mode)?.text ?? f.mode;
     const playedIn = (s: UsedDeckStats | null) => !f.mode || (s?.modeTags.includes(f.mode) ?? false);
-    const saved = usage.saved.filter((d) => playedIn(d.stats));
+    const taggedWith = (d: DeckRecord) => d.tags.some((t) => t.toLowerCase() === f.mode.toLowerCase());
+    const saved = usage.saved.filter((d) => playedIn(d.stats) || taggedWith(d.deck));
     const allUsed = usage.used.filter((d) => playedIn(d.stats));
     const used = allUsed.slice(0, MAX_USED_DECKS);
     const filtered = Boolean(f.mode || f.show);
@@ -470,7 +555,7 @@ export const deckPages = new Hono<AppEnv>()
         <form method="get" action="/decks" class="filters" data-live-filter>
           {modeOptions.length > 0 && (
             <div class="field">
-              <label for="mode">Played In</label>
+              <label for="mode">Mode</label>
               <select id="mode" name="mode">
                 <option value="">Any Mode</option>
                 {modeOptions.map((o) => (
@@ -529,7 +614,10 @@ export const deckPages = new Hono<AppEnv>()
                       </div>
                       <DeckGrid cards={namedCardViews(d.cards, catalog)} size="sm" />
                       <DeckStats stats={stats} avgElixir={averageElixir(d.cards, catalog)} tracked={player !== null} />
-                      {stats && <ModeTags tags={stats.modeTags} />}
+                      <ModeTags
+                        tags={unionTags(d.tags, stats?.modeTags ?? [])}
+                        label={d.tags.length ? "Modes" : undefined}
+                      />
                       {d.notes && (
                         <p class="muted excerpt">{d.notes.length > 140 ? `${d.notes.slice(0, 140)}…` : d.notes}</p>
                       )}
@@ -565,7 +653,7 @@ export const deckPages = new Hono<AppEnv>()
                   ))}
                 </div>
               ) : f.mode ? (
-                <p class="muted">No saved deck was played in {modeText}.</p>
+                <p class="muted">No saved deck is tagged or was played in {modeText}.</p>
               ) : (
                 <EmptyState title="No Saved Decks Yet">
                   <p class="muted">Save decks here, or let your AI assistant save them through the API.</p>
@@ -625,7 +713,7 @@ export const deckPages = new Hono<AppEnv>()
     );
   })
   .get("/decks/new", (c) =>
-    renderDeckPage(c, { values: { name: "", cards: [], notes: "", slot3Form: null }, editing: true }),
+    renderDeckPage(c, { values: { name: "", cards: [], notes: "", slot3Form: null, tags: [] }, editing: true }),
   )
   .post("/decks", (c) => saveDeck(c))
   .get("/decks/:id{[0-9]+}", (c) => {

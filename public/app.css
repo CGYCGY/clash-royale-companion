@@ -1919,6 +1919,58 @@ label.switch {
 .deck-page .deck-meta {
   margin-top: 1rem;
 }
+.deck-modes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.6rem;
+  margin-top: 0.75rem;
+}
+.tag-choices {
+  display: contents;
+}
+.tag-choice {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  padding: 0.15rem 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.tag-choice:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+.tag-choice:has(:checked) {
+  color: var(--text);
+  background: var(--surface-2);
+  border-color: var(--accent);
+}
+.tag-choice:has(:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+/* Hidden but still focusable and toggled by Space, unlike display: none. */
+.tag-choice input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  pointer-events: none;
+}
+.deck-modes input.tag-add {
+  width: 10rem;
+  max-width: 100%;
+  padding: 0.15rem 0.6rem;
+  font-size: 0.8rem;
+  border-radius: 999px;
+}
 @media (max-width: 720px) {
   .deck-slots {
     grid-template-columns: repeat(4, minmax(0, 1fr));
