@@ -1577,6 +1577,29 @@ label.switch {
 .deck-actions {
   gap: 0.25rem;
 }
+.variant-forms {
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+/* A deck name inside a tag keeps its own case. */
+.tag-link {
+  text-decoration: none;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.tag-link:hover,
+.tag-link:focus-visible {
+  background: color-mix(in srgb, currentColor 14%, transparent);
+}
+/* Wider than .grid's 260px minimum: an eight-card .size-sm grid (277px) plus card padding needs 320px. */
+.variant-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
+}
+.used-deck .deck-card-head h1 {
+  margin: 0;
+  font-size: 1.25rem;
+}
 .icon-btn-danger:hover,
 .icon-btn-danger:focus-visible {
   color: var(--loss);

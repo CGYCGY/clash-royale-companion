@@ -291,6 +291,11 @@ The scheduler is in-process, so run exactly one app instance per database.
   `/players/current`, which redirects to `safeNext(next)` minus `tag`/`page` (a battle detail goes to `/battles`).
   Decks are per user, not per player; their level check uses the current player's collection. The Decks page
   lists saved decks and the current player's used decks via `classifyDecks` (matched by card set, any order).
+  A used deck's "Details" opens `/decks/used?deck=<deckKey>` in the dialog: the deck's forms (Evo/Hero
+  variants from `byDeck[].variants`), each with its own record, marked In Use / Saved as by `classifyVariants`.
+  The equipped and saved decks have no played form, so their variant key comes from the slot rules
+  (`equippedVariantKey`, `savedDeckVariantKey` in deckUsage.ts): currentDeck's `evolutionLevel` is the forms
+  owned, not the form in use.
 - The header shows a sync button for the current player (POST `/players/:tag/sync` with `next`, redirecting
   back there) and its last sync time; during the cooldown it renders disabled with `data-retry-after`.
 - HTML responses get `Cache-Control: private, no-cache` unless the route set one. Filter forms marked

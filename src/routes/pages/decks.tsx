@@ -5,13 +5,19 @@ import { currentUser, requireUser } from "../../auth/middleware";
 import { cardType } from "../../domain/cardType";
 import { buildCollection, type CollectionEntry, projectAffordable } from "../../domain/collection";
 import { deckSlotForms, type SlotForms, slotFormsBitmask } from "../../domain/deckSlots";
-import { classifyDecks, type UsedDeckStats } from "../../domain/deckUsage";
+import {
+  classifyDecks,
+  classifyVariants,
+  latestVariant,
+  type UsedDeckStats,
+  variantFormsLabel,
+} from "../../domain/deckUsage";
 import { AppError, notFound } from "../../errors";
 import { resolvePlayer } from "../../http/currentPlayer";
 import { setFlash } from "../../http/flash";
 import { parseForm, parseQuery } from "../../http/validate";
-import { averageElixir, type BattleStats, getBattleStats } from "../../repos/battles";
-import { cardsMap, listCards } from "../../repos/cards";
+import { averageElixir, type BattleStats, getBattleStats, type Tally, type VariantCard } from "../../repos/battles";
+import { type CardRecord, cardsMap, listCards } from "../../repos/cards";
 import {
   createDeck,
   DECK_SIZE,
@@ -137,7 +143,7 @@ function DeckStats({
   avgElixir,
   tracked,
 }: {
-  stats: UsedDeckStats | null;
+  stats: Tally | null;
   avgElixir: number | null;
   /** False when no player is linked, so "never played" would be meaningless. */
   tracked: boolean;
@@ -162,6 +168,112 @@ function DeckStats({
       ) : (
         tracked && <span class="muted small">no stored battles with this deck</span>
       )}
+    </div>
+  );
+}
+
+const usedDeckHref = (deckKey: string) => `/decks/used?deck=${encodeURIComponent(deckKey)}`;
+
+const variantViews = (cards: VariantCard[], catalog: Map<string, CardRecord>) =>
+  cards.map((c) => toCardView(c, catalog));
+
+function DetailsLink({ deckKey, forms }: { deckKey: string; forms: number }) {
+  return (
+    <>
+      <a class="btn btn-ghost btn-small" href={usedDeckHref(deckKey)} data-modal="Used Deck">
+        Details
+      </a>
+      {forms > 1 && <span class="muted small">{forms} forms</span>}
+    </>
+  );
+}
+
+function SavedAsTag({ deck }: { deck: DeckRecord }) {
+  return (
+    <a class="tag tag-saved tag-link" href={`/decks/${deck.id}`} data-modal="Deck">
+      Saved as {deck.name}
+    </a>
+  );
+}
+
+function PlayedAgo({ iso }: { iso: string }) {
+  return (
+    <span class="muted small" {...localTitle(iso)}>
+      played {formatRelative(iso)}
+    </span>
+  );
+}
+
+function UsedDeckPage({
+  stats,
+  playerName,
+  saved,
+  currentDeck,
+}: {
+  stats: UsedDeckStats;
+  playerName: string;
+  saved: DeckRecord[];
+  currentDeck: { name: string; evolutionLevel?: number }[] | null;
+}) {
+  const catalog = cardsMap();
+  const usage = classifyVariants(stats, saved, currentDeck, catalog);
+  const latest = usage.variants[0]!.variant;
+  const avgElixir = averageElixir(stats.cards, catalog);
+  return (
+    <div class="stack used-deck">
+      <section class={`card deck-card deck-used${usage.inUse ? " in-use" : ""}`}>
+        <div class="row deck-card-head">
+          <h1 id="used-deck-title">Used Deck</h1>
+          <span class="muted">{playerName}</span>
+          <div class="spacer" />
+          <span class="deck-tags">
+            {usage.inUse && <DeckTag kind="in-use" />}
+            <DeckTag kind="used" />
+            {usage.saved.map((d) => (
+              <SavedAsTag deck={d} />
+            ))}
+          </span>
+        </div>
+        <DeckGrid cards={variantViews(latest.cards, catalog)} />
+        <div class="row">
+          <span class="variant-forms">Last played as {variantFormsLabel(latest.cards)}</span>
+          <div class="spacer" />
+          <PlayedAgo iso={stats.lastPlayed} />
+        </div>
+        <DeckStats stats={stats} avgElixir={avgElixir} tracked />
+        <ModeTags tags={stats.modeTags} />
+      </section>
+      <section class="stack-tight">
+        <h2>Forms Played</h2>
+        {usage.variants.length > 1 ? (
+          <div class="grid variant-grid">
+            {usage.variants.map(({ variant, inUse, savedAs }) => (
+              <article
+                class={`card deck-card deck-variant${inUse ? " in-use" : ""}`}
+                data-variant-key={variant.variantKey}
+              >
+                <div class="row deck-card-head">
+                  <span class="variant-forms">{variantFormsLabel(variant.cards)}</span>
+                  <div class="spacer" />
+                  <span class="deck-tags">
+                    {inUse && <DeckTag kind="in-use" />}
+                    {savedAs && <SavedAsTag deck={savedAs} />}
+                  </span>
+                </div>
+                <DeckGrid cards={variantViews(variant.cards, catalog)} size="sm" />
+                <DeckStats stats={variant} avgElixir={avgElixir} tracked />
+                <div class="row">
+                  <ModeTags tags={variant.modeTags} />
+                  <div class="spacer" />
+                  <PlayedAgo iso={variant.lastPlayed} />
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p class="muted">Played in this form only so far.</p>
+        )}
+      </section>
     </div>
   );
 }
@@ -646,6 +758,7 @@ export const deckPages = new Hono<AppEnv>()
                             <TrashIcon />
                           </button>
                         </form>
+                        {stats && <DetailsLink deckKey={stats.deckKey} forms={stats.variants.length} />}
                         <div class="spacer" />
                         <span class="muted small">updated {formatRelative(d.updatedAt)}</span>
                       </div>
@@ -680,15 +793,19 @@ export const deckPages = new Hono<AppEnv>()
                           <DeckTag kind="used" />
                         </span>
                         <div class="spacer" />
-                        {stats && (
-                          <span class="muted small" {...localTitle(stats.lastPlayed)}>
-                            played {formatRelative(stats.lastPlayed)}
-                          </span>
-                        )}
+                        {stats && <PlayedAgo iso={stats.lastPlayed} />}
                       </div>
-                      <DeckGrid cards={namedCardViews(cards, catalog)} size="sm" />
+                      <DeckGrid
+                        cards={stats ? variantViews(latestVariant(stats).cards, catalog) : namedCardViews(cards, catalog)}
+                        size="sm"
+                      />
                       <DeckStats stats={stats} avgElixir={averageElixir(cards, catalog)} tracked />
                       {stats && <ModeTags tags={stats.modeTags} />}
+                      {stats && (
+                        <div class="row deck-actions">
+                          <DetailsLink deckKey={stats.deckKey} forms={stats.variants.length} />
+                        </div>
+                      )}
                     </article>
                   ))}
                 </div>
@@ -709,6 +826,36 @@ export const deckPages = new Hono<AppEnv>()
             </section>
           )}
         </div>
+      </div>,
+    );
+  })
+  .get("/decks/used", (c) => {
+    const player = resolvePlayer(c).current;
+    const deckKey = c.req.query("deck") ?? "";
+    const stats = player && deckKey ? getBattleStats(player.tag).byDeck.find((d) => d.deckKey === deckKey) : undefined;
+    if (!player || !stats) throw notFound("Used deck");
+    const page = (
+      <UsedDeckPage
+        stats={stats}
+        playerName={player.name || player.tag}
+        saved={listDecks(currentUser(c).id)}
+        currentDeck={getLatestSnapshot(player.tag)?.player.currentDeck ?? null}
+      />
+    );
+    if (isPartial(c)) {
+      c.header("Cache-Control", "no-store");
+      return c.html(page);
+    }
+    return renderPage(
+      c,
+      { title: "Used Deck", active: "decks" },
+      <div class="stack">
+        <p>
+          <a class="btn btn-ghost btn-small" href="/decks">
+            <ArrowLeftIcon /> Back to Decks
+          </a>
+        </p>
+        {page}
       </div>,
     );
   })

@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, test } from "bun:test";
-import { listDecks } from "../../src/repos/decks";
+import type { BattleLogEntry } from "../../src/cr/types";
+import { insertBattles } from "../../src/repos/battles";
+import { createDeck, listDecks } from "../../src/repos/decks";
 import { deckModeOptions, unionTags, withDeckTagOptions } from "../../src/routes/pages/decks";
 import type { User } from "../../src/types";
-import { makeUser } from "../helpers";
+import { FIXTURE_TAG, loadFixture, makeUser } from "../helpers";
 import { cookieFor, follow, formPost, linkFixturePlayer, type PageTestEnv, setupPages } from "./support";
 
 let env: PageTestEnv;
@@ -393,5 +395,134 @@ describe("deck pages", () => {
     expect(first).toStartWith('class="card deck-card deck-used in-use"');
     expect(first).toContain("<strong>8</strong> games");
     expect(second).toStartWith('class="card deck-card deck-used"');
+  });
+
+  describe("used deck dialog", () => {
+    const HOG_KEY = "Cannon|Fireball|Hog Rider|Ice Golem|Ice Spirit|Musketeer|Skeletons|The Log";
+    const GOLEM_KEY = "Arrows|Baby Dragon|Bomber|Electro Wizard|Golem|Minions|Poison|Zap";
+    const href = (key: string) => `/decks/used?deck=${encodeURIComponent(key)}`;
+    const equipped = ["The Log", "Fireball", "Cannon", "Skeletons", "Ice Spirit", "Ice Golem", "Musketeer", "Hog Rider"];
+
+    test("used and saved-with-stats deck cards link to it", async () => {
+      await linkFixturePlayer(user, env.client);
+      await env.app.request("/decks", formPost(cookie, { name: "Hog 2.6", cards: equipped }));
+      await env.app.request("/decks", formPost(cookie, { name: "Unplayed", cards: HOG }));
+      const html = await (await get("/decks")).text();
+      const link = (key: string) =>
+        `<a class="btn btn-ghost btn-small" href="${href(key).replaceAll("&", "&amp;")}" data-modal="Used Deck">Details</a>`;
+      const saved = /<h2>Saved Decks<\/h2>.*?<\/section>/.exec(html)?.[0] ?? "";
+      const used = /<h2>Used in Battles.*?<\/section>/.exec(html)?.[0] ?? "";
+      const [hog, unplayed] = saved.split("<article ").slice(1);
+      expect(hog).toContain(link(HOG_KEY));
+      expect(unplayed).not.toContain("Details");
+      expect(used).toContain(link(GOLEM_KEY));
+    });
+
+    test("partial is the dialog fragment, full page has the back link", async () => {
+      await linkFixturePlayer(user, env.client);
+      const partial = await get(`${href(HOG_KEY)}&partial=1`);
+      expect(partial.status).toBe(200);
+      expect(partial.headers.get("cache-control")).toBe("no-store");
+      const html = await partial.text();
+      expect(html).toStartWith('<div class="stack used-deck">');
+      expect(html).toContain('<h1 id="used-deck-title">Used Deck</h1><span class="muted">Sparky</span>');
+      expect(html).toContain("<strong>8</strong> games");
+      expect(html).toContain('<span class="variant-forms">Last played as ');
+      expect(html).toContain("<h2>Forms Played</h2>");
+      expect(html).not.toContain("Back to Decks");
+      expect(html).not.toContain("<html");
+
+      const full = await (await get(href(HOG_KEY))).text();
+      expect(full).toContain("<html");
+      expect(full).toContain("Back to Decks");
+      expect(full).toContain('<h1 id="used-deck-title">Used Deck</h1>');
+    });
+
+    test("the header tags the deck in use and links saved decks with its cards", async () => {
+      await linkFixturePlayer(user, env.client);
+      await env.app.request("/decks", formPost(cookie, { name: "Hog 2.6", cards: equipped }));
+      const [deck] = listDecks(user.id);
+      const hog = await (await get(`${href(HOG_KEY)}&partial=1`)).text();
+      expect(hog).toContain('<section class="card deck-card deck-used in-use">');
+      expect(hog).toContain(
+        `<span class="deck-tags"><span class="tag tag-in-use">In Use</span><span class="tag tag-used">Used</span><a class="tag tag-saved tag-link" href="/decks/${deck!.id}" data-modal="Deck">Saved as Hog 2.6</a></span>`,
+      );
+
+      // Played in one form only: no variant list.
+      const golem = await (await get(`${href(GOLEM_KEY)}&partial=1`)).text();
+      expect(golem).toContain('<section class="card deck-card deck-used">');
+      expect(golem).not.toContain("tag-in-use");
+      expect(golem).not.toContain("Saved as");
+      expect(golem).toContain("<strong>2</strong> games");
+      expect(golem).toContain('<p class="muted">Played in this form only so far.</p>');
+      expect(golem).not.toContain("deck-variant");
+    });
+
+    test("unknown deck keys and players without battles are 404", async () => {
+      expect((await get(href(HOG_KEY))).status).toBe(404);
+      await linkFixturePlayer(user, env.client);
+      expect((await get(href("Hog Rider|Zap"))).status).toBe(404);
+      expect((await get("/decks/used")).status).toBe(404);
+      expect((await get(href(HOG_KEY.toLowerCase()))).status).toBe(404);
+    });
+
+    const EVO_KEY = "Cannon|Fireball|Hog Rider|Ice Golem|Ice Spirit:evo|Musketeer:evo|Skeletons|The Log";
+    const HERO_KEY = "Cannon|Fireball|Hog Rider|Ice Golem:hero|Ice Spirit:evo|Musketeer:evo+hero|Skeletons|The Log";
+    const variantCards = (html: string) => html.split('<article class="card deck-card deck-variant').slice(1);
+    // The base log plays the Hog deck in its Evo form only (8 games); the modes fixture adds 7 Evo games and one Hero game.
+    const linkWithForms = async () => {
+      await linkFixturePlayer(user, env.client);
+      insertBattles(FIXTURE_TAG, loadFixture<BattleLogEntry[]>("battlelog-modes"));
+    };
+
+    test("a deck played in several forms lists one card per variant, newest first, with its own record", async () => {
+      await linkWithForms();
+      const html = await (await get(`${href(HOG_KEY)}&partial=1`)).text();
+      const [evo, hero, ...rest] = variantCards(html);
+      expect(rest).toHaveLength(0);
+      expect(evo).toStartWith(`" data-variant-key="${EVO_KEY}">`);
+      expect(evo).toContain('<span class="variant-forms">Evo Ice Spirit · Evo Musketeer</span>');
+      expect(evo).toContain("<strong>15</strong> games");
+      expect(evo).toContain("8W 6L 1D");
+      expect(hero).toStartWith(`" data-variant-key="${HERO_KEY}">`);
+      expect(hero).toContain('<span class="variant-forms">Hero Ice Golem · Evo Ice Spirit · Evo + Hero Musketeer</span>');
+      expect(hero).toContain("<strong>1</strong> game</span>");
+      expect(hero).toContain("0W 1L 0D");
+      expect(html).not.toContain("Played in this form only so far.");
+    });
+
+    test("the header and the list card show the latest variant's forms", async () => {
+      await linkWithForms();
+      const dialog = await (await get(`${href(HOG_KEY)}&partial=1`)).text();
+      const header = dialog.split("<h2>Forms Played</h2>")[0]!;
+      expect(header).toContain('<span class="variant-forms">Last played as Evo Ice Spirit · Evo Musketeer</span>');
+      expect(header).toMatch(/<figure class="card-icon size-md evolved" title="Musketeer">/);
+      expect(header).not.toContain(' hero" title=');
+
+      const list = await (await get("/decks")).text();
+      const hog = /<h2>Used in Battles.*?<\/section>/.exec(list)?.[0]?.split("<article ")[1] ?? "";
+      expect(hog).toMatch(/<figure class="card-icon size-sm evolved" title="Ice Spirit">/);
+      expect(hog).not.toContain('class="card-icon size-sm hero"');
+      expect(hog).toContain('data-modal="Used Deck">Details</a><span class="muted small">2 forms</span>');
+    });
+
+    test("a variant card is tagged Saved as when a saved deck's slot forms make it", async () => {
+      await linkWithForms();
+      // Slot 1 Evo Musketeer, slot 2 Hog Rider (no Hero form), slot 3 Ice Spirit defaults to Evo: the 15-game variant.
+      const deck = createDeck(user.id, {
+        name: "Hog 2.6 Evo Skellies",
+        cards: ["Musketeer", "Hog Rider", "Ice Spirit", "Ice Golem", "Skeletons", "Cannon", "Fireball", "The Log"],
+      });
+      const html = await (await get(`${href(HOG_KEY)}&partial=1`)).text();
+      const [evo, hero] = variantCards(html);
+      const savedAs = `<a class="tag tag-saved tag-link" href="/decks/${deck.id}" data-modal="Deck">Saved as Hog 2.6 Evo Skellies</a>`;
+      expect(evo).toContain(savedAs);
+      expect(hero).not.toContain("Saved as");
+      // The equipped deck's slots (Hero Musketeer in slot 2, Hero Ice Golem in slot 3) match no played form.
+      expect(html).toContain('<section class="card deck-card deck-used in-use">');
+      expect(evo).not.toContain("tag-in-use");
+      expect(hero).not.toContain("tag-in-use");
+    });
+
   });
 });
