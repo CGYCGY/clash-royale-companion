@@ -988,6 +988,29 @@ legend {
   font-size: 0.45rem;
   padding: 0.1rem;
 }
+/* In a deck card the eight icons share the card's width instead of fixed 32px columns; the grid is a
+ * container so the badges grow with the icons (8 icons ≈ 12cqi each). */
+.deck-card .deck-grid.size-sm {
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 4px;
+  container-type: inline-size;
+}
+.deck-card .card-icon.size-sm .card-level {
+  font-size: clamp(0.5rem, 2.2cqi, 0.75rem);
+}
+.deck-card .card-icon.size-sm .card-evo,
+.deck-card .card-icon.size-sm .card-hero,
+.deck-card .card-icon.size-sm.evolved.hero .card-evo::before,
+.deck-card .card-icon.size-sm.evolved.hero .card-hero::before {
+  font-size: clamp(0.45rem, 1.9cqi, 0.65rem);
+}
+.deck-card .card-icon.size-sm.evolved.hero .card-evo,
+.deck-card .card-icon.size-sm.evolved.hero .card-hero {
+  font-size: 0;
+}
+.deck-card .card-icon.size-sm .card-fallback {
+  font-size: clamp(0.45rem, 1.9cqi, 0.65rem);
+}
 .deck-grid.size-md {
   max-width: 560px;
 }
