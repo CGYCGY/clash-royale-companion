@@ -79,6 +79,28 @@ const relativeTime = (iso) => {
 const syncTime = document.querySelector("time.sync-time[datetime]");
 if (syncTime) setInterval(() => (syncTime.textContent = relativeTime(syncTime.dateTime)), 30_000);
 
+// Server renders dates as formatDateTime in src/views/format.ts ("YYYY-MM-DD HH:mm UTC"); this rewrites
+// them in the viewer's timezone. Titles may wrap that UTC text in more words, so only it is replaced.
+const pad2 = (n) => String(n).padStart(2, "0");
+const localDateTime = (iso) => {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+};
+const utcDateTime = (iso) => `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;
+// The data attributes are removed once handled, so re-running on a root only touches new content.
+const localizeTimes = (root) => {
+  for (const el of root.querySelectorAll("time[data-local-time]")) {
+    el.textContent = localDateTime(el.dateTime);
+    el.removeAttribute("data-local-time");
+  }
+  for (const el of root.querySelectorAll("[data-local-title]")) {
+    const iso = el.getAttribute("data-local-title");
+    el.title = el.title.replace(utcDateTime(iso), localDateTime(iso));
+    el.removeAttribute("data-local-title");
+  }
+};
+localizeTimes(document);
+
 // New API key: copy button inside the input, plus a best-effort copy on load.
 const copyText = async (input) => {
   try {
@@ -323,6 +345,7 @@ if (modalTemplate && "HTMLDialogElement" in window) {
       }
       if (!res.ok) throw new Error(String(res.status));
       body.innerHTML = await res.text();
+      localizeTimes(body);
       const heading = body.querySelector("h1[id]");
       if (heading) dialog.setAttribute("aria-labelledby", heading.id);
       body.setAttribute("aria-busy", "false");
@@ -446,6 +469,7 @@ const liveSwap = async (url, { push = false } = {}) => {
     if (push) history.pushState({ live: true }, "", liveShown);
     else history.replaceState(history.state, "", liveShown);
     wireBattleRows(document);
+    localizeTimes(document);
     return true;
   } catch (err) {
     if (err.name !== "AbortError") location.href = url.href;

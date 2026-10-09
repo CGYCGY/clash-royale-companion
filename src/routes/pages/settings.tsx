@@ -15,8 +15,8 @@ import { getNotes, setNotes } from "../../repos/notes";
 import { assertPlayerOwnedBy, listPlayersForUser, removePlayer } from "../../repos/players";
 import { trackPlayer } from "../../sync";
 import type { AppEnv } from "../../types";
-import { Table } from "../../views/components";
-import { formatDateTime, formatRelative } from "../../views/format";
+import { localTitle, Table } from "../../views/components";
+import { formatRelative } from "../../views/format";
 import { CheckIcon, ChevronDownIcon, CopyIcon } from "../../views/icons";
 import { PasswordChecklist, PasswordInput, PasswordMatch } from "../../views/password";
 import { renderPage } from "../../views/render";
@@ -86,7 +86,7 @@ function renderSettings(
               label: "Last Synced",
               render: (p) =>
                 p.lastSyncedAt ? (
-                  <span title={formatDateTime(p.lastSyncedAt)}>{formatRelative(p.lastSyncedAt)}</span>
+                  <span {...localTitle(p.lastSyncedAt)}>{formatRelative(p.lastSyncedAt)}</span>
                 ) : (
                   <span class="muted">never</span>
                 ),
@@ -185,7 +185,7 @@ function renderSettings(
           columns={[
             { label: "Name", render: (k) => k.name },
             { label: "Prefix", render: (k) => <code>{k.keyPrefix}…</code> },
-            { label: "Created", render: (k) => <span title={formatDateTime(k.createdAt)}>{formatRelative(k.createdAt)}</span> },
+            { label: "Created", render: (k) => <span {...localTitle(k.createdAt)}>{formatRelative(k.createdAt)}</span> },
             {
               label: "Last Used",
               render: (k) => (k.lastUsedAt ? formatRelative(k.lastUsedAt) : <span class="muted">never</span>),

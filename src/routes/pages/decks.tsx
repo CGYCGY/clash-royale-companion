@@ -14,8 +14,8 @@ import { createDeck, DECK_SIZE, type DeckRecord, deleteDeck, getDeck, listDecks,
 import { getLatestSnapshot, type PlayerRecord } from "../../repos/players";
 import type { AppEnv } from "../../types";
 import { formatElixir, namedCardViews } from "../../views/cardViews";
-import { CardIcon, DeckGrid, EmptyState, InfoTip, ModeTags } from "../../views/components";
-import { formatDateTime, formatPercent, formatRelative } from "../../views/format";
+import { CardIcon, DeckGrid, EmptyState, InfoTip, LocalTime, localTitle, ModeTags } from "../../views/components";
+import { formatPercent, formatRelative } from "../../views/format";
 import { ArrowLeftIcon, PencilIcon, TrashIcon } from "../../views/icons";
 import { renderPage } from "../../views/render";
 import { formError, idParam } from "./shared";
@@ -503,7 +503,7 @@ export const deckPages = new Hono<AppEnv>()
                         </span>
                         <div class="spacer" />
                         {stats && (
-                          <span class="muted small" title={formatDateTime(stats.lastPlayed)}>
+                          <span class="muted small" {...localTitle(stats.lastPlayed)}>
                             played {formatRelative(stats.lastPlayed)}
                           </span>
                         )}
@@ -557,7 +557,7 @@ export const deckPages = new Hono<AppEnv>()
               Avg elixir <strong>{formatElixir(averageElixir(deck.cards, catalog))}</strong>
             </span>
             <span class="muted small">
-              Created {formatDateTime(deck.createdAt)} · updated {formatDateTime(deck.updatedAt)}
+              Created <LocalTime iso={deck.createdAt} /> · updated <LocalTime iso={deck.updatedAt} />
             </span>
           </div>
         </section>

@@ -157,7 +157,7 @@ describe("dashboard", () => {
     // Just synced, so the 300s cooldown is running.
     expect(form).toMatch(/aria-label="Sync available in (29\d|300)s"[^>]* disabled="" data-retry-after="(29\d|300)" data-ready-label="Sync Now"/);
     expect(form).toContain('class="icon-refresh"');
-    expect(form).toMatch(/<time id="sync-time" class="sync-time" datetime="[^"]+" title="Last synced [^"]+">just now<\/time>/);
+    expect(form).toMatch(/<time id="sync-time" class="sync-time" datetime="[^"]+" title="Last synced [^"]+ UTC" data-local-title="[^"]+">just now<\/time>/);
     // The sync control sits left of the player switcher.
     expect(html.indexOf('class="sync-form"')).toBeLessThan(html.indexOf('class="player-menu"'));
 

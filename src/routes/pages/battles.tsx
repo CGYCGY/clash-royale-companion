@@ -20,8 +20,8 @@ import type { AppEnv } from "../../types";
 import { daysAgoIso } from "../../util";
 import { BattleTable } from "../../views/battleTable";
 import { deckCardViews, formatElixir, namedCardViews } from "../../views/cardViews";
-import { DeckGrid, EmptyState, ModeTags, ResultBadge, StatTile } from "../../views/components";
-import { formatDateTime, formatPercent, formatSigned } from "../../views/format";
+import { DeckGrid, EmptyState, LocalTime, ModeTags, ResultBadge, StatTile } from "../../views/components";
+import { formatPercent, formatSigned } from "../../views/format";
 import { ArrowLeftIcon } from "../../views/icons";
 import { renderPage } from "../../views/render";
 import { idParam } from "./shared";
@@ -171,7 +171,9 @@ function BattleDetail({ battle, catalog }: { battle: BattleWithRaw; catalog: Map
           </div>
           <div>
             <dt>Time</dt>
-            <dd>{formatDateTime(battle.battleTime)}</dd>
+            <dd>
+              <LocalTime iso={battle.battleTime} />
+            </dd>
           </div>
         </dl>
       </section>

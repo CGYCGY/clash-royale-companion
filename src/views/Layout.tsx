@@ -5,6 +5,7 @@ import { assetUrl } from "../http/assets";
 import type { PlayerContext } from "../http/currentPlayer";
 import type { Flash, User } from "../types";
 import type { PlayerRecord } from "../repos/players";
+import { localTitle } from "./components";
 import { formatDateTime, formatRelative } from "./format";
 import { CheckIcon, ChevronDownIcon, CloseIcon, GearIcon, LogOutIcon, RefreshIcon } from "./icons";
 
@@ -56,7 +57,10 @@ function SyncControl({ player, wait, next }: { player: PlayerRecord; wait: numbe
           id="sync-time"
           class={`sync-time${failed ? " sync-failed" : ""}`}
           datetime={player.lastSyncedAt}
-          title={`Last synced ${formatDateTime(player.lastSyncedAt)}${failed ? `. Last attempt failed: ${player.lastSyncError}` : ""}`}
+          {...localTitle(
+            player.lastSyncedAt,
+            `Last synced ${formatDateTime(player.lastSyncedAt)}${failed ? `. Last attempt failed: ${player.lastSyncError}` : ""}`,
+          )}
         >
           {formatRelative(player.lastSyncedAt)}
         </time>

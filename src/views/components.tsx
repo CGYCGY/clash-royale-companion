@@ -2,6 +2,7 @@ import type { Child } from "hono/jsx";
 import { cardForms } from "../domain/evolution";
 import type { BattleResult } from "../repos/battles";
 import type { CardRecord } from "../repos/cards";
+import { formatDateTime } from "./format";
 import { InfoIcon } from "./icons";
 
 /** What the card components need. Build from battle DeckCards, deck names, or player cards via toCardView. */
@@ -167,3 +168,18 @@ export function ModeTags({ tags }: { tags: string[] }) {
     </div>
   );
 }
+
+/** UTC text that app.js rewrites to the viewer's timezone (localizeTimes); the UTC text is the no-JS fallback. */
+export function LocalTime({ iso, class: className }: { iso: string; class?: string }) {
+  return (
+    <time datetime={iso} class={className} data-local-time>
+      {formatDateTime(iso)}
+    </time>
+  );
+}
+
+/**
+ * Spread onto an element whose title shows a date. app.js swaps the formatDateTime(iso) substring for
+ * local time, so the title may wrap it in other text as long as that substring stays verbatim.
+ */
+export const localTitle = (iso: string, title = formatDateTime(iso)) => ({ title, "data-local-title": iso });

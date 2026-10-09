@@ -3,8 +3,8 @@ import { tagSlug } from "../cr/tag";
 import type { BattleRecord } from "../repos/battles";
 import type { CardRecord } from "../repos/cards";
 import { deckCardViews } from "./cardViews";
-import { type Column, DeckGrid, ResultBadge, Table } from "./components";
-import { formatDateTime, formatRelative, formatSigned } from "./format";
+import { type Column, DeckGrid, localTitle, ResultBadge, Table } from "./components";
+import { formatRelative, formatSigned } from "./format";
 
 export const battleHref = (b: BattleRecord): string => `/battles/${tagSlug(b.playerTag)}/${b.id}`;
 
@@ -12,7 +12,7 @@ function battleColumns(catalog: Map<string, CardRecord>): Column<BattleRecord>[]
   return [
     {
       label: "Time",
-      render: (b) => <span title={formatDateTime(b.battleTime)}>{formatRelative(b.battleTime)}</span>,
+      render: (b) => <span {...localTitle(b.battleTime)}>{formatRelative(b.battleTime)}</span>,
     },
     { label: "Mode", render: (b) => b.modeLabel },
     { label: "Result", render: (b) => <ResultBadge result={b.result} /> },
