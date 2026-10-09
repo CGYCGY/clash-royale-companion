@@ -281,6 +281,153 @@ const openCardPicker = ({ slot, options, onPick, returnFocus }) => {
   search.focus();
 };
 
+// Swaps two slots by dragging in edit mode. Mouse drags after a few px; touch needs a 500ms still hold
+// first so a plain swipe over the grid still scrolls the page.
+const wireDeckDrag = (form, tiles, { renderTile, renderAvg }) => {
+  const MOVE_PX = 6;
+  const HOLD_MS = 500;
+  let gesture = null;
+
+  const targetAt = (x, y) => {
+    const tile = document.elementFromPoint(x, y)?.closest(".deck-slot");
+    return tile && tile !== gesture.tile && tiles.includes(tile) ? tile : null;
+  };
+
+  const placeGhost = (x, y) => {
+    gesture.ghost.style.left = `${x - gesture.dx}px`;
+    gesture.ghost.style.top = `${y - gesture.dy}px`;
+  };
+
+  const startDrag = () => {
+    const g = gesture;
+    g.dragging = true;
+    const icon = g.tile.querySelector(".card-icon");
+    const box = icon.getBoundingClientRect();
+    g.dx = g.x - box.left;
+    g.dy = g.y - box.top;
+    g.ghost = icon.cloneNode(true);
+    g.ghost.classList.add("drag-ghost");
+    g.ghost.style.width = `${box.width}px`;
+    document.body.append(g.ghost);
+    placeGhost(g.x, g.y);
+    g.tile.classList.add("dragging");
+    try {
+      g.tile.setPointerCapture(g.pointerId);
+    } catch {
+      // The pointer may already be gone (lifted right as the hold timer fired).
+    }
+    window.getSelection()?.removeAllRanges();
+  };
+
+  const setTarget = (tile) => {
+    if (gesture.target === tile) return;
+    gesture.target?.classList.remove("drop-target");
+    gesture.target = tile;
+    tile?.classList.add("drop-target");
+  };
+
+  // A drag may end with a click on the form; swallow just that one so it doesn't open the picker. Browsers
+  // don't always fire it, so the next pointerdown or a timeout disarms the trap before it eats a real tap.
+  const swallowNextClick = () => {
+    const stop = (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      done();
+    };
+    const done = () => {
+      form.removeEventListener("click", stop, true);
+      form.removeEventListener("pointerdown", done, true);
+      clearTimeout(timer);
+    };
+    form.addEventListener("click", stop, true);
+    form.addEventListener("pointerdown", done, true);
+    const timer = setTimeout(done, 300);
+  };
+
+  const end = (drop) => {
+    const g = gesture;
+    if (!g) return;
+    gesture = null;
+    clearTimeout(g.holdTimer);
+    window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("pointerup", onUp);
+    window.removeEventListener("pointercancel", onCancel);
+    document.removeEventListener("keydown", onKey);
+    g.tile.removeEventListener("touchmove", blockScroll);
+    if (!g.dragging) return;
+    g.ghost.remove();
+    g.tile.classList.remove("dragging");
+    g.target?.classList.remove("drop-target");
+    if (g.tile.hasPointerCapture?.(g.pointerId)) g.tile.releasePointerCapture(g.pointerId);
+    swallowNextClick();
+    if (!drop || !g.target) return;
+    const a = g.tile.querySelector('input[name="cards"]');
+    const b = g.target.querySelector('input[name="cards"]');
+    [a.value, b.value] = [b.value, a.value];
+    renderTile(g.tile);
+    renderTile(g.target);
+    renderAvg();
+  };
+
+  const onMove = (e) => {
+    const g = gesture;
+    if (!g || e.pointerId !== g.pointerId) return;
+    if (!g.dragging) {
+      if (Math.hypot(e.clientX - g.x, e.clientY - g.y) <= MOVE_PX) return;
+      if (g.touch) return end(false);
+      startDrag();
+    }
+    placeGhost(e.clientX, e.clientY);
+    setTarget(targetAt(e.clientX, e.clientY));
+  };
+  const onUp = (e) => {
+    if (!gesture || e.pointerId !== gesture.pointerId) return;
+    if (gesture.dragging) setTarget(targetAt(e.clientX, e.clientY));
+    end(true);
+  };
+  const onCancel = (e) => {
+    if (gesture && e.pointerId === gesture.pointerId) end(false);
+  };
+  const onKey = (e) => {
+    if (e.key !== "Escape" || !gesture?.dragging) return;
+    e.preventDefault();
+    end(false);
+  };
+  // touch-action can't change mid-gesture, so after the hold only a cancelled touchmove keeps the browser
+  // from scrolling (a scroll would fire pointercancel and kill the drag).
+  const blockScroll = (e) => {
+    if (gesture?.dragging) e.preventDefault();
+  };
+
+  for (const tile of tiles) {
+    tile.addEventListener("pointerdown", (e) => {
+      if (form.dataset.mode !== "edit" || gesture || !e.isPrimary) return;
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      // The text input and the slot-3 form radios keep their own pointer behaviour.
+      if (e.target.closest("input, label, button")) return;
+      gesture = { tile, pointerId: e.pointerId, x: e.clientX, y: e.clientY, touch: e.pointerType === "touch", dragging: false, target: null };
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+      window.addEventListener("pointercancel", onCancel);
+      document.addEventListener("keydown", onKey);
+      if (gesture.touch) {
+        tile.addEventListener("touchmove", blockScroll, { passive: false });
+        gesture.holdTimer = setTimeout(() => {
+          startDrag();
+          navigator.vibrate?.(10);
+        }, HOLD_MS);
+      }
+    });
+    // Long-press menus, and the native image drag (which fires pointercancel), would otherwise steal the gesture.
+    tile.addEventListener("contextmenu", (e) => {
+      if (form.dataset.mode === "edit" && !e.target.closest("input")) e.preventDefault();
+    });
+    tile.addEventListener("dragstart", (e) => {
+      if (form.dataset.mode === "edit") e.preventDefault();
+    });
+  }
+};
+
 const wireDeckPage = (root) => {
   for (const form of root.querySelectorAll("form[data-deck-page]:not([data-wired])")) {
     form.setAttribute("data-wired", "");
@@ -532,6 +679,7 @@ const wireDeckPage = (root) => {
       });
     }
 
+    wireDeckDrag(form, tiles, { renderTile, renderAvg });
     // Edit mode was chosen by the server; the radios must follow it after a client-side swap too.
     setMode(form.dataset.mode);
   }

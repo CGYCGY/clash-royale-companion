@@ -1924,3 +1924,29 @@ label.switch {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
+
+/* Deck drag (app.js wireDeckDrag): drag a tile onto another to swap slots in edit mode. */
+[data-mode="edit"] .deck-slot {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.deck-slot.dragging {
+  opacity: 0.4;
+}
+.deck-slot.drop-target .card-icon {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.drag-ghost {
+  position: fixed;
+  z-index: 1000;
+  margin: 0;
+  pointer-events: none;
+  transform: scale(1.05);
+  box-shadow: 0 8px 20px rgb(0 0 0 / 0.45);
+}
+/* The clone leaves .deck-slot, so its in-figure form badges would reappear. */
+.drag-ghost .card-forms {
+  display: none;
+}
