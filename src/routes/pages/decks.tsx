@@ -8,7 +8,9 @@ import { deckSlotForms, type SlotForms, slotFormsBitmask } from "../../domain/de
 import {
   classifyDecks,
   classifyVariants,
+  type FamilyUsage,
   latestVariant,
+  sameCards,
   type UsedDeckStats,
   variantFormsLabel,
   variantSlotOrder,
@@ -244,38 +246,55 @@ function UsedDeckPage({
         <DeckStats stats={stats} avgElixir={avgElixir} tracked />
         <ModeTags tags={stats.modeTags} />
       </section>
-      <section class="stack-tight">
-        <h2>Forms Played</h2>
-        {usage.variants.length > 1 ? (
-          <div class="grid variant-grid">
-            {usage.variants.map(({ variant, inUse, savedAs }) => (
-              <article
-                class={`card deck-card deck-variant${inUse ? " in-use" : ""}`}
-                data-variant-key={variant.variantKey}
-              >
-                <div class="row deck-card-head">
-                  <span class="variant-forms">{variantFormsLabel(variant.cards)}</span>
-                  <div class="spacer" />
-                  <span class="deck-tags">
-                    {inUse && <DeckTag kind="in-use" />}
-                    {savedAs && <SavedAsTag deck={savedAs} />}
-                  </span>
-                </div>
-                <DeckGrid cards={variantViews(variant.cards, catalog)} size="sm" />
-                <DeckStats stats={variant} avgElixir={avgElixir} tracked />
-                <div class="row">
-                  <ModeTags tags={variant.modeTags} />
-                  <div class="spacer" />
-                  <PlayedAgo iso={variant.lastPlayed} />
-                </div>
-              </article>
-            ))}
-          </div>
-        ) : (
-          <p class="muted">Played in this form only so far.</p>
-        )}
-      </section>
+      <FormsPlayed usage={usage} avgElixir={avgElixir} catalog={catalog} class="stack-tight" />
     </div>
+  );
+}
+
+/** Shared by the used-deck dialog and the saved deck page so the two can't drift. */
+function FormsPlayed({
+  usage,
+  avgElixir,
+  catalog,
+  class: cls,
+}: {
+  usage: FamilyUsage;
+  avgElixir: number | null;
+  catalog: Map<string, CardRecord>;
+  class: string;
+}) {
+  return (
+    <section class={cls}>
+      <h2>Forms Played</h2>
+      {usage.variants.length > 1 ? (
+        <div class="grid variant-grid">
+          {usage.variants.map(({ variant, inUse, savedAs }) => (
+            <article
+              class={`card deck-card deck-variant${inUse ? " in-use" : ""}`}
+              data-variant-key={variant.variantKey}
+            >
+              <div class="row deck-card-head">
+                <span class="variant-forms">{variantFormsLabel(variant.cards)}</span>
+                <div class="spacer" />
+                <span class="deck-tags">
+                  {inUse && <DeckTag kind="in-use" />}
+                  {savedAs && <SavedAsTag deck={savedAs} />}
+                </span>
+              </div>
+              <DeckGrid cards={variantViews(variant.cards, catalog)} size="sm" />
+              <DeckStats stats={variant} avgElixir={avgElixir} tracked />
+              <div class="row">
+                <ModeTags tags={variant.modeTags} />
+                <div class="spacer" />
+                <PlayedAgo iso={variant.lastPlayed} />
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <p class="muted">Played in this form only so far.</p>
+      )}
+    </section>
   );
 }
 
@@ -358,11 +377,14 @@ function DeckPage({
   error,
   levels,
   tagSuggestions,
+  forms: played,
 }: {
   deck?: DeckRecord;
   values: DeckFormValues;
   editing: boolean;
   error?: DeckError;
+  /** The forms the linked player played these eight cards in; null when none or no player is linked. */
+  forms: { usage: FamilyUsage; avgElixir: number | null } | null;
   /** Offered as toggles besides the deck's own tags. */
   tagSuggestions: string[];
   /** Null when no player with a snapshot is linked; then there is no level switch. */
@@ -501,6 +523,10 @@ function DeckPage({
           {values.notes}
         </textarea>
       </section>
+      {/* view-only too: app.js can switch the open page to edit mode without a reload. */}
+      {deck && !editing && played && (
+        <FormsPlayed usage={played.usage} avgElixir={played.avgElixir} catalog={catalog} class="card view-only" />
+      )}
       <CardDatalist byName={levels} />
     </form>
   );
@@ -520,6 +546,19 @@ function tagSuggestions(c: Context<AppEnv>, deck?: DeckRecord): string[] {
   return unionTags(played, ...others.map((d) => d.tags));
 }
 
+function formsPlayed(c: Context<AppEnv>, deck: DeckRecord) {
+  const player = resolvePlayer(c).current;
+  if (!player) return null;
+  const family = getBattleStats(player.tag).byDeck.find((d) => sameCards(d.cards, deck.cards));
+  if (!family) return null;
+  const catalog = cardsMap();
+  const currentDeck = getLatestSnapshot(player.tag)?.player.currentDeck ?? null;
+  return {
+    usage: classifyVariants(family, listDecks(currentUser(c).id), currentDeck, catalog),
+    avgElixir: averageElixir(family.cards, catalog),
+  };
+}
+
 const isPartial = (c: Context<AppEnv>) => c.req.query("partial") === "1";
 
 function renderDeckPage(
@@ -527,7 +566,14 @@ function renderDeckPage(
   opts: { deck?: DeckRecord; values: DeckFormValues; editing: boolean; error?: DeckError },
 ) {
   const status = opts.error ? 400 : 200;
-  const page = <DeckPage {...opts} levels={currentLevels(c)} tagSuggestions={tagSuggestions(c, opts.deck)} />;
+  const page = (
+    <DeckPage
+      {...opts}
+      levels={currentLevels(c)}
+      tagSuggestions={tagSuggestions(c, opts.deck)}
+      forms={opts.deck && !opts.editing ? formsPlayed(c, opts.deck) : null}
+    />
+  );
   // app.js loads this into the dialog and swaps it in after an in-place save; the query string keeps it a
   // separate cache entry from the page.
   if (isPartial(c)) {

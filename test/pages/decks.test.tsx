@@ -532,5 +532,44 @@ describe("deck pages", () => {
       expect(hero).not.toContain("tag-in-use");
     });
 
+    describe("on the saved deck page", () => {
+      const FORMS_PLAYED = '<section class="card view-only"><h2>Forms Played</h2>';
+      const savedDeck = (cards: string[]) => createDeck(user.id, { name: "Saved", cards });
+
+      test("lists one card per form the deck's cards were played in, in the page and the partial", async () => {
+        await linkWithForms();
+        const deck = savedDeck(equipped);
+        for (const path of [`/decks/${deck.id}`, `/decks/${deck.id}?partial=1`]) {
+          const html = await (await get(path)).text();
+          const section = html.split(FORMS_PLAYED)[1] ?? "";
+          // After Notes, outside the edit controls.
+          expect(html.indexOf(FORMS_PLAYED)).toBeGreaterThan(html.indexOf("<h2>Notes</h2>"));
+          const [evo, hero, ...rest] = variantCards(section);
+          expect(rest).toHaveLength(0);
+          expect(evo).toStartWith(`" data-variant-key="${EVO_KEY}">`);
+          expect(evo).toContain("<strong>15</strong> games");
+          expect(hero).toStartWith(`" data-variant-key="${HERO_KEY}">`);
+        }
+      });
+
+      test("a deck played in one form says so", async () => {
+        await linkFixturePlayer(user, env.client);
+        const deck = savedDeck(GOLEM_KEY.split("|"));
+        const html = await (await get(`/decks/${deck.id}?partial=1`)).text();
+        expect(html).toContain(`${FORMS_PLAYED}<p class="muted">Played in this form only so far.</p></section>`);
+        expect(html).not.toContain("deck-variant");
+      });
+
+      test("no section without battles, without a player, or in edit mode", async () => {
+        const unlinked = savedDeck(equipped);
+        expect(await (await get(`/decks/${unlinked.id}`)).text()).not.toContain("Forms Played");
+
+        await linkWithForms();
+        const unplayed = savedDeck(HOG);
+        expect(await (await get(`/decks/${unplayed.id}`)).text()).not.toContain("Forms Played");
+        expect(await (await get(`/decks/${unlinked.id}?edit=1`)).text()).not.toContain("Forms Played");
+        expect(await (await get("/decks/new")).text()).not.toContain("Forms Played");
+      });
+    });
   });
 });
