@@ -213,14 +213,14 @@ const openCardPicker = ({ slot, options, onPick, returnFocus }) => {
       const tags = document.createElement("div");
       tags.className = "slot-forms";
       for (const f of forms) {
-        // Two forms: each tag is its own choice. One: a plain label, and the whole card picks it.
+        // Two forms: each tag switches the form shown; the card itself picks whichever is lit.
         const tag = document.createElement(forms.length > 1 ? "button" : "span");
         tag.className = `form-tag form-${f}${f === shown ? " is-active" : ""}`;
         tag.textContent = FORM_LABELS[f];
         if (forms.length > 1) {
           tag.type = "button";
           tag.dataset.form = f;
-          tag.setAttribute("aria-label", `${opt.value}, ${FORM_LABELS[f]}`);
+          tag.setAttribute("aria-label", `Show ${opt.value} as ${FORM_LABELS[f]}`);
         }
         tags.append(tag);
       }
@@ -267,9 +267,22 @@ const openCardPicker = ({ slot, options, onPick, returnFocus }) => {
     }
     const card = e.target.closest(".picker-card");
     if (!card) return;
-    const form = (e.target.closest("[data-form]") ?? card.querySelector(".picker-pick")).dataset.form;
+    const pickBtn = card.querySelector(".picker-pick");
+    const tag = e.target.closest(".slot-forms [data-form]");
+    if (tag) {
+      for (const t of card.querySelectorAll(".slot-forms .form-tag")) t.classList.toggle("is-active", t === tag);
+      pickBtn.dataset.form = tag.dataset.form;
+      const opt = options.find((o) => o.value === card.dataset.value);
+      const fig = pickBtn.querySelector(".card-icon");
+      fillCardIcon(fig, opt.value, opt, tag.dataset.form);
+      // fillCardIcon empties the icon, which drops the level badge shown in owned-only mode.
+      const from = pickBtn.querySelector(".slot-from");
+      if (from) renderLevelBadge(fig, from, opt);
+      return;
+    }
+    if (!e.target.closest(".picker-pick")) return;
     close();
-    onPick(card.dataset.value, form || null);
+    onPick(card.dataset.value, pickBtn.dataset.form || null);
   });
   search.addEventListener("input", renderGrid);
   allToggle?.addEventListener("change", renderGrid);
