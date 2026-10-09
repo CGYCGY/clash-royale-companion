@@ -180,14 +180,16 @@ const usedDeckHref = (deckKey: string) => `/decks/used?deck=${encodeURIComponent
 const variantViews = (cards: VariantCard[], catalog: Map<string, CardRecord>) =>
   variantSlotOrder(cards).map((c) => toCardView(c, catalog));
 
-function DetailsLink({ deckKey, forms }: { deckKey: string; forms: number }) {
+// The whole used card opens the dialog from app.js; this is its real link for keyboard and no-JS users.
+function PlayedLink({ stats }: { stats: UsedDeckStats }) {
+  const forms = stats.variants.length;
   return (
-    <>
-      <a class="btn btn-ghost btn-small" href={usedDeckHref(deckKey)} data-modal="Used Deck">
-        Details
+    <span class="muted small played-link">
+      {forms > 1 && `${forms} forms · `}
+      <a href={usedDeckHref(stats.deckKey)} data-modal="Used Deck" {...localTitle(stats.lastPlayed)}>
+        played {formatRelative(stats.lastPlayed)}
       </a>
-      {forms > 1 && <span class="muted small">{forms} forms</span>}
-    </>
+    </span>
   );
 }
 
@@ -757,30 +759,26 @@ export const deckPages = new Hono<AppEnv>()
               {saved.length ? (
                 <div class="grid">
                   {saved.map(({ deck: d, stats, inUse }) => (
-                    <article class={`card deck-card deck-saved${inUse ? " in-use" : ""}`}>
+                    <article
+                      class={`card deck-card deck-saved${inUse ? " in-use" : ""}`}
+                      data-href={`/decks/${d.id}`}
+                      data-modal="Deck"
+                    >
                       <div class="row deck-card-head">
-                        <h3 class="deck-name">
-                          <a href={`/decks/${d.id}`} data-modal="Deck">
-                            {d.name}
-                          </a>
-                        </h3>
-                        <div class="spacer" />
                         <span class="deck-tags">
                           {inUse && <DeckTag kind="in-use" />}
                           <DeckTag kind="saved" />
                           <SourceBadge source={d.source} />
                         </span>
+                        <div class="spacer" />
+                        <span class="muted small">updated {formatRelative(d.updatedAt)}</span>
                       </div>
-                      <DeckGrid cards={namedCardViews(d.cards, catalog)} size="sm" />
-                      <DeckStats stats={stats} avgElixir={averageElixir(d.cards, catalog)} tracked={player !== null} />
-                      <ModeTags
-                        tags={unionTags(d.tags, stats?.modeTags ?? [])}
-                        label={d.tags.length ? "Modes" : undefined}
-                      />
-                      {d.notes && (
-                        <p class="muted excerpt">{d.notes.length > 140 ? `${d.notes.slice(0, 140)}…` : d.notes}</p>
-                      )}
-                      <div class="row deck-actions">
+                      <div class="row deck-title">
+                        <h3 class="deck-name">
+                          <a href={`/decks/${d.id}`} data-modal="Deck">
+                            {d.name}
+                          </a>
+                        </h3>
                         <a
                           class="icon-btn"
                           href={`/decks/${d.id}?edit=1`}
@@ -790,6 +788,17 @@ export const deckPages = new Hono<AppEnv>()
                         >
                           <PencilIcon />
                         </a>
+                      </div>
+                      <DeckGrid cards={namedCardViews(d.cards, catalog)} size="sm" />
+                      <DeckStats stats={stats} avgElixir={averageElixir(d.cards, catalog)} tracked={player !== null} />
+                      <ModeTags
+                        tags={unionTags(d.tags, stats?.modeTags ?? [])}
+                        label={d.tags.length ? "Modes" : undefined}
+                      />
+                      {/* CSS clamps it to three lines; the cap only keeps a huge note out of every list row. */}
+                      {d.notes && <p class="muted excerpt">{d.notes.length > 600 ? `${d.notes.slice(0, 600)}…` : d.notes}</p>}
+                      <div class="row deck-actions">
+                        <div class="spacer" />
                         <form
                           method="post"
                           action={`/decks/${d.id}/delete`}
@@ -805,9 +814,6 @@ export const deckPages = new Hono<AppEnv>()
                             <TrashIcon />
                           </button>
                         </form>
-                        {stats && <DetailsLink deckKey={stats.deckKey} forms={stats.variants.length} />}
-                        <div class="spacer" />
-                        <span class="muted small">updated {formatRelative(d.updatedAt)}</span>
                       </div>
                     </article>
                   ))}
@@ -833,14 +839,18 @@ export const deckPages = new Hono<AppEnv>()
               {used.length ? (
                 <div class="grid">
                   {used.map(({ cards, stats, inUse }) => (
-                    <article class={`card deck-card deck-used${inUse ? " in-use" : ""}`}>
+                    <article
+                      class={`card deck-card deck-used${inUse ? " in-use" : ""}`}
+                      data-href={stats && usedDeckHref(stats.deckKey)}
+                      data-modal={stats && "Used Deck"}
+                    >
                       <div class="row deck-card-head">
                         <span class="deck-tags">
                           {inUse && <DeckTag kind="in-use" />}
                           <DeckTag kind="used" />
                         </span>
                         <div class="spacer" />
-                        {stats && <PlayedAgo iso={stats.lastPlayed} />}
+                        {stats && <PlayedLink stats={stats} />}
                       </div>
                       <DeckGrid
                         cards={stats ? variantViews(latestVariant(stats).cards, catalog) : namedCardViews(cards, catalog)}
@@ -848,11 +858,6 @@ export const deckPages = new Hono<AppEnv>()
                       />
                       <DeckStats stats={stats} avgElixir={averageElixir(cards, catalog)} tracked />
                       {stats && <ModeTags tags={stats.modeTags} />}
-                      {stats && (
-                        <div class="row deck-actions">
-                          <DetailsLink deckKey={stats.deckKey} forms={stats.variants.length} />
-                        </div>
-                      )}
                     </article>
                   ))}
                 </div>

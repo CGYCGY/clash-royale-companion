@@ -931,6 +931,11 @@ legend {
   margin-bottom: 0;
   white-space: pre-line;
   overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
 }
 .notes p {
   white-space: pre-line;
@@ -1562,6 +1567,18 @@ label.switch {
   gap: 0.5rem;
   min-height: 1.6rem;
 }
+/* List cards lead with the tags: they wrap inside their own box so the time stays top right on the first
+ * line. Dialog heads put the tags last and keep the plain wrapping row. */
+.deck-card-head:has(> .deck-tags:first-child) {
+  flex-wrap: nowrap;
+}
+.deck-card-head > .deck-tags:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.deck-card-head > .deck-tags:first-child ~ .muted.small {
+  white-space: nowrap;
+}
 .deck-card.deck-used {
   border-style: dashed;
 }
@@ -1576,6 +1593,30 @@ label.switch {
 }
 .deck-actions {
   gap: 0.25rem;
+}
+.deck-title {
+  gap: 0.25rem;
+  flex-wrap: nowrap;
+}
+.deck-title .deck-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.played-link a {
+  color: inherit;
+}
+/* app.js adds .is-clickable once a click anywhere on the card opens its dialog. */
+.deck-card.is-clickable {
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+.deck-card.is-clickable:hover {
+  border-color: var(--accent);
+  background: var(--surface-2);
+}
+.deck-card.is-clickable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 .variant-forms {
   color: var(--muted);

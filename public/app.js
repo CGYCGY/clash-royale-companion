@@ -938,11 +938,12 @@ for (const menu of document.querySelectorAll("details.player-menu")) {
   });
 }
 
-// Battle rows: the time cell holds the real link (keyboard focus target, no-JS fallback, and what
-// ctrl/cmd/middle-click open in a new tab); a plain click anywhere on the row opens it in a dialog.
-// Assigned below when the dialog is supported; live filters call it on rows they swap in.
+// Clickable rows and cards ([data-href], battle rows and deck cards): an inner link holds the real href
+// (keyboard focus target, no-JS fallback, and what ctrl/cmd/middle-click open in a new tab); a plain
+// click anywhere else on the element opens it in a dialog titled by data-modal (default "Battle").
+// Assigned below when the dialog is supported; live filters call it on elements they swap in.
 // Links with data-modal="<Kind>" (saved deck names) open their page's ?partial=1 in the same dialog.
-let wireBattleRows = () => {};
+let wireClickables = () => {};
 const modalTemplate = document.getElementById("battle-modal-template");
 if (modalTemplate && "HTMLDialogElement" in window) {
   const dialog = modalTemplate.content.firstElementChild.cloneNode(true);
@@ -1032,7 +1033,7 @@ if (modalTemplate && "HTMLDialogElement" in window) {
       // Forward onto an entry we pushed earlier: reopen it without pushing again.
       ownsEntry = true;
       const sel = CSS.escape(href);
-      const link = document.querySelector(`.battle-row[data-href="${sel}"], a[data-modal][href="${sel}"]`);
+      const link = document.querySelector(`.is-clickable[data-href="${sel}"], a[data-modal][href="${sel}"]`);
       open(href, link, { push: false, kind: e.state.modalKind ?? "Battle" });
     } else if (dialog.open) {
       ownsEntry = false;
@@ -1041,13 +1042,13 @@ if (modalTemplate && "HTMLDialogElement" in window) {
   });
 
   const modified = (e) => e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey;
-  wireBattleRows = (root) => {
-    for (const row of root.querySelectorAll("tr.battle-row[data-href]:not(.is-clickable)")) {
+  wireClickables = (root) => {
+    for (const row of root.querySelectorAll("[data-href]:not(.is-clickable)")) {
       const href = row.dataset.href;
+      const kind = row.dataset.modal ?? "Battle";
       row.classList.add("is-clickable");
-      // The row is the only way to open a battle, so it must be reachable and operable by keyboard.
       row.tabIndex = 0;
-      row.setAttribute("aria-label", `Open battle: ${row.textContent.replace(/\s+/g, " ").trim().slice(0, 80)}`);
+      row.setAttribute("aria-label", `Open ${kind.toLowerCase()}: ${row.textContent.replace(/\s+/g, " ").trim().slice(0, 80)}`);
       row.addEventListener("click", (e) => {
         // Other controls in the row keep their own behaviour.
         if (e.target.closest("a, button, input, select, textarea, summary, label")) return;
@@ -1057,7 +1058,7 @@ if (modalTemplate && "HTMLDialogElement" in window) {
           if (e.ctrlKey || e.metaKey) window.open(href, "_blank", "noopener");
           return;
         }
-        open(href, row);
+        open(href, row, { kind });
       });
       row.addEventListener("auxclick", (e) => {
         if (e.button === 1 && !e.target.closest("a, button")) window.open(href, "_blank", "noopener");
@@ -1065,11 +1066,11 @@ if (modalTemplate && "HTMLDialogElement" in window) {
       row.addEventListener("keydown", (e) => {
         if (e.target !== row || (e.key !== "Enter" && e.key !== " ")) return;
         e.preventDefault();
-        open(href, row);
+        open(href, row, { kind });
       });
     }
   };
-  wireBattleRows(document);
+  wireClickables(document);
 
   // Delegated, since live filters swap these links in and out.
   document.addEventListener("click", (e) => {
@@ -1105,7 +1106,7 @@ const liveSwap = async (url, { push = false } = {}) => {
     liveShown = url.pathname + url.search;
     if (push) history.pushState({ live: true }, "", liveShown);
     else history.replaceState(history.state, "", liveShown);
-    wireBattleRows(document);
+    wireClickables(document);
     localizeTimes(document);
     wireDeckPage(document);
     return true;

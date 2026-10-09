@@ -403,19 +403,36 @@ describe("deck pages", () => {
     const href = (key: string) => `/decks/used?deck=${encodeURIComponent(key)}`;
     const equipped = ["The Log", "Fireball", "Cannon", "Skeletons", "Ice Spirit", "Ice Golem", "Musketeer", "Hog Rider"];
 
-    test("used and saved-with-stats deck cards link to it", async () => {
+    test("used deck cards open it, saved deck cards open the saved deck", async () => {
       await linkFixturePlayer(user, env.client);
       await env.app.request("/decks", formPost(cookie, { name: "Hog 2.6", cards: equipped }));
       await env.app.request("/decks", formPost(cookie, { name: "Unplayed", cards: HOG }));
       const html = await (await get("/decks")).text();
-      const link = (key: string) =>
-        `<a class="btn btn-ghost btn-small" href="${href(key).replaceAll("&", "&amp;")}" data-modal="Used Deck">Details</a>`;
+      const attr = (key: string) => href(key).replaceAll("&", "&amp;");
       const saved = /<h2>Saved Decks<\/h2>.*?<\/section>/.exec(html)?.[0] ?? "";
       const used = /<h2>Used in Battles.*?<\/section>/.exec(html)?.[0] ?? "";
       const [hog, unplayed] = saved.split("<article ").slice(1);
-      expect(hog).toContain(link(HOG_KEY));
-      expect(unplayed).not.toContain("Details");
-      expect(used).toContain(link(GOLEM_KEY));
+      const [hogDeck, unplayedDeck] = listDecks(user.id).sort((a, b) => a.id - b.id);
+      expect(hog).toStartWith(`class="card deck-card deck-saved in-use" data-href="/decks/${hogDeck!.id}" data-modal="Deck">`);
+      expect(hog).toContain(`<a href="/decks/${hogDeck!.id}" data-modal="Deck">Hog 2.6</a>`);
+      expect(hog).not.toContain("Used Deck");
+      expect(unplayed).toStartWith(`class="card deck-card deck-saved" data-href="/decks/${unplayedDeck!.id}" data-modal="Deck">`);
+      expect(html).not.toContain(">Details</a>");
+
+      const [golem] = used.split("<article ").slice(1);
+      expect(golem).toStartWith(`class="card deck-card deck-used" data-href="${attr(GOLEM_KEY)}" data-modal="Used Deck">`);
+      expect(golem).toMatch(new RegExp(`<a href="${RegExp.escape(attr(GOLEM_KEY))}" data-modal="Used Deck" title="[^"]+" data-local-title="[^"]+">played `));
+      expect(golem).not.toContain(" forms · ");
+    });
+
+    test("saved deck cards put tags and time first, then the name and edit, and delete last", async () => {
+      await env.app.request("/decks", formPost(cookie, { name: "Long", cards: HOG, notes: "x".repeat(700) }));
+      const html = await (await get("/decks")).text();
+      const card = /<article class="card deck-card deck-saved.*?<\/article>/.exec(html)?.[0] ?? "";
+      expect(card).toMatch(/<div class="row deck-card-head"><span class="deck-tags">.*?<\/span><div class="spacer"><\/div><span class="muted small">updated /);
+      expect(card).toMatch(/<div class="row deck-title"><h3 class="deck-name"><a [^>]+>Long<\/a><\/h3><a class="icon-btn" href="[^"]+\?edit=1"/);
+      expect(card).toMatch(/<div class="row deck-actions"><div class="spacer"><\/div><form [^>]*action="\/decks\/\d+\/delete"[^]*<\/form><\/div><\/article>$/);
+      expect(card).toContain(`<p class="muted excerpt">${"x".repeat(600)}…</p>`);
     });
 
     test("partial is the dialog fragment, full page has the back link", async () => {
@@ -503,7 +520,7 @@ describe("deck pages", () => {
       const hog = /<h2>Used in Battles.*?<\/section>/.exec(list)?.[0]?.split("<article ")[1] ?? "";
       expect(hog).toMatch(/<figure class="card-icon size-sm evolved" title="Ice Spirit">/);
       expect(hog).not.toContain('class="card-icon size-sm hero"');
-      expect(hog).toContain('data-modal="Used Deck">Details</a><span class="muted small">2 forms</span>');
+      expect(hog).toContain('<span class="muted small played-link">2 forms · <a href=');
     });
 
     test("the header grid lays the cards out by slot: Evo, then the empty Hero slot, then the Wild Evo", async () => {
