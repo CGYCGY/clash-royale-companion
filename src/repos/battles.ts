@@ -42,6 +42,8 @@ export interface BattleRecord {
   opponentDeck: DeckCard[];
   /** Sorted names of the tracked player's own 8 cards joined with "|"; groups battles by deck. */
   deckKey: string;
+  /** The deck key plus the form each own card was played in; see `variantKeyOf`. */
+  variantKey: string;
   trophyChange: number | null;
   isTwoVsTwo: boolean;
 }
@@ -62,13 +64,14 @@ interface BattleRow {
   team_deck: string;
   opponent_deck: string;
   deck_key: string;
+  variant_key: string;
   trophy_change: number | null;
   team_size: number;
   data?: string;
 }
 
 const LIST_COLUMNS =
-  "id, player_tag, battle_time, type, game_mode_name, event_tag, arena_name, opponent_tag, opponent_name, result, team_crowns, opponent_crowns, team_deck, opponent_deck, deck_key, trophy_change, team_size";
+  "id, player_tag, battle_time, type, game_mode_name, event_tag, arena_name, opponent_tag, opponent_name, result, team_crowns, opponent_crowns, team_deck, opponent_deck, deck_key, variant_key, trophy_change, team_size";
 
 function toRecord(r: BattleRow, titles: ReadonlyMap<string, string>): BattleRecord {
   const teamDeck = JSON.parse(r.team_deck) as DeckCard[];
@@ -91,12 +94,44 @@ function toRecord(r: BattleRow, titles: ReadonlyMap<string, string>): BattleReco
     teamDeck,
     opponentDeck: JSON.parse(r.opponent_deck) as DeckCard[],
     deckKey: r.deck_key,
+    variantKey: r.variant_key,
     trophyChange: r.trophy_change,
     isTwoVsTwo: r.team_size > 1,
   };
 }
 
 export const deckKeyOf = (names: string[]): string => [...names].sort().join("|");
+
+export interface VariantCard {
+  name: string;
+  /** Form the card was played in: the Evo/Hero bitmask (see src/domain/evolution.ts), 0 for the base card. */
+  evolutionLevel: number;
+}
+
+const FORM_SUFFIX: Record<number, string> = { 1: ":evo", 2: ":hero", 3: ":evo+hero" };
+const FORM_BITS: Record<string, number> = { evo: 1, hero: 2, "evo+hero": 3 };
+
+/**
+ * Groups battles by the deck *and* the form each card was played in: the deck key's sorted names, each
+ * carrying ":evo" / ":hero" when played in that form, e.g. "Cannon|...|Skeletons:evo|The Log". Two
+ * decks with the same `deckKeyOf` but different variant keys are forms (variants) of one deck family.
+ * Migration 0010 rebuilds this format in SQL for old rows; keep the two in step.
+ */
+export const variantKeyOf = (cards: VariantCard[]): string =>
+  cards
+    .map((c) => `${c.name}${FORM_SUFFIX[c.evolutionLevel & 3] ?? ""}`)
+    .sort()
+    .join("|");
+
+/** Inverse of `variantKeyOf`. Card names never contain ":" so the last colon splits the form. */
+export function parseVariantKey(key: string): VariantCard[] {
+  if (!key) return [];
+  return key.split("|").map((entry) => {
+    const i = entry.lastIndexOf(":");
+    const bits = i === -1 ? undefined : FORM_BITS[entry.slice(i + 1)];
+    return bits === undefined ? { name: entry, evolutionLevel: 0 } : { name: entry.slice(0, i), evolutionLevel: bits };
+  });
+}
 
 /** `won` overrides crowns for modes that report the outcome separately (boat battles are always 0-0). */
 export function computeResult(teamCrowns: number, opponentCrowns: number, won?: boolean): BattleResult {
@@ -146,6 +181,7 @@ export function battleToRow(tag: string, entry: BattleLogEntry, catalog: Map<num
     team_deck: JSON.stringify(teamDeck),
     opponent_deck: JSON.stringify(opponentDeck),
     deck_key: deckKeyOf(ownCards.map((c) => c.name)),
+    variant_key: variantKeyOf(ownCards),
     trophy_change: me.trophyChange ?? null,
     team_size: entry.team.length,
     data: JSON.stringify(entry),
@@ -162,10 +198,10 @@ export function insertBattles(tag: string, entries: BattleLogEntry[]): number {
   const stmt = db.query(
     `INSERT OR IGNORE INTO battles (player_tag, battle_time, type, game_mode_name, event_tag, arena_name,
        opponent_tag, opponent_name, result, team_crowns, opponent_crowns, team_deck, opponent_deck, deck_key,
-       trophy_change, team_size, data)
+       variant_key, trophy_change, team_size, data)
      VALUES ($player_tag, $battle_time, $type, $game_mode_name, $event_tag, $arena_name, $opponent_tag,
        $opponent_name, $result, $team_crowns, $opponent_crowns, $team_deck, $opponent_deck, $deck_key,
-       $trophy_change, $team_size, $data)`,
+       $variant_key, $trophy_change, $team_size, $data)`,
   );
   let added = 0;
   db.transaction(() => {
@@ -322,7 +358,22 @@ export interface BattleStats {
     avgElixir: number | null;
     lastPlayed: string;
     modeTags: string[];
+    /**
+     * The forms this deck was played in, most games first then by key: one entry per distinct
+     * `variantKey` (see `variantKeyOf`). A deck played in one form only has exactly one entry, so
+     * the sum of variant games is always the deck's games.
+     */
+    variants: DeckVariantStats[];
   })[];
+}
+
+export interface DeckVariantStats extends Tally {
+  variantKey: string;
+  /** Sorted as in the key, with the form each card was played in. */
+  cards: VariantCard[];
+  lastPlayed: string;
+  /** Mode tags the variant was played under, most games first, like the deck's. */
+  modeTags: string[];
 }
 
 interface TallyRow {
@@ -386,29 +437,55 @@ export function getBattleStats(tag: string, { sinceDays, mode }: { sinceDays?: n
   const byMode = [...byLabel.entries()]
     .map(([modeLabel, r]) => ({ type: r.type, mode: r.mode, modeLabel, modeTags: r.tags, ...tally(r) }))
     .sort((a, b) => b.games - a.games || a.modeLabel.localeCompare(b.modeLabel));
-  const byDeck = db
-    .query<TallyRow & { deck_key: string; last_played: string }, SqlParam[]>(
-      `SELECT deck_key, MAX(battle_time) AS last_played, ${TALLY_SQL} FROM battles
-       WHERE ${sql} GROUP BY deck_key ORDER BY games DESC, deck_key`,
+  // Variant rows roll up into their deck, so one grouped query serves both levels.
+  const variantRows = db
+    .query<TallyRow & { deck_key: string; variant_key: string; last_played: string }, SqlParam[]>(
+      `SELECT deck_key, variant_key, MAX(battle_time) AS last_played, ${TALLY_SQL} FROM battles
+       WHERE ${sql} GROUP BY deck_key, variant_key`,
     )
     .all(...params);
+  // A variant key implies its deck key, so variant keys are unique across decks.
   const deckTagGames = new Map<string, Map<string, number>>();
-  const deckComboRows = db
-    .query<{ deck_key: string; type: string; mode: string; event_tag: string | null; games: number }, SqlParam[]>(
-      `SELECT deck_key, type, game_mode_name AS mode, event_tag, COUNT(*) AS games FROM battles
-       WHERE ${sql} GROUP BY deck_key, type, game_mode_name, event_tag`,
+  const variantTagGames = new Map<string, Map<string, number>>();
+  const countTags = (byKey: Map<string, Map<string, number>>, key: string, tags: string[], games: number) => {
+    const counts = byKey.get(key) ?? new Map<string, number>();
+    byKey.set(key, counts);
+    for (const t of tags) counts.set(t, (counts.get(t) ?? 0) + games);
+  };
+  const comboByKeyRows = db
+    .query<{ deck_key: string; variant_key: string; type: string; mode: string; event_tag: string | null; games: number }, SqlParam[]>(
+      `SELECT deck_key, variant_key, type, game_mode_name AS mode, event_tag, COUNT(*) AS games FROM battles
+       WHERE ${sql} GROUP BY deck_key, variant_key, type, game_mode_name, event_tag`,
     )
     .all(...params);
-  for (const r of deckComboRows) {
-    const counts = deckTagGames.get(r.deck_key) ?? new Map<string, number>();
-    deckTagGames.set(r.deck_key, counts);
-    for (const t of battleMode({ type: r.type, gameModeName: r.mode, eventTag: r.event_tag }, titles).tags) {
-      counts.set(t, (counts.get(t) ?? 0) + r.games);
-    }
+  for (const r of comboByKeyRows) {
+    const { tags } = battleMode({ type: r.type, gameModeName: r.mode, eventTag: r.event_tag }, titles);
+    countTags(deckTagGames, r.deck_key, tags, r.games);
+    countTags(variantTagGames, r.variant_key, tags, r.games);
   }
   // A sub-mode tag never outnumbers its group tag, and the stable sort keeps the group first on a tie.
-  const deckTags = (key: string): string[] =>
-    [...(deckTagGames.get(key) ?? [])].sort(([, a], [, b]) => b - a).map(([t]) => t);
+  const tagsOf = (counts: Map<string, number> | undefined): string[] =>
+    [...(counts ?? [])].sort(([, a], [, b]) => b - a).map(([t]) => t);
+  // Code-unit order, matching the SQL BINARY ORDER BY this replaced.
+  const byKey = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+  const decks = new Map<string, TallyRow & { last_played: string; variants: DeckVariantStats[] }>();
+  for (const r of variantRows) {
+    const deck = decks.get(r.deck_key) ?? { games: 0, wins: 0, losses: 0, draws: 0, last_played: "", variants: [] };
+    decks.set(r.deck_key, deck);
+    deck.games += r.games;
+    deck.wins += r.wins ?? 0;
+    deck.losses += r.losses ?? 0;
+    deck.draws += r.draws ?? 0;
+    if (r.last_played > deck.last_played) deck.last_played = r.last_played;
+    deck.variants.push({
+      variantKey: r.variant_key,
+      cards: parseVariantKey(r.variant_key),
+      lastPlayed: r.last_played,
+      modeTags: tagsOf(variantTagGames.get(r.variant_key)),
+      ...tally(r),
+    });
+  }
+  const byDeck = [...decks.entries()].sort(([ka, a], [kb, b]) => b.games - a.games || byKey(ka, kb));
   const catalog = cardsMap();
   const t = tally(totals);
   return {
@@ -420,14 +497,15 @@ export function getBattleStats(tag: string, { sinceDays, mode }: { sinceDays?: n
     winRate: t.winRate,
     netTrophies: totals.net ?? 0,
     byMode,
-    byDeck: byDeck.map((r) => {
-      const cards = r.deck_key ? r.deck_key.split("|") : [];
+    byDeck: byDeck.map(([deckKey, r]) => {
+      const cards = deckKey ? deckKey.split("|") : [];
       return {
-        deckKey: r.deck_key,
+        deckKey,
         cards,
         avgElixir: averageElixir(cards, catalog),
         lastPlayed: r.last_played,
-        modeTags: deckTags(r.deck_key),
+        modeTags: tagsOf(deckTagGames.get(deckKey)),
+        variants: r.variants.sort((a, b) => b.games - a.games || byKey(a.variantKey, b.variantKey)),
         ...tally(r),
       };
     }),

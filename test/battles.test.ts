@@ -1,6 +1,15 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import type { BattleLogEntry, GameEvent } from "../src/cr/types";
-import { countBattles, getBattle, getBattleStats, insertBattles, listBattles, modeLabelFor } from "../src/repos/battles";
+import {
+  countBattles,
+  getBattle,
+  getBattleStats,
+  insertBattles,
+  listBattles,
+  modeLabelFor,
+  parseVariantKey,
+  variantKeyOf,
+} from "../src/repos/battles";
 import { eventTitles, upsertEvents } from "../src/repos/events";
 import { addPlayer } from "../src/repos/players";
 import { getDb, migrate, openDatabase } from "../src/db";
@@ -9,6 +18,9 @@ import { FIXTURE_TAG, loadFixture, makeTestDb, makeUser, seedCards } from "./hel
 const fixtureLadder = (): BattleLogEntry => structuredClone(loadFixture<BattleLogEntry[]>("battlelog")[0]!);
 
 const HOG = ["Cannon", "Fireball", "Hog Rider", "Ice Golem", "Ice Spirit", "Musketeer", "Skeletons", "The Log"].join("|");
+const HOG_EVO = HOG.replace("Ice Spirit", "Ice Spirit:evo").replace("Musketeer", "Musketeer:evo");
+// The one battlelog-modes battle with Musketeer as Evo+Hero and Ice Golem as Hero.
+const HOG_HERO = HOG.replace("Ice Golem", "Ice Golem:hero").replace("Ice Spirit", "Ice Spirit:evo").replace("Musketeer", "Musketeer:evo+hero");
 
 beforeEach(() => {
   makeTestDb();
@@ -67,6 +79,27 @@ describe("insertBattles / listBattles", () => {
 
   test("re-inserting is a no-op", () => {
     expect(insertBattles(FIXTURE_TAG, loadFixture<BattleLogEntry[]>("battlelog"))).toBe(0);
+  });
+});
+
+describe("variant keys", () => {
+  test("sort by name and round trip every form", () => {
+    const cards = [
+      { name: "Zap", evolutionLevel: 0 },
+      { name: "Musketeer", evolutionLevel: 3 },
+      { name: "Ice Golem", evolutionLevel: 2 },
+      { name: "Bomber", evolutionLevel: 1 },
+    ];
+    const key = variantKeyOf(cards);
+    expect(key).toBe("Bomber:evo|Ice Golem:hero|Musketeer:evo+hero|Zap");
+    expect(parseVariantKey(key)).toEqual([...cards].sort((a, b) => (a.name < b.name ? -1 : 1)));
+    expect(variantKeyOf([])).toBe("");
+    expect(parseVariantKey("")).toEqual([]);
+  });
+
+  test("stored per battle from the player's own cards only", () => {
+    const [duo] = listBattles(FIXTURE_TAG, { mode: "TeamVsTeam" });
+    expect(duo!.variantKey).toBe(HOG_EVO);
   });
 });
 
@@ -137,6 +170,46 @@ describe("unusual battle entries", () => {
       { type: "boatBattle", event_tag: null },
     ]);
     expect(db.query("SELECT COUNT(*) AS n FROM events").get()).toEqual({ n: 0 });
+  });
+
+  test("migration 0010 backfills variant_key from the player's 8 cards of stored team_deck JSON", () => {
+    const db = openDatabase(":memory:");
+    db.exec("CREATE TABLE schema_migrations (name TEXT PRIMARY KEY, applied_at TEXT NOT NULL)");
+    db.query("INSERT INTO schema_migrations VALUES ('0010_battle_variant_key.sql', 'x')").run();
+    migrate(db);
+    db.query("DELETE FROM schema_migrations WHERE name = '0010_battle_variant_key.sql'").run();
+    db.query("INSERT INTO users (username, password_hash, created_at) VALUES ('u', 'h', 'x')").run();
+    db.query("INSERT INTO players (tag, user_id, added_at) VALUES (?, 1, 'x')").run(FIXTURE_TAG);
+    insertBattles(FIXTURE_TAG, loadFixture<BattleLogEntry[]>("battlelog-modes"));
+    const rows = getDb().query<Record<string, unknown>, []>("SELECT * FROM battles").all();
+    const insert = db.query(
+      `INSERT INTO battles (player_tag, battle_time, type, game_mode_name, event_tag, arena_name, opponent_tag, opponent_name,
+         result, team_crowns, opponent_crowns, team_deck, opponent_deck, deck_key, trophy_change, team_size, data)
+       VALUES ($player_tag, $battle_time, $type, $game_mode_name, $event_tag, $arena_name, $opponent_tag, $opponent_name,
+         $result, $team_crowns, $opponent_crowns, $team_deck, $opponent_deck, $deck_key, $trophy_change, $team_size, $data)`,
+    );
+    for (const { id: _id, variant_key: _vk, ...r } of rows) insert.run(r as never);
+    // Older rows may lack evolutionLevel entirely; it reads as the base form.
+    insert.run({
+      ...(rows[0] as object),
+      battle_time: "2020-01-01T00:00:00.000Z",
+      team_deck: JSON.stringify([{ id: 1, name: "Knight", level: 11 }, { id: 2, name: "Archers", level: 11, evolutionLevel: 1 }]),
+      id: undefined,
+      variant_key: undefined,
+    } as never);
+    expect(migrate(db)).toEqual(["0010_battle_variant_key.sql"]);
+    const stored = db
+      .query<{ team_deck: string; team_size: number; variant_key: string }, []>(
+        "SELECT team_deck, team_size, variant_key FROM battles ORDER BY battle_time",
+      )
+      .all();
+    expect(stored.some((r) => r.team_size === 2 && JSON.parse(r.team_deck).length === 16)).toBe(true);
+    expect(stored.map((r) => r.variant_key)).toContain(HOG_HERO);
+    expect(stored[0]!.variant_key).toBe("Archers:evo|Knight");
+    for (const r of stored) {
+      const own = (JSON.parse(r.team_deck) as { name: string; evolutionLevel?: number }[]).slice(0, 8);
+      expect(r.variant_key).toBe(variantKeyOf(own.map((c) => ({ name: c.name, evolutionLevel: c.evolutionLevel ?? 0 }))));
+    }
   });
 
   test("migration 0002 backfills team_size from stored battle JSON", () => {
@@ -257,6 +330,54 @@ describe("getBattleStats", () => {
     upsertEvents([{ eventTag: "#NEW", title: "New Event", description: null }]);
     expect(eventTitles().get("#2C9J8QUU")).toBe("Royale Shuffle");
     expect(heist()).toBe("Royale Shuffle");
+  });
+
+  test("a deck played in two forms has one variant per form", () => {
+    upsertEvents(loadFixture<GameEvent[]>("events"));
+    insertBattles(FIXTURE_TAG, loadFixture<BattleLogEntry[]>("battlelog-modes"));
+    const deck = getBattleStats(FIXTURE_TAG).byDeck.find((d) => d.deckKey === HOG)!;
+    expect(deck.games).toBe(16);
+    expect(deck.variants.map((v) => [v.variantKey, v.games])).toEqual([
+      [HOG_EVO, 15],
+      [HOG_HERO, 1],
+    ]);
+    expect(deck.variants.reduce((n, v) => n + v.games, 0)).toBe(deck.games);
+    const [evo, hero] = deck.variants;
+    expect(evo!.lastPlayed).toBe(deck.lastPlayed);
+    expect(evo!.lastPlayed).toBe("2026-09-24T18:00:00.000Z");
+    expect(hero).toMatchObject({
+      lastPlayed: "2026-09-24T11:00:00.000Z",
+      wins: 0,
+      losses: 1,
+      winRate: 0,
+      modeTags: ["Princess Gambit Tournament"],
+    });
+    expect(hero!.cards.find((c) => c.name === "Musketeer")).toEqual({ name: "Musketeer", evolutionLevel: 3 });
+    expect(hero!.cards.find((c) => c.name === "Ice Golem")).toEqual({ name: "Ice Golem", evolutionLevel: 2 });
+    expect(hero!.cards.find((c) => c.name === "Hog Rider")).toEqual({ name: "Hog Rider", evolutionLevel: 0 });
+    expect(evo!.modeTags).toEqual(deck.modeTags.filter((t) => t !== "Princess Gambit Tournament"));
+
+    const [war] = getBattleStats(FIXTURE_TAG, { mode: "Clan War" }).byDeck;
+    expect(war!.variants.map((v) => v.variantKey)).toEqual([HOG_EVO]);
+    expect(war!.variants[0]!.games).toBe(war!.games);
+    const gambit = getBattleStats(FIXTURE_TAG, { mode: "Princess Gambit Tournament" }).byDeck;
+    expect(gambit.map((d) => d.variants.map((v) => v.variantKey))).toEqual([[HOG_HERO]]);
+  });
+
+  test("variants tied on games order by key", () => {
+    const golem = loadFixture<BattleLogEntry[]>("battlelog")[5]!;
+    const baseZap = (battleTime: string): BattleLogEntry => {
+      const e = structuredClone(golem);
+      e.battleTime = battleTime;
+      for (const c of e.team[0]!.cards ?? []) if (c.name === "Zap") c.evolutionLevel = 0;
+      return e;
+    };
+    insertBattles(FIXTURE_TAG, [baseZap("20260920T100000.000Z"), baseZap("20260920T110000.000Z")]);
+    const deck = getBattleStats(FIXTURE_TAG).byDeck.find((d) => d.cards.includes("Golem"))!;
+    expect(deck.variants.map((v) => [v.variantKey.split("|").at(-1), v.games])).toEqual([
+      ["Zap", 2],
+      ["Zap:evo", 2],
+    ]);
   });
 
   test("sinceDays window and empty stats", () => {

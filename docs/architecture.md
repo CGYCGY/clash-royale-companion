@@ -216,14 +216,21 @@ Codes are 12 chars, case-insensitive.
 - `getBattleStats(tag, { sinceDays?, mode? }) -> { sinceDays, total, wins, losses, draws, winRate, netTrophies, byMode[], byDeck[] }`.
   Each byMode entry has `{ type, mode, modeLabel, modeTags, games, wins, losses, draws, winRate }`, one per label; `type`
   and `mode` are the label's most-played raw combination. Each byDeck entry has
-  `{ deckKey, cards, games, wins, losses, draws, winRate, avgElixir | null, lastPlayed, modeTags }`. winRate is 0..1.
+  `{ deckKey, cards, games, wins, losses, draws, winRate, avgElixir | null, lastPlayed, modeTags, variants }`. winRate is 0..1.
   `modeTags` is every mode tag the deck was played under, most games first, e.g. ["Clan War", "Touchdown"].
   The Decks and Battles pages show them on each deck, and context.md lists them in the top decks table.
+  `variants` splits the deck by the form each card was played in, most games first then by key:
+  `{ variantKey, cards: { name, evolutionLevel }[], games, wins, losses, draws, winRate, lastPlayed, modeTags }`.
+  Variant games always sum to the deck's games.
 - `BattleRecord.teamDeck` / `opponentDeck` are `DeckCard[] = { id, name, level, evolutionLevel }`.
   `level` is already the in-game display level; `evolutionLevel` is the Evo/Hero bitmask (see below).
 - 2v2: `teamDeck` holds 16 cards with the tracked player's 8 first. `isTwoVsTwo` comes from the stored
-  `team_size` (not the deck length), and `deckKey` uses only the player's own 8 cards. `opponentName` joins
-  both names with " & ".
+  `team_size` (not the deck length), and `deckKey` / `variantKey` use only the player's own 8 cards.
+  `opponentName` joins both names with " & ".
+- `BattleRecord.variantKey` (stored `variant_key`) is the deck key with each card's form appended:
+  `variantKeyOf` sorts `name` plus ":evo", ":hero" or ":evo+hero" and joins with "|", e.g.
+  "Cannon|...|Musketeer:evo+hero|The Log"; `parseVariantKey` reverses it. Migration 0010 backfills old rows
+  with the same format in SQL.
 - Boat battles report 0-0 crowns; the result comes from the entry's `boatBattleWon`.
 - `insertBattles` logs and skips a malformed entry instead of failing the whole log.
 
