@@ -14,7 +14,7 @@ import { createDeck, DECK_SIZE, type DeckRecord, deleteDeck, getDeck, listDecks,
 import { getLatestSnapshot, type PlayerRecord } from "../../repos/players";
 import type { AppEnv } from "../../types";
 import { formatElixir, namedCardViews } from "../../views/cardViews";
-import { DeckGrid, EmptyState, ModeTags } from "../../views/components";
+import { DeckGrid, EmptyState, InfoTip, ModeTags } from "../../views/components";
 import { formatDateTime, formatPercent, formatRelative } from "../../views/format";
 import { ArrowLeftIcon } from "../../views/icons";
 import { renderPage } from "../../views/render";
@@ -66,6 +66,29 @@ const DECK_TAG_LABELS = { "in-use": "In Use", saved: "Saved", used: "Used" } as 
 
 function DeckTag({ kind }: { kind: keyof typeof DECK_TAG_LABELS }) {
   return <span class={`tag tag-${kind}`}>{DECK_TAG_LABELS[kind]}</span>;
+}
+
+function DeckLegend({ playerName }: { playerName: string | null }) {
+  return (
+    <ul class="deck-legend">
+      {playerName && (
+        <li>
+          <DeckTag kind="in-use" /> equipped by {playerName} now
+        </li>
+      )}
+      <li>
+        <DeckTag kind="saved" /> saved in this app
+      </li>
+      <li>
+        <SourceBadge source="ai" /> saved by your AI assistant through the API
+      </li>
+      {playerName && (
+        <li>
+          <DeckTag kind="used" /> played in {`${playerName}'s`} stored battles
+        </li>
+      )}
+    </ul>
+  );
 }
 
 function DeckStats({
@@ -329,32 +352,30 @@ export const deckPages = new Hono<AppEnv>()
     const used = allUsed.slice(0, MAX_USED_DECKS);
     const filtered = Boolean(f.mode || f.show);
     const playerName = player ? player.name || player.tag : null;
+    const legendText = [
+      playerName && `In Use: equipped by ${playerName} now.`,
+      "Saved: saved in this app.",
+      "AI: saved by your AI assistant through the API.",
+      playerName && `Used: played in ${playerName}'s stored battles.`,
+    ]
+      .filter(Boolean)
+      .join(" ");
     return renderPage(
       c,
       { title: "Decks", active: "decks" },
       <div class="stack">
         <div class="row">
-          <h1>Decks</h1>
+          <div class="row title-with-tip">
+            <h1>Decks</h1>
+            <InfoTip align="start" text={legendText}>
+              <DeckLegend playerName={playerName} />
+            </InfoTip>
+          </div>
           <div class="spacer" />
           <a class="btn" href="/decks/new">
             New Deck
           </a>
         </div>
-        <ul class="deck-legend" aria-label="Legend">
-          {playerName && (
-            <li>
-              <DeckTag kind="in-use" /> equipped by {playerName} now
-            </li>
-          )}
-          <li>
-            <DeckTag kind="saved" /> saved in this app
-          </li>
-          {playerName && (
-            <li>
-              <DeckTag kind="used" /> played in {`${playerName}'s`} stored battles
-            </li>
-          )}
-        </ul>
 
         <form method="get" action="/decks" class="filters" data-live-filter>
           {modeOptions.length > 0 && (

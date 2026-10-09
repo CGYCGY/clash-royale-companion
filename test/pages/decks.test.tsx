@@ -86,7 +86,10 @@ describe("deck pages", () => {
     await env.app.request("/decks", formPost(cookie, { name: "Unplayed", cards: HOG }));
     const html = await (await env.app.request("/decks", { headers: { Cookie: cookie } })).text();
 
-    expect(html).toContain('<ul class="deck-legend" aria-label="Legend">');
+    const legend = /<span class="info-tip-text" aria-hidden="true"><ul class="deck-legend">.*?<\/ul>/.exec(html)?.[0] ?? "";
+    expect(legend).toContain('<span class="tag tag-saved">Saved</span> saved in this app');
+    expect(legend).toContain('<span class="badge badge-source-ai">AI</span> saved by your AI assistant through the API');
+    expect(html).toContain('aria-label="In Use: equipped by Sparky now. Saved: saved in this app. AI: saved by your AI assistant through the API. Used: played in Sparky&#39;s stored battles."');
     const saved = /<h2>Saved Decks<\/h2>.*?<\/section>/.exec(html)?.[0] ?? "";
     const used = /<h2>Used in Battles.*?<\/section>/.exec(html)?.[0] ?? "";
     const cards = (section: string) => section.split("<article ").slice(1);

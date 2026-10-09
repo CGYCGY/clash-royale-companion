@@ -132,15 +132,26 @@ export function EmptyState({ title, children }: { title: string; children?: Chil
 }
 
 /** A button so touch users can tap it: the tip shows on hover and while it has focus (CSS only). */
-/** `align="start"` opens the tip rightwards, for icons near the left edge. */
-export function InfoTip({ text, align = "end" }: { text: string; align?: "start" | "end" }) {
+/**
+ * `align="start"` opens the tip rightwards, for icons near the left edge. `children` replaces the
+ * visible tip with richer markup; `text` stays the screen reader label, so keep the two saying the same.
+ */
+export function InfoTip({
+  text,
+  align = "end",
+  children,
+}: {
+  text: string;
+  align?: "start" | "end";
+  children?: Child;
+}) {
   return (
     <span class={`info-tip info-tip-${align}`}>
       <button type="button" class="info-tip-btn" aria-label={text}>
         <InfoIcon />
       </button>
       <span class="info-tip-text" aria-hidden="true">
-        {text}
+        {children ?? text}
       </span>
     </span>
   );
