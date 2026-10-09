@@ -182,8 +182,10 @@ describe("battles pages", () => {
       "Friendly",
       "Princess Gambit Tournament",
     ]);
-    expect(html).toContain("<td>Royale Shuffle</td>");
-    expect(html).not.toMatch(/<td>[^<]*(RR_|TeamVsTeam|riverRace|boatBattle)/);
+    // The mode fixture is older than the main one, so its battles fill page 2.
+    const older = (await get("/battles?days=all&page=2")).html;
+    expect(older).toContain("<td>Royale Shuffle</td>");
+    expect(older).not.toMatch(/<td>[^<]*(RR_|TeamVsTeam|riverRace|boatBattle)/);
     const gambit = await get("/battles?days=all&mode=Princess+Gambit+Tournament");
     expect(battleRows(gambit.html)).toBe(1);
     expect(gambit.html).toContain("<td>Princess Gambit Tournament</td>");
