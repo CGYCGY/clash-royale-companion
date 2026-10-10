@@ -146,6 +146,23 @@ describe("cards", () => {
     expect(cards.slice(0, firstMissing).every((c) => c.owned && c.kind === "card")).toBe(true);
     expect(cards.slice(-3).every((c) => c.kind === "support")).toBe(true);
   });
+
+  test("max=1 previews every upgrade the held copies pay for", async () => {
+    type Entry = CollectionEntry & { fromLevel?: number };
+    const real = await get<{ summary: CollectionSummary; cards: Entry[] }>(`${base}/cards`);
+    const { summary, cards } = await get<{ summary: CollectionSummary; cards: Entry[] }>(`${base}/cards?max=1`);
+    expect(summary.upgradeReady).toBe(0);
+    expect(cards.some((c) => c.upgradeReady)).toBe(false);
+    expect(cards.find((c) => c.name === "The Log")).toMatchObject({ level: 16, fromLevel: 13, upgradableLevels: 0 });
+
+    const knight = cards.find((c) => c.name === "Knight")!;
+    expect(knight).toEqual(real.cards.find((c) => c.name === "Knight")!);
+    expect(knight.fromLevel).toBeUndefined();
+    expect(cards.filter((c) => c.fromLevel !== undefined).length).toBe(real.cards.filter((c) => c.upgradableLevels > 0).length);
+
+    expect(await get<typeof real>(`${base}/cards?max=0`)).toEqual(real);
+    expect((await env.app.request(`${base}/cards?max=yes`, { headers: auth })).status).toBe(400);
+  });
 });
 
 describe("notes", () => {

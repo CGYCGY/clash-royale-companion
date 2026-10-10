@@ -60,7 +60,11 @@ curl -sS -H "Authorization: Bearer $CR_COMPANION_API_KEY" "$CR_COMPANION_URL/api
    - `GET /api/players/{tag}/cards` for every card's level and upgrade cost. Each card has `countNeeded` and
      `goldNeeded` for its next level, `copiesToMax` and `goldToMax` for reaching `maxLevel`, and
      `upgradeReady`. Use these for upgrade priorities and gold budgets. Sum `goldNeeded` over the cards
-     you recommend and compare it with the budget the user gives you.
+     you recommend and compare it with the budget the user gives you. Add `?max=1` to see the collection
+     as if every upgrade the held copies already pay for were done. This matches the collection page's
+     Max Out switch. Raised cards keep their real level as `fromLevel`, and the summary is recomputed.
+     Gold is not checked, so compare each card's `upgradableGold` from the plain call with the user's
+     gold.
 5. **Save decks the user likes.** Before proposing a deck, check the card names against `GET /api/cards`.
    When the user wants to keep it, call `POST /api/decks` with
    `{ "name": "...", "cards": [8 exact names], "notes": "why it works, how to play it" }`. Requests made

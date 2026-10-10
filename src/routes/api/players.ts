@@ -4,7 +4,7 @@ import { currentUser, requireUser } from "../../auth/middleware";
 import { displayLevel } from "../../cr/levels";
 import { normalizeTag } from "../../cr/tag";
 import type { Player, PlayerCard } from "../../cr/types";
-import { buildCollection } from "../../domain/collection";
+import { buildCollection, projectAffordable, summarizeCollection } from "../../domain/collection";
 import { playerContextMarkdown } from "../../domain/playerContext";
 import { AppError, errorBody, notFound } from "../../errors";
 import { parseJson, parseQuery, parseWith } from "../../http/validate";
@@ -66,6 +66,13 @@ const battlesQuery = z.object({
   result: z.enum(["win", "loss", "draw"]).optional(),
   limit: z.coerce.number().int().min(1).max(500).default(50),
   offset: z.coerce.number().int().min(0).default(0),
+});
+
+const cardsQuery = z.object({
+  max: z
+    .enum(["0", "1", "true", "false"])
+    .optional()
+    .transform((v) => v === "1" || v === "true"),
 });
 
 const statsQuery = z.object({
@@ -136,7 +143,14 @@ export const playerRoutes = new Hono<AppEnv>()
   .get("/players/:tag/cards", (c) => {
     const player = ownedPlayer(c);
     const snap = getLatestSnapshot(player.tag);
-    const { entries, summary } = buildCollection(snap?.player ?? null, listCards());
+    const { max } = parseQuery(c, cardsQuery);
+    const collection = buildCollection(snap?.player ?? null, listCards());
+    // Same preview as the collection page's Max Out switch: every upgrade the held copies pay for
+    // is applied (gold is not checked), and raised cards keep their real level as `fromLevel`.
+    const entries = max
+      ? collection.entries.map((e) => (e.upgradableLevels > 0 ? { ...projectAffordable(e), fromLevel: e.level } : e))
+      : collection.entries;
+    const summary = max ? summarizeCollection(entries) : collection.summary;
     return c.json({ summary, cards: entries, fetchedAt: snap?.fetchedAt ?? null, lastSeenAt: snap?.lastSeenAt ?? null });
   })
   .get("/players/:tag/notes", (c) => c.json({ notes: getNotes(ownedPlayer(c).tag) }))
