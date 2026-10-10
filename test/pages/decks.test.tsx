@@ -37,7 +37,7 @@ describe("deck pages", () => {
 
     const list = await (await env.app.request("/decks", { headers: { Cookie: cookie } })).text();
     expect(list).toContain("Hog 2.6");
-    expect(list).toContain(`<a href="/decks/${deck!.id}" data-modal="Deck">Hog 2.6</a>`);
+    expect(list).toContain('<h3 class="deck-name">Hog 2.6</h3>');
     expect(list).toContain(`<a class="icon-btn" href="/decks/${deck!.id}?edit=1" data-modal="Deck" aria-label="Edit Hog 2.6" title="Edit">`);
     expect(list).toContain('class="icon-btn icon-btn-danger" aria-label="Delete Hog 2.6" title="Delete"');
 
@@ -231,7 +231,7 @@ describe("deck pages", () => {
 
     const [first, second] = cards(saved);
     expect(first).toStartWith('class="card deck-card deck-saved in-use"');
-    expect(first).toContain(">Hog 2.6</a>");
+    expect(first).toContain(">Hog 2.6</h3>");
     expect(first).toContain('<span class="tag tag-in-use">In Use</span><span class="tag tag-saved">Saved</span>');
     expect(first).toContain("<strong>8</strong> games");
     expect(first).toContain("<strong>63%</strong> win");
@@ -261,8 +261,8 @@ describe("deck pages", () => {
 
     const ranked = await page("mode=Ranked");
     expect(ranked).toContain('<option value="Ranked" selected="">Ranked</option>');
-    expect(ranked).toContain(">Hog 2.6</a>");
-    expect(ranked).not.toContain(">Unplayed</a>");
+    expect(ranked).toContain(">Hog 2.6</h3>");
+    expect(ranked).not.toContain(">Unplayed</h3>");
     expect(ranked).toContain('<a id="deck-clear" class="btn btn-ghost" href="/decks" data-live-swap="true">');
 
     const nowhere = await page("mode=Touchdown");
@@ -270,7 +270,7 @@ describe("deck pages", () => {
     expect(nowhere).toContain("No other deck was played in Touchdown.");
 
     const savedOnly = await page("show=saved");
-    expect(savedOnly).toContain(">Unplayed</a>");
+    expect(savedOnly).toContain(">Unplayed</h3>");
     expect(savedOnly).not.toContain("<h2>Used in Battles");
     const usedOnly = await page("show=used");
     expect(usedOnly).not.toContain("<h2>Saved Decks</h2>");
@@ -352,8 +352,8 @@ describe("deck pages", () => {
     const all = await page("");
     expect(all).toContain('<option value="Triple Elixir">Triple Elixir</option>');
     const tagged = await page("mode=triple%20elixir");
-    expect(tagged).toContain(">War</a>");
-    expect(tagged).not.toContain(">Plain</a>");
+    expect(tagged).toContain(">War</h3>");
+    expect(tagged).not.toContain(">Plain</h3>");
     expect(await page("mode=Duel")).toContain("No saved deck is tagged or was played in Duel.");
   });
 
@@ -415,7 +415,7 @@ describe("deck pages", () => {
       const [hog, unplayed] = saved.split("<article ").slice(1);
       const [hogDeck, unplayedDeck] = listDecks(user.id).sort((a, b) => a.id - b.id);
       expect(hog).toStartWith(`class="card deck-card deck-saved in-use" data-href="/decks/${hogDeck!.id}" data-modal="Deck">`);
-      expect(hog).toContain(`<a href="/decks/${hogDeck!.id}" data-modal="Deck">Hog 2.6</a>`);
+      expect(hog).toContain('<h3 class="deck-name">Hog 2.6</h3>');
       expect(hog).not.toContain("Used Deck");
       expect(unplayed).toStartWith(`class="card deck-card deck-saved" data-href="/decks/${unplayedDeck!.id}" data-modal="Deck">`);
       expect(html).not.toContain(">Details</a>");
@@ -431,7 +431,7 @@ describe("deck pages", () => {
       const html = await (await get("/decks")).text();
       const card = /<article class="card deck-card deck-saved.*?<\/article>/.exec(html)?.[0] ?? "";
       expect(card).toMatch(/<div class="row deck-card-head"><span class="deck-tags">.*?<\/span><div class="spacer"><\/div><span class="muted small">updated /);
-      expect(card).toMatch(/<div class="row deck-title"><h3 class="deck-name"><a [^>]+>Long<\/a><\/h3><div class="spacer"><\/div><a class="icon-btn" href="[^"]+\?edit=1"/);
+      expect(card).toMatch(/<div class="row deck-title"><h3 class="deck-name">Long<\/h3><div class="spacer"><\/div><a class="icon-btn" href="[^"]+\?edit=1"/);
       expect(card).toMatch(/<div class="row deck-actions"><div class="spacer"><\/div><form [^>]*action="\/decks\/\d+\/delete"[^]*<\/form><\/div><\/article>$/);
       expect(card).toContain(`<p class="muted excerpt">${"x".repeat(600)}…</p>`);
     });

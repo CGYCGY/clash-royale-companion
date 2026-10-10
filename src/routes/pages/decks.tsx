@@ -775,11 +775,7 @@ export const deckPages = new Hono<AppEnv>()
                         <span class="muted small">updated {formatRelative(d.updatedAt)}</span>
                       </div>
                       <div class="row deck-title">
-                        <h3 class="deck-name">
-                          <a href={`/decks/${d.id}`} data-modal="Deck">
-                            {d.name}
-                          </a>
-                        </h3>
+                        <h3 class="deck-name">{d.name}</h3>
                         <div class="spacer" />
                         <a
                           class="icon-btn"

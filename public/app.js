@@ -938,11 +938,12 @@ for (const menu of document.querySelectorAll("details.player-menu")) {
   });
 }
 
-// Clickable rows and cards ([data-href], battle rows and deck cards): an inner link holds the real href
-// (keyboard focus target, no-JS fallback, and what ctrl/cmd/middle-click open in a new tab); a plain
-// click anywhere else on the element opens it in a dialog titled by data-modal (default "Battle").
+// Clickable rows and cards ([data-href], battle rows and deck cards): a plain click anywhere on the
+// element opens it in a dialog titled by data-modal (default "Battle"); ctrl/cmd/middle-click open a new
+// tab. Battle rows and used-deck cards also hold an inner link as the no-JS fallback; saved deck cards
+// have none, as their edit pencil already links to the deck.
 // Assigned below when the dialog is supported; live filters call it on elements they swap in.
-// Links with data-modal="<Kind>" (saved deck names) open their page's ?partial=1 in the same dialog.
+// Links with data-modal="<Kind>" (edit pencils, "Saved as" tags) open their page's ?partial=1 in the same dialog.
 let wireClickables = () => {};
 const modalTemplate = document.getElementById("battle-modal-template");
 if (modalTemplate && "HTMLDialogElement" in window) {
