@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import type { BattleLogEntry, GameEvent } from "../src/cr/types";
 import {
+  averageElixir,
   countBattles,
   getBattle,
   getBattleStats,
@@ -10,6 +11,7 @@ import {
   parseVariantKey,
   variantKeyOf,
 } from "../src/repos/battles";
+import { cardsMap } from "../src/repos/cards";
 import { eventTitles, upsertEvents } from "../src/repos/events";
 import { addPlayer } from "../src/repos/players";
 import { getDb, migrate, openDatabase } from "../src/db";
@@ -383,5 +385,16 @@ describe("getBattleStats", () => {
   test("sinceDays window and empty stats", () => {
     const s = getBattleStats(FIXTURE_TAG, { sinceDays: 0 });
     expect(s).toMatchObject({ sinceDays: 0, total: 0, wins: 0, winRate: 0, netTrophies: 0, byMode: [], byDeck: [] });
+  });
+});
+
+describe("averageElixir", () => {
+  test("counts Mirror as 1.5 like the game, and blanks on unknown cards", () => {
+    const catalog = cardsMap();
+    expect(catalog.get("Mirror")?.elixirCost).toBeNull();
+    const deck = ["Hog Rider", "Musketeer", "Ice Golem", "Ice Spirit", "Skeletons", "Cannon", "Fireball", "Mirror"];
+    // 4 + 4 + 2 + 1 + 1 + 3 + 4 + 1.5
+    expect(averageElixir(deck, catalog)).toBe(2.56);
+    expect(averageElixir([...deck.slice(0, 7), "Not A Card"], catalog)).toBeNull();
   });
 });

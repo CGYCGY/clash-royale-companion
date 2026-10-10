@@ -3,6 +3,7 @@ import type { BattleCard, BattleLogEntry, BattleParticipant } from "../cr/types"
 import { parseBattleTime } from "../cr/types";
 import { getDb } from "../db";
 import { type BattleMode, battleMode, modeMatches } from "../domain/battleModes";
+import { averagingCost } from "../domain/elixir";
 import { daysAgoIso, ratio } from "../util";
 import { type CardRecord, cardsById, cardsMap } from "./cards";
 import { eventTitles } from "./events";
@@ -394,11 +395,12 @@ const tally = (r: TallyRow): Tally => ({
   winRate: ratio(r.wins ?? 0, r.games),
 });
 
-/** avgElixir is null when any card lacks a known cost (not in catalog, or variable like Mirror). */
+/** avgElixir is null when any card is missing from the catalog or has no cost to average. */
 export function averageElixir(names: string[], catalog: Map<string, CardRecord>): number | null {
   let sum = 0;
   for (const name of names) {
-    const cost = catalog.get(name)?.elixirCost;
+    const card = catalog.get(name);
+    const cost = card && averagingCost(card.id, card.elixirCost);
     if (cost == null) return null;
     sum += cost;
   }

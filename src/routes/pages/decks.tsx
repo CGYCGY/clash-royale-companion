@@ -5,6 +5,7 @@ import { currentUser, requireUser } from "../../auth/middleware";
 import { cardType } from "../../domain/cardType";
 import { buildCollection, type CollectionEntry, projectAffordable } from "../../domain/collection";
 import { deckSlotForms, type SlotForms, slotFormsBitmask } from "../../domain/deckSlots";
+import { averagingCost } from "../../domain/elixir";
 import {
   classifyDecks,
   classifyVariants,
@@ -339,7 +340,7 @@ function CardDatalist({ byName }: { byName: Map<string, CollectionEntry> | null 
             data-icon-evo={card.iconUrlEvo ?? undefined}
             data-icon-hero={card.iconUrlHero ?? undefined}
             data-forms={String(card.maxEvolutionLevel ?? 0)}
-            data-elixir={card.elixirCost === null ? undefined : String(card.elixirCost)}
+            data-elixir={averagingCost(card.id, card.elixirCost)?.toString()}
             data-rarity={card.rarity}
             data-kind={cardType(card.id) ?? undefined}
             data-owned={e ? (e.owned ? "1" : "0") : undefined}

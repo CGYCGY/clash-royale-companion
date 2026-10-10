@@ -524,7 +524,7 @@ const wireDeckPage = (root) => {
       renderLevelBadge(tile.querySelector(".card-icon"), tile.querySelector(".slot-from"), owned ? opt : null);
     };
 
-    // Mirrors averageElixir + formatElixir on the server over the known cards: one without a cost (Mirror) blanks it.
+    // Mirrors averageElixir + formatElixir on the server; data-elixir is the averaging cost, so Mirror carries 1.5.
     const renderAvg = () => {
       const known = tiles.map(optionFor).filter(Boolean);
       const blank = !known.length || known.some((o) => o.dataset.elixir === undefined);

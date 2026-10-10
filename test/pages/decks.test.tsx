@@ -178,6 +178,7 @@ describe("deck pages", () => {
     expect(option(linked, "Musketeer")).toContain('data-have="3"');
     const mirror = option(linked, "Mirror");
     expect(mirror).toContain('data-owned="0"');
+    expect(mirror).toContain('data-elixir="1.5"');
     expect(mirror).not.toContain("data-level=");
     expect(mirror).not.toContain("data-to=");
   });

@@ -7,6 +7,7 @@ import type { PlayerRecord, Snapshot } from "../repos/players";
 import type { PlayerResources } from "../repos/resources";
 import { type Collection, type CollectionEntry, RARITY_ORDER } from "./collection";
 import { deckSlotForms } from "./deckSlots";
+import { averagingCost } from "./elixir";
 import { formsLabel, formsOwnership } from "./evolution";
 import { nextKingTower } from "./kingTower";
 
@@ -124,7 +125,9 @@ function currentDeck({ snapshot, collection }: ContextInput): string {
     const rarity = c.rarity ?? entry?.rarity;
     return [c.name, displayLevel(c.level, rarity), formsLabel(c.evolutionLevel), c.elixirCost ?? entry?.elixirCost ?? null];
   });
-  const costs = rows.map((r) => r[3]).filter((x): x is number => typeof x === "number");
+  const costs = deck
+    .map((c: PlayerCard) => averagingCost(c.id, c.elixirCost ?? byId.get(c.id)?.elixirCost))
+    .filter((x): x is number => x !== null);
   const avg = costs.length === deck.length ? (costs.reduce((a, b) => a + b, 0) / costs.length).toFixed(2) : "?";
   const parts = [
     "## Current deck",
