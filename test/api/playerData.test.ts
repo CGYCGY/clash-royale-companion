@@ -163,6 +163,21 @@ describe("cards", () => {
     expect(await get<typeof real>(`${base}/cards?max=0`)).toEqual(real);
     expect((await env.app.request(`${base}/cards?max=yes`, { headers: auth })).status).toBe(400);
   });
+
+  test("type and rarity filters narrow cards but not the summary", async () => {
+    type Entry = CollectionEntry & { type: string | null };
+    const all = await get<{ summary: CollectionSummary; cards: Entry[] }>(`${base}/cards`);
+    expect(all.cards.find((c) => c.name === "The Log")?.type).toBe("spell");
+
+    const spells = await get<{ summary: CollectionSummary; cards: Entry[] }>(`${base}/cards?type=spell&rarity=legendary`);
+    expect(spells.summary).toEqual(all.summary);
+    expect(spells.cards.map((c) => c.name)).toContain("The Log");
+    expect(spells.cards).toEqual(all.cards.filter((c) => c.type === "spell" && c.rarity === "legendary"));
+
+    const towers = await get<{ cards: Entry[] }>(`${base}/cards?kind=support`);
+    expect(towers.cards.length).toBe(3);
+    expect((await env.app.request(`${base}/cards?type=wizard`, { headers: auth })).status).toBe(400);
+  });
 });
 
 describe("notes", () => {

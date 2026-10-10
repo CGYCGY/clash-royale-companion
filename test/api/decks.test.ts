@@ -218,4 +218,28 @@ describe("cards catalog", () => {
     expect(towers.cards.map((c) => c.name).sort()).toEqual(["Cannoneer", "Dagger Duchess", "Tower Princess"]);
     expect((await env.app.request("/api/cards?kind=spell", { headers: apiKey })).status).toBe(400);
   });
+
+  test("filters by type and rarity lists and reports each card's type", async () => {
+    const list = async (q: string) =>
+      ((await (await env.app.request(`/api/cards?${q}`, { headers: apiKey })).json()) as {
+        cards: (CardRecord & { type: string | null })[];
+      }).cards;
+    const all = await list("");
+    expect(all.find((c) => c.name === "Zap")?.type).toBe("spell");
+    expect(all.find((c) => c.name === "Tower Princess")?.type).toBeNull();
+
+    const spells = await list("type=spell");
+    expect(spells.length).toBeGreaterThan(0);
+    expect(spells).toEqual(all.filter((c) => c.type === "spell"));
+    const nonSpells = await list("type=troop,%20Building");
+    expect(nonSpells).toEqual(all.filter((c) => c.type === "troop" || c.type === "building"));
+
+    const epicSpells = await list("type=spell&rarity=epic");
+    expect(epicSpells.length).toBeGreaterThan(0);
+    expect(epicSpells).toEqual(spells.filter((c) => c.rarity === "epic"));
+
+    for (const bad of ["type=tower", "rarity=mythic", "type=spell,"]) {
+      expect((await env.app.request(`/api/cards?${bad}`, { headers: apiKey })).status).toBe(400);
+    }
+  });
 });

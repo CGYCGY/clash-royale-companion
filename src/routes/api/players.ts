@@ -22,6 +22,7 @@ import {
 } from "../../repos/players";
 import { manualSync, trackPlayer } from "../../sync";
 import type { AppEnv } from "../../types";
+import { cardFilterQuery, matchesCardFilter, withType } from "./cards";
 
 const ownedPlayer = (c: Context<AppEnv>): PlayerRecord =>
   assertPlayerOwnedBy(normalizeTag(c.req.param("tag") ?? ""), currentUser(c).id);
@@ -68,7 +69,7 @@ const battlesQuery = z.object({
   offset: z.coerce.number().int().min(0).default(0),
 });
 
-const cardsQuery = z.object({
+const cardsQuery = cardFilterQuery.extend({
   max: z
     .enum(["0", "1", "true", "false"])
     .optional()
@@ -143,15 +144,17 @@ export const playerRoutes = new Hono<AppEnv>()
   .get("/players/:tag/cards", (c) => {
     const player = ownedPlayer(c);
     const snap = getLatestSnapshot(player.tag);
-    const { max } = parseQuery(c, cardsQuery);
+    const { max, ...filter } = parseQuery(c, cardsQuery);
     const collection = buildCollection(snap?.player ?? null, listCards());
     // Same preview as the collection page's Max Out switch: every upgrade the held copies pay for
     // is applied (gold is not checked), and raised cards keep their real level as `fromLevel`.
     const entries = max
       ? collection.entries.map((e) => (e.upgradableLevels > 0 ? { ...projectAffordable(e), fromLevel: e.level } : e))
       : collection.entries;
+    // Filters narrow `cards` only; the summary covers the whole collection, as on the page.
     const summary = max ? summarizeCollection(entries) : collection.summary;
-    return c.json({ summary, cards: entries, fetchedAt: snap?.fetchedAt ?? null, lastSeenAt: snap?.lastSeenAt ?? null });
+    const cards = entries.filter((e) => matchesCardFilter(e, filter)).map(withType);
+    return c.json({ summary, cards, fetchedAt: snap?.fetchedAt ?? null, lastSeenAt: snap?.lastSeenAt ?? null });
   })
   .get("/players/:tag/notes", (c) => c.json({ notes: getNotes(ownedPlayer(c).tag) }))
   .put("/players/:tag/notes", async (c) => {

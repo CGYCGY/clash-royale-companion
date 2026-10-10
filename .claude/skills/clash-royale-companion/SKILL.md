@@ -65,6 +65,11 @@ curl -sS -H "Authorization: Bearer $CR_COMPANION_API_KEY" "$CR_COMPANION_URL/api
      Max Out switch. Raised cards keep their real level as `fromLevel`, and the summary is recomputed.
      Gold is not checked, so compare each card's `upgradableGold` from the plain call with the user's
      gold.
+   - Both `GET /api/cards` and `GET /api/players/{tag}/cards` take these filters, and you can combine them:
+     `kind` (`card` or `support`, where support means tower troops), `type` (`troop`, `building` or `spell`)
+     and `rarity`. `type` and `rarity` accept comma lists, for example `?type=spell&rarity=epic,legendary`.
+     Every card in the response has a `type`, which is null for tower troops. On the player call, filters
+     narrow `cards` only. `summary` always covers the whole collection.
 5. **Save decks the user likes.** Before proposing a deck, check the card names against `GET /api/cards`.
    When the user wants to keep it, call `POST /api/decks` with
    `{ "name": "...", "cards": [8 exact names], "notes": "why it works, how to play it" }`. Requests made
