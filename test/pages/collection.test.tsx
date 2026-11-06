@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, test } from "bun:test";
+import { BOOST_SCHEDULE } from "../../src/domain/boostedCards";
 import type { User } from "../../src/types";
 import { makeUser } from "../helpers";
 import { cookieFor, linkFixturePlayer, type PageTestEnv, setupPages } from "./support";
@@ -30,6 +31,22 @@ describe("collection page", () => {
     expect(pills("Goblins")).toEqual(["Hero:form-hero"]);
     expect(pills("Hog Rider")).toEqual([]);
     expect(html).not.toContain("evo-badge");
+  });
+
+  test("boosted cards show the level they play at", async () => {
+    BOOST_SCHEDULE.push({ cards: ["Giant", "Hog Rider"], from: "2000-01-01", until: "2999-12-31", label: "test" });
+    try {
+      await linkFixturePlayer(user, env.client);
+      const html = await get("/collection");
+      const card = (name: string) => new RegExp(`<div class="coll-name" title="${name}">.*?</div></div>(?=<div class="coll-card|</div></section>)`).exec(html)?.[0] ?? "";
+      // King Tower 15 lifts the level-13 Giant; the card icon keeps the real level.
+      expect(card("Giant")).toContain('<div class="boost-badge" title="Seasonal Card Boost until 2999-12-31 (UTC): plays at your King Tower level">Boost Lv 15</div>');
+      expect(html).toMatch(/title="Giant">.*?Lv 13</);
+      expect(card("Hog Rider")).toContain("Boost Lv 15");
+      expect(card("Knight")).not.toContain("boost-badge");
+    } finally {
+      BOOST_SCHEDULE.splice(0);
+    }
   });
 
   test("renders summary, rarity sections, tower troops, and filters", async () => {

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import type { BattleLogEntry } from "../../src/cr/types";
+import { BOOST_SCHEDULE } from "../../src/domain/boostedCards";
 import { insertBattles } from "../../src/repos/battles";
 import { createDeck, listDecks } from "../../src/repos/decks";
 import { deckModeOptions, unionTags, withDeckTagOptions } from "../../src/routes/pages/decks";
@@ -181,6 +182,16 @@ describe("deck pages", () => {
     expect(mirror).toContain('data-elixir="1.5"');
     expect(mirror).not.toContain("data-level=");
     expect(mirror).not.toContain("data-to=");
+    expect(hog).not.toContain("data-boosted");
+
+    BOOST_SCHEDULE.push({ cards: ["Hog Rider"], from: "2000-01-01", until: "2999-12-31", label: "test" });
+    try {
+      // King Tower 15 beats the level-14 Hog Rider, so the tile shows the boost level.
+      const boosted = option(await (await get(`/decks/${deck!.id}`)).text(), "Hog Rider");
+      expect(boosted).toContain('data-level="14" data-max="16" data-to="15" data-boosted="1"');
+    } finally {
+      BOOST_SCHEDULE.splice(0);
+    }
   });
 
   test("invalid decks re-render with unknown and duplicate cards listed", async () => {

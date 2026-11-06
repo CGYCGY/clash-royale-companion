@@ -1243,6 +1243,15 @@ details pre {
   color: var(--hero);
   border-color: var(--hero);
 }
+.boost-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  padding: 0 0.4rem;
+  white-space: nowrap;
+}
 
 /* The base .card + .card margin is for stacked cards; in a grid it misaligns the row. */
 .grid > .card + .card {

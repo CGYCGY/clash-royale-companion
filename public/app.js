@@ -128,7 +128,8 @@ const fillCardIcon = (fig, name, opt, shown) => {
   fig.append(fallback);
 };
 
-// Levels show what the held copies already pay for, like Collection's Max Out sort ("from Lv n").
+// Levels show what the held copies already pay for, like Collection's Max Out sort ("from Lv n"), or the
+// seasonal boost level when that is higher ("boosted from Lv n").
 // Pass the option only for an owned card.
 const renderLevelBadge = (fig, fromEl, opt) => {
   fig.querySelector(".card-level")?.remove();
@@ -138,7 +139,9 @@ const renderLevelBadge = (fig, fromEl, opt) => {
   badge.className = "card-level";
   badge.textContent = `Lv ${opt.dataset.to}`;
   fig.append(badge);
-  if (Number(opt.dataset.to) > Number(opt.dataset.level)) fromEl.textContent = `from Lv ${opt.dataset.level}`;
+  if (Number(opt.dataset.to) > Number(opt.dataset.level)) {
+    fromEl.textContent = `${opt.dataset.boosted ? "boosted " : ""}from Lv ${opt.dataset.level}`;
+  }
 };
 
 const SLOT_NAMES = ["Evo", "Hero", "Wild"];

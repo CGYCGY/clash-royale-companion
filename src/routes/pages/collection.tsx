@@ -129,6 +129,11 @@ function CollectionCard({ e, fromLevel }: { e: CollectionEntry; fromLevel?: numb
       </div>
       <Progress e={e} />
       {fromLevel !== undefined && <div class="muted small">from Lv {fromLevel}</div>}
+      {e.boostedLevel !== null && (
+        <div class="boost-badge" title={`Seasonal Card Boost until ${e.boostedUntil} (UTC): plays at your King Tower level`}>
+          Boost Lv {e.boostedLevel}
+        </div>
+      )}
       <FormBadges e={e} />
     </div>
   );

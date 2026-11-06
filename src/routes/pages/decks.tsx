@@ -332,7 +332,9 @@ function CardDatalist({ byName }: { byName: Map<string, CollectionEntry> | null 
     <datalist id="card-names">
       {listCards({ kind: "card" }).map((card) => {
         const e = byName?.get(card.name);
-        const to = e && e.level !== null ? projectAffordable(e).level : null;
+        const projected = e && e.level !== null ? projectAffordable(e) : null;
+        // A seasonal boost lifts the card to the King Tower level, past what the copies pay for.
+        const to = projected ? (projected.boostedLevel ?? projected.level) : null;
         return (
           <option
             value={card.name}
@@ -347,6 +349,7 @@ function CardDatalist({ byName }: { byName: Map<string, CollectionEntry> | null 
             data-level={e?.level == null ? undefined : String(e.level)}
             data-max={e ? String(e.maxLevel) : undefined}
             data-to={to === null ? undefined : String(to)}
+            data-boosted={projected?.boostedLevel ? "1" : undefined}
             data-have={e?.owned ? String(e.evolutionLevel) : undefined}
           />
         );
