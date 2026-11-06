@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { CrApiError } from "../../src/cr/client";
+import { BOOST_SCHEDULE } from "../../src/domain/boostedCards";
 import type { CardRecord } from "../../src/repos/cards";
 import type { DeckRecord } from "../../src/repos/decks";
 import type { User } from "../../src/types";
@@ -166,18 +167,53 @@ describe("deck check", () => {
     });
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
-      cards: { name: string; level: number | null; maxLevel: number; owned: boolean; evolutionLevel: number }[];
+      cards: {
+        name: string;
+        level: number | null;
+        maxLevel: number;
+        owned: boolean;
+        evolutionLevel: number;
+        boostedLevel: number | null;
+        boostedUntil: string | null;
+      }[];
       avgElixir: number | null;
       missing: string[];
       fetchedAt: string | null;
       lastSeenAt: string | null;
     };
     expect(body.missing).toEqual(["Archer Queen"]);
-    expect(body.cards[0]).toEqual({ name: "Archer Queen", level: null, maxLevel: 16, owned: false, evolutionLevel: 0 });
+    expect(body.cards[0]).toEqual({
+      name: "Archer Queen",
+      level: null,
+      maxLevel: 16,
+      owned: false,
+      evolutionLevel: 0,
+      boostedLevel: null,
+      boostedUntil: null,
+    });
     expect(body.cards.find((c) => c.name === "The Log")).toMatchObject({ level: 13, owned: true });
     expect(body.avgElixir).toBe(2.75);
     expect(body.fetchedAt).toBeString();
     expect(body.lastSeenAt).toBeString();
+  });
+
+  test("reports seasonal boosts next to the real level", async () => {
+    BOOST_SCHEDULE.push({ cards: ["Hog Rider"], from: "2000-01-01", until: "2999-12-31", label: "test" });
+    try {
+      await linkFixturePlayer(alice, env.client);
+      const deck = await create(session, { name: "Hog", cards: HOG });
+      const res = await env.app.request(`/api/decks/${deck.id}/check?tag=9QJUGC2R`, { headers: session });
+      const body = (await res.json()) as { cards: { name: string; level: number; boostedLevel: number | null }[] };
+      // The fixture's King Tower is 15.
+      expect(body.cards.find((c) => c.name === "Hog Rider")).toMatchObject({
+        level: 14,
+        boostedLevel: 15,
+        boostedUntil: "2999-12-31",
+      });
+      expect(body.cards.find((c) => c.name === "Musketeer")).toMatchObject({ boostedLevel: null, boostedUntil: null });
+    } finally {
+      BOOST_SCHEDULE.splice(0);
+    }
   });
 
   test("without a snapshot, ownership is unknown rather than missing", async () => {

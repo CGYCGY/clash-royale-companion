@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import type { Player } from "../../src/cr/types";
+import { activeBoosts } from "../../src/domain/boostedCards";
 import { buildCollection } from "../../src/domain/collection";
 import { renderContextMarkdown } from "../../src/domain/context";
 import { copiesForNextLevel, copiesToMax, goldForNextLevel, goldToMax } from "../../src/domain/upgradeTable";
@@ -151,6 +152,34 @@ describe("renderContextMarkdown", () => {
     expect(duo.split(" | ")[5]!.split(", ")).toHaveLength(8);
     expect(Math.max(...battleRows.filter((r) => r !== duo).map((r) => r.length))).toBeLessThan(250);
     expect(md.length).toBeLessThan(20_000);
+  });
+
+  test("shows seasonal boosts on the current deck and the collection", async () => {
+    const user = makeUser();
+    addPlayer(user.id, FIXTURE_TAG);
+    await syncPlayer(FIXTURE_TAG, new FakeCrClient());
+    const snapshot = getLatestSnapshot(FIXTURE_TAG)!;
+    const boosts = activeBoosts(new Date("2026-11-06T00:00:00Z"), [
+      { cards: ["Hog Rider", "Giant", "Knight", "Mirror"], from: "2026-11-02", until: "2026-12-07", label: "S89" },
+    ]);
+    const empty = getBattleStats(FIXTURE_TAG, { sinceDays: 7 });
+    const md = renderContextMarkdown({
+      player: getPlayer(FIXTURE_TAG)!,
+      snapshot,
+      stats7: empty,
+      stats30: empty,
+      recentBattles: [],
+      collection: buildCollection(snapshot.player, listCards(), boosts),
+      notes: null,
+      decks: [],
+    });
+    expect(md).toContain("| Hog Rider | 14 (boosted to 15) |");
+    expect(md).toContain("| Giant | 13/16 (boosted to 15) |");
+    // King Tower 15: a level-14 Knight is lifted; Mirror isn't owned, so it isn't listed.
+    expect(md).toContain(
+      "Boosted this season: Knight 14 → 15 until 2026-12-07, Giant 13 → 15 until 2026-12-07, Hog Rider 14 → 15 until 2026-12-07.",
+    );
+    expect(md).not.toMatch(/Boosted this season:.*Mirror/);
   });
 
   test("snapshot time and age come from the last confirming sync", () => {

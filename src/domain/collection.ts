@@ -1,6 +1,7 @@
 import { displayLevel } from "../cr/levels";
 import type { Player, PlayerCard } from "../cr/types";
 import type { CardRecord } from "../repos/cards";
+import { type ActiveBoost, activeBoosts, boostedLevel } from "./boostedCards";
 import { copiesForNextLevel, copiesToMax, goldForNextLevel, goldToMax, upgradableNow } from "./upgradeTable";
 
 export interface CollectionEntry {
@@ -30,6 +31,13 @@ export interface CollectionEntry {
   upgradableGold: number;
   /** Levels between the current level and maxLevel; null when not owned. */
   levelsToMax: number | null;
+  /**
+   * The level a seasonal Card Boost makes it play at (the King Tower level), when that beats `level`.
+   * `level` and the upgrade fields stay real: boosts end with their window and never change costs.
+   */
+  boostedLevel: number | null;
+  /** Last day (UTC, inclusive) of the boost when the card is boosted and owned; null otherwise. */
+  boostedUntil: string | null;
   /** Bitmasks (1 = Evo, 2 = Hero): what the player owns, and what the card can have. */
   evolutionLevel: number;
   maxEvolutionLevel: number;
@@ -93,11 +101,18 @@ function levelFields(rarity: string, level: number | null, count: number, maxLev
   };
 }
 
-function toEntry(card: CardRecord | null, owned: PlayerCard | undefined, kind: "card" | "support"): CollectionEntry {
+function toEntry(
+  card: CardRecord | null,
+  owned: PlayerCard | undefined,
+  kind: "card" | "support",
+  boost: ActiveBoost | undefined,
+  kingTowerLevel: number | undefined,
+): CollectionEntry {
   const rarity = (card?.rarity ?? owned?.rarity ?? "").toLowerCase();
   const apiMax = card?.maxLevel ?? owned?.maxLevel ?? 0;
   const maxLevel = displayLevel(apiMax, rarity);
   const level = owned ? displayLevel(owned.level, rarity) : null;
+  const boosted = owned && boost ? boost : undefined;
   return {
     id: card?.id ?? owned!.id,
     name: card?.name ?? owned!.name,
@@ -106,6 +121,8 @@ function toEntry(card: CardRecord | null, owned: PlayerCard | undefined, kind: "
     owned: !!owned,
     maxLevel,
     ...levelFields(rarity, level, owned?.count ?? 0, maxLevel),
+    boostedLevel: boosted ? boostedLevel(level, kingTowerLevel) : null,
+    boostedUntil: boosted?.until ?? null,
     evolutionLevel: owned?.evolutionLevel ?? 0,
     maxEvolutionLevel: card?.maxEvolutionLevel ?? owned?.maxEvolutionLevel ?? 0,
     iconUrl: card?.iconUrl ?? owned?.iconUrls.medium ?? null,
@@ -122,7 +139,8 @@ function toEntry(card: CardRecord | null, owned: PlayerCard | undefined, kind: "
 export function projectAffordable(e: CollectionEntry): CollectionEntry {
   if (e.level === null || e.upgradableLevels === 0) return e;
   const now = upgradableNow(e.rarity, e.level, e.count, e.maxLevel);
-  return { ...e, ...levelFields(e.rarity, now.toLevel, now.copiesLeft, e.maxLevel) };
+  const boosted = e.boostedLevel !== null && e.boostedLevel > now.toLevel ? e.boostedLevel : null;
+  return { ...e, ...levelFields(e.rarity, now.toLevel, now.copiesLeft, e.maxLevel), boostedLevel: boosted };
 }
 
 /**
@@ -130,18 +148,22 @@ export function projectAffordable(e: CollectionEntry): CollectionEntry {
  * entries. A null player (no snapshot yet) yields the catalog with nothing owned.
  */
 export function buildCollection(
-  player: Pick<Player, "cards" | "supportCards"> | null,
+  player: Pick<Player, "cards" | "supportCards" | "kingTowerLevel"> | null,
   catalog: CardRecord[],
+  boosts: Map<string, ActiveBoost> = activeBoosts(),
 ): Collection {
+  const kt = player?.kingTowerLevel;
+  const entryFor = (card: CardRecord | null, owned: PlayerCard | undefined, kind: "card" | "support") =>
+    toEntry(card, owned, kind, kind === "card" ? boosts.get(card?.name ?? owned!.name) : undefined, kt);
   const ownedById = new Map<number, { card: PlayerCard; kind: "card" | "support" }>();
   for (const c of player?.cards ?? []) ownedById.set(c.id, { card: c, kind: "card" });
   for (const c of player?.supportCards ?? []) ownedById.set(c.id, { card: c, kind: "support" });
 
-  const entries: CollectionEntry[] = catalog.map((c) => toEntry(c, ownedById.get(c.id)?.card, c.kind));
+  const entries: CollectionEntry[] = catalog.map((c) => entryFor(c, ownedById.get(c.id)?.card, c.kind));
   const catalogIds = new Set(catalog.map((c) => c.id));
   // The catalog syncs daily, so a brand-new card can show up in a player's collection first.
   for (const [id, { card, kind }] of ownedById) {
-    if (!catalogIds.has(id)) entries.push(toEntry(null, card, kind));
+    if (!catalogIds.has(id)) entries.push(entryFor(null, card, kind));
   }
 
   entries.sort(

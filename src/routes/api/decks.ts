@@ -113,6 +113,8 @@ export const deckRoutes = new Hono<AppEnv>()
         maxLevel: byName.get(name)?.maxLevel ?? null,
         owned: null,
         evolutionLevel: null,
+        boostedLevel: null,
+        boostedUntil: null,
       }));
       return c.json({ fetchedAt: null, lastSeenAt: null, cards, avgElixir, missing: [], note: "no snapshot yet" });
     }
@@ -124,6 +126,8 @@ export const deckRoutes = new Hono<AppEnv>()
         maxLevel: e?.maxLevel ?? null,
         owned: e?.owned ?? false,
         evolutionLevel: e?.evolutionLevel ?? 0,
+        boostedLevel: e?.boostedLevel ?? null,
+        boostedUntil: e?.boostedUntil ?? null,
       };
     });
     return c.json({

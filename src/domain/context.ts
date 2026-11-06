@@ -123,7 +123,8 @@ function currentDeck({ snapshot, collection }: ContextInput): string {
   const rows = deck.map((c: PlayerCard) => {
     const entry = byId.get(c.id);
     const rarity = c.rarity ?? entry?.rarity;
-    return [c.name, displayLevel(c.level, rarity), formsLabel(c.evolutionLevel), c.elixirCost ?? entry?.elixirCost ?? null];
+    const level = displayLevel(c.level, rarity);
+    return [c.name, boostedText(level, entry), formsLabel(c.evolutionLevel), c.elixirCost ?? entry?.elixirCost ?? null];
   });
   const costs = deck
     .map((c: PlayerCard) => averagingCost(c.id, c.elixirCost ?? byId.get(c.id)?.elixirCost))
@@ -198,6 +199,21 @@ function lastBattles({ recentBattles }: ContextInput): string {
   )}`;
 }
 
+const boostedText = (level: number | string, e: CollectionEntry | undefined): string =>
+  e?.boostedLevel ? `${level} (boosted to ${e.boostedLevel})` : String(level);
+
+function boostLines(entries: CollectionEntry[]): string[] {
+  const boosted = entries.filter((e) => e.boostedUntil !== null);
+  if (!boosted.length) return [];
+  const card = (e: CollectionEntry) =>
+    e.boostedLevel ? `${e.name} ${e.level} → ${e.boostedLevel}` : `${e.name} ${e.level} (already at or above King Tower level)`;
+  return [
+    "",
+    `Boosted this season: ${boosted.map((e) => `${card(e)} until ${e.boostedUntil}`).join(", ")}. ` +
+      "Boosted cards play at the King Tower level in every mode that uses the player's cards; levels and costs below are real.",
+  ];
+}
+
 const isMaxed = (e: CollectionEntry): boolean => e.level !== null && e.level >= e.maxLevel;
 
 function progressText(e: CollectionEntry): string {
@@ -222,6 +238,7 @@ function collectionSection({ collection, snapshot }: ContextInput): string {
       ".",
     `Gold to max: current deck ${gold(sumGoldToMax(ownedCards.filter((e) => deckIds.has(e.id))))}, ` +
       `all owned cards ${gold(sumGoldToMax(ownedCards))}.`,
+    ...boostLines(ownedCards),
   ];
   const ready = entries.filter((e) => e.upgradeReady && e.kind === "card");
   if (ready.length) {
@@ -246,7 +263,7 @@ function collectionSection({ collection, snapshot }: ContextInput): string {
         ["Card", "Level", "Cards", "Gold", "Evo/Hero"],
         group.map((e) => [
           e.name,
-          `${e.level}/${e.maxLevel}`,
+          boostedText(`${e.level}/${e.maxLevel}`, e),
           progressText(e),
           e.goldNeeded === null ? null : gold(e.goldNeeded),
           formsOwnership(e.evolutionLevel, e.maxEvolutionLevel),

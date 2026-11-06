@@ -149,7 +149,7 @@ UTC. `{tag}` is a player tag without `#`.
 | GET | `/api/decks/{id}` | | `{ deck }` |
 | PATCH | `/api/decks/{id}` | any of `{ name, cards, notes, slot3Form, tags }` | `{ deck }`. `slot3Form: null` clears the choice. `tags` replaces the whole list and `[]` clears it |
 | DELETE | `/api/decks/{id}` | | `204` |
-| GET | `/api/decks/{id}/check` | `tag` | `{ fetchedAt, lastSeenAt, cards: [{ name, level, maxLevel, owned, evolutionLevel }], avgElixir, missing: string[] }`. If the player has no snapshot yet, `fetchedAt` and `lastSeenAt` are null, `owned`, `level` and `evolutionLevel` are null, `missing` is empty and `note` is `"no snapshot yet"`: ownership is unknown, so do not call the cards missing |
+| GET | `/api/decks/{id}/check` | `tag` | `{ fetchedAt, lastSeenAt, cards: [{ name, level, maxLevel, owned, evolutionLevel, boostedLevel, boostedUntil }], avgElixir, missing: string[] }`. If the player has no snapshot yet, `fetchedAt` and `lastSeenAt` are null, `owned`, `level` and `evolutionLevel` are null, `missing` is empty and `note` is `"no snapshot yet"`: ownership is unknown, so do not call the cards missing |
 | GET | `/api/cards` | `kind` (`card\|support`, optional) | `{ cards: [{ id, name, kind, rarity, elixirCost, maxLevel, maxEvolutionLevel, iconUrl, iconUrlEvo, iconUrlHero, updatedAt }] }` |
 
 Shapes:
@@ -170,12 +170,16 @@ Shapes:
 - **byMode entry**: `{ type, mode, modeLabel, modeTags, games, wins, losses, draws, winRate }`, one per `modeLabel`.
 - **byDeck entry**: `{ deckKey, cards, games, wins, losses, draws, winRate, avgElixir, lastPlayed, modeTags }`. `winRate` is 0 to 1; `lastPlayed` is the newest battle time with the deck. `modeTags` lists every mode tag the deck was played under, most games first: a deck used only in war Touchdown has `["Clan War", "Touchdown"]`. Judge a deck by the modes it was played in, since a special-mode win rate says little about ladder.
 - **CollectionEntry**: `{ name, rarity, elixirCost, owned, level, maxLevel, count, countNeeded, goldNeeded,
-  copiesToMax, goldToMax, upgradeReady, evolutionLevel, maxEvolutionLevel, iconUrlHero, kind }`. Both
+  copiesToMax, goldToMax, upgradeReady, boostedLevel, boostedUntil, evolutionLevel, maxEvolutionLevel, iconUrlHero,
+  kind }`. Both
   evolution fields are the Evo/Hero bitmask: `maxEvolutionLevel` is which forms the card has, `evolutionLevel`
   which the player owns. `level` is null for
   unowned cards. `count` is the copies held. `countNeeded` and `goldNeeded` are the cost of the next level,
   and both are null when the card is unowned or maxed. `copiesToMax` is the copies still to collect beyond
   `count`. `goldToMax` is the gold from the current level to max, and it is 0 when the card is maxed.
+  `boostedLevel` is the level a seasonal Card Boost makes the card play at (the King Tower level), and it is
+  null when the card isn't boosted or is already that high. `boostedUntil` is the boost's last day (UTC) for
+  any owned boosted card. `level` and every cost field stay real.
 - **Deck**: `{ id, name, cards, notes, source: "manual" | "ai", slot3Form: "evo" | "hero" | null, tags: string[],
   createdAt, updatedAt, avgElixir, cardDetails: [{ name, elixirCost, rarity, iconUrl, form: "evo" | "hero" | null }] }`.
   `form` is the form that slot plays, per the slot rule above. `tags` are the user's own mode tags for the deck,
@@ -202,6 +206,11 @@ Errors return `{ "error": { "code", "message", "details"? } }`.
 - **Levels.** Every level the API returns is the in-game display level, not the raw rarity-relative number
   from Supercell. The maximum is 16 for every rarity. The one exception is `raw` on a single battle, which
   is Supercell's JSON unchanged; ignore its levels.
+- **Card Boost.** Each season some cards are boosted to the King Tower level in every mode that uses the
+  player's cards, war included. Judge a deck's strength by `boostedLevel` when it is set, and say the card is
+  boosted and until when. Budget upgrades by the real `level`: the boost ends with its window. The app keeps
+  the schedule by hand, so if the user names boosted cards the data doesn't show, trust the user and tell
+  them the app's schedule needs updating.
 - **Upgrade costs.** Since the November 2025 economy update, every level from 1 to 16 costs copies plus
   gold, and the gold for a given level is the same for every rarity. Elite Wild Cards no longer exist, so
   never mention them. Take costs from the collection endpoint rather than from memory.

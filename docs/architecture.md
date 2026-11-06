@@ -42,7 +42,8 @@ src/
   http/                validate.ts (zod helpers), flash.ts, csrf.ts, currentPlayer.ts (header player switcher),
                        assets.ts (content-hashed /static URLs and their Cache-Control).
   domain/              collection.ts (collection entries, sortCollection), upgradeTable.ts (copies/gold, upgradableNow),
-                       deckUsage.ts (saved vs used vs equipped decks), context.ts (AI context markdown).
+                       deckUsage.ts (saved vs used vs equipped decks), context.ts (AI context markdown),
+                       boostedCards.ts (seasonal Card Boost schedule, kept by hand).
   routes/index.ts      registerRoutes(app): THE place routers are mounted.
   routes/cards.ts      GET /cards/:file, indexed card images only. Mounted in createApp before auth, not in registerRoutes.
   routes/api/*.ts      JSON routers, mounted under /api.
@@ -339,6 +340,11 @@ The scheduler is in-process, so run exactly one app instance per database.
 - **Dead fields**: `expLevel` has been frozen since XP was removed on 2026-05-26; show `kingTowerLevel`.
   `/upcomingchests` returns a fake legacy chest cycle (chests were removed 2025-03-31). Both
   `kingTowerLevel` and `collectionLevel` are missing from snapshots taken before that update.
+- **Card Boost**: each season some cards play at the King Tower level (from King Tower 7). The player endpoint
+  has no boost field and reports real levels, so `BOOST_SCHEDULE` in `src/domain/boostedCards.ts` lists the
+  windows by hand; add each new season's (and week's) boosted cards there. Collection entries carry
+  `boostedLevel`/`boostedUntil`; `level` and costs stay real. Battle logs seem to report the boosted level (an
+  opponent's Mirror showed 12 among 10–11 cards on 2026-11-03, one sample). Tests run with the schedule empty.
 - **Modes**: battle `type`s include `trail` and `unknown` (Royale Shuffle, Princess Gambit, 2v2 events), and
   `gameMode.name` is an internal id. Show `modeLabel`, never the raw values.
 
