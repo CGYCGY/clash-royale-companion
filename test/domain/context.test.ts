@@ -177,9 +177,9 @@ describe("renderContextMarkdown", () => {
     expect(md).toContain("| Giant | 13/16 (boosted to 15) |");
     // King Tower 15: a level-14 Knight is lifted; Mirror isn't owned, so it isn't listed.
     expect(md).toContain(
-      "Boosted this season: Knight 14 → 15 until 2026-12-07, Giant 13 → 15 until 2026-12-07, Hog Rider 14 → 15 until 2026-12-07.",
+      "Boosted now: Knight 14 → 15 until 2026-12-07, Giant 13 → 15 until 2026-12-07, Hog Rider 14 → 15 until 2026-12-07.",
     );
-    expect(md).not.toMatch(/Boosted this season:.*Mirror/);
+    expect(md).not.toMatch(/Boosted now:.*Mirror/);
   });
 
   test("snapshot time and age come from the last confirming sync", () => {

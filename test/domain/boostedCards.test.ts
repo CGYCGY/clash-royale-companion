@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { activeBoosts, BOOST_SCHEDULE, boostedLevel, type BoostWindow } from "../../src/domain/boostedCards";
+import {
+  activeBoosts,
+  BOOST_SCHEDULE,
+  boostedLevel,
+  type BoostWindow,
+  scheduleProblems,
+} from "../../src/domain/boostedCards";
 import { buildCollection, type CollectionEntry, projectAffordable } from "../../src/domain/collection";
 import type { PlayerCard } from "../../src/cr/types";
 
@@ -47,6 +53,32 @@ describe("activeBoosts", () => {
     const active = activeBoosts(new Date("2026-11-10T12:00:00Z"), schedule);
     expect(active.get("Giant")!.until).toBe("2026-12-07");
     expect(active.get("Hog Rider")).toEqual({ until: "2026-11-15", label: "Week 2" });
+    expect(activeBoosts(new Date("2026-11-16T00:00:00Z"), schedule).has("Hog Rider")).toBe(false);
+  });
+});
+
+describe("scheduleProblems", () => {
+  test("a well-formed schedule has none", () => {
+    expect(scheduleProblems([window(), window({ from: "2026-12-07" })])).toEqual([]);
+  });
+
+  test("flags dates that wouldn't compare correctly, reversed windows, and bad card lists", () => {
+    expect(
+      scheduleProblems([
+        window({ label: "a", from: "2026-11-9" }),
+        window({ label: "b", until: "2026-12-32" }),
+        window({ label: "c", from: "2026-12-08" }),
+        window({ label: "d", cards: [] }),
+        window({ label: "e", cards: ["Giant", " Mirror", "Giant"] }),
+      ]),
+    ).toEqual([
+      '"a": from "2026-11-9" is not a YYYY-MM-DD date',
+      '"b": until "2026-12-32" is not a YYYY-MM-DD date',
+      '"c": from 2026-12-08 is after until 2026-12-07',
+      '"d": no cards',
+      '"e": card name " Mirror" is blank or padded',
+      '"e": Giant listed twice',
+    ]);
   });
 });
 

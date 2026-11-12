@@ -209,7 +209,7 @@ function boostLines(entries: CollectionEntry[]): string[] {
     e.boostedLevel ? `${e.name} ${e.level} → ${e.boostedLevel}` : `${e.name} ${e.level} (already at or above King Tower level)`;
   return [
     "",
-    `Boosted this season: ${boosted.map((e) => `${card(e)} until ${e.boostedUntil}`).join(", ")}. ` +
+    `Boosted now: ${boosted.map((e) => `${card(e)} until ${e.boostedUntil}`).join(", ")}. ` +
       "Boosted cards play at the King Tower level in every mode that uses the player's cards; levels and costs below are real.",
   ];
 }
