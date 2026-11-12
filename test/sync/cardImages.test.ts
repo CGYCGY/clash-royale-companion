@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { refreshCardImageIndex, resolveCardIcon } from "../../src/cardImages";
+import { refreshCardImageIndex, resolveCardIcon, setOverrideDir } from "../../src/cardImages";
 import { config } from "../../src/config";
 import type { CardsResponse } from "../../src/cr/types";
 import { upsertCards } from "../../src/repos/cards";
@@ -22,23 +22,30 @@ const fakeFetch = (async (input: string | URL | Request) => {
 }) as typeof fetch;
 
 const originalDir = config.CARD_IMAGE_DIR;
+let originalOverrideDir: string;
 let dir: string;
+let overrides: string;
 
 beforeEach(() => {
   makeTestDb();
   seedCards();
-  // The fixture's Skeleton Army has no evo art; the live API ships one, which public/cards/ overrides.
+  // The fixture's Skeleton Army has no evo art, so inject one and override it to exercise the skip.
   const skarmy = loadFixture<CardsResponse>("cards").items.find((c) => c.id === 26000012)!;
   upsertCards([{ ...skarmy, iconUrls: { ...skarmy.iconUrls, evolutionMedium: SKARMY_EVO } }]);
   dir = mkdtempSync(join(tmpdir(), "cr-card-images-"));
+  overrides = mkdtempSync(join(tmpdir(), "cr-card-overrides-"));
+  writeFileSync(join(overrides, "26000012-evo.png"), "override");
   config.CARD_IMAGE_DIR = dir;
+  originalOverrideDir = setOverrideDir(overrides);
   refreshCardImageIndex();
 });
 
 afterEach(() => {
   config.CARD_IMAGE_DIR = originalDir;
+  setOverrideDir(originalOverrideDir);
   refreshCardImageIndex();
   rmSync(dir, { recursive: true, force: true });
+  rmSync(overrides, { recursive: true, force: true });
 });
 
 describe("syncCardImages", () => {

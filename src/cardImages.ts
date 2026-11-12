@@ -4,8 +4,9 @@ import { config } from "./config";
 
 /**
  * Card art comes from three places, first match wins:
- *   1. public/cards/            hand-picked overrides committed to the repo (Supercell's API ships the
- *                               base art for some evolutions, e.g. Skeleton Army), never refreshed
+ *   1. public/cards/            hand-picked overrides committed to the repo for art the API gets wrong
+ *                               (e.g. an evo URL serving base art, or a new form that 404s), never refreshed.
+ *                               Usually empty; delete an override once the official art is fixed.
  *   2. CARD_IMAGE_DIR           a local copy of the official art, refilled by syncCardImages
  *   3. iconUrls from the API    the live Supercell CDN, used until the cache has the file
  * Files are named by card id and form so renames in the API can't orphan them: 26000012.png,
@@ -13,7 +14,13 @@ import { config } from "./config";
  */
 export type CardForm = "base" | "evo" | "hero";
 
-export const OVERRIDE_DIR = join(import.meta.dir, "..", "public", "cards");
+let overrideDir = join(import.meta.dir, "..", "public", "cards");
+/** Tests point this at a temp dir so they don't depend on which overrides are committed. Returns the old dir. */
+export function setOverrideDir(dir: string): string {
+  const previous = overrideDir;
+  overrideDir = dir;
+  return previous;
+}
 export const cacheDir = (): string => config.CARD_IMAGE_DIR;
 
 export const cardImageFile = (id: number, form: CardForm): string => `${id}${form === "base" ? "" : `-${form}`}.png`;
@@ -46,7 +53,7 @@ function scan(dir: string, source: IndexedImage["source"]): void {
 /** Rescans both directories. Call at startup and after every cache refresh. */
 export function refreshCardImageIndex(): void {
   index = new Map<string, IndexedImage>();
-  scan(OVERRIDE_DIR, "override");
+  scan(overrideDir, "override");
   scan(cacheDir(), "cache");
 }
 

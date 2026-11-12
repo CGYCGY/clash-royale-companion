@@ -54,7 +54,7 @@ public/                Served at /static/* (app.css dark theme; app.js: copy but
                        spinner and cooldown countdown, player menu keyboard support, live filter forms, clickable
                        battle rows opening the detail in a <dialog>). Reference files with assetUrl("app.css"):
                        Cloudflare caches /static by URL, so only the ?v=<content hash> URL is sent as immutable.
-public/cards/          Card art overrides (<cardId>[-evo|-hero].png), served at /cards/, never refreshed.
+public/cards/          Card art overrides (<cardId>[-evo|-hero].png), served at /cards/, never refreshed. Usually absent.
 test/                  *.test.ts(x), helpers.ts, fixtures/{player,battlelog,battlelog-modes,cards,events}.json.
 ```
 

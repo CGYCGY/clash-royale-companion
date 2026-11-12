@@ -11,6 +11,7 @@ import {
   indexedImage,
   refreshCardImageIndex,
   resolveCardIcon,
+  setOverrideDir,
 } from "../src/cardImages";
 import { config } from "../src/config";
 import { getCardById } from "../src/repos/cards";
@@ -19,18 +20,25 @@ import { makeTestDb, seedCards } from "./helpers";
 
 const SKELETON_ARMY = 26000012;
 const originalDir = config.CARD_IMAGE_DIR;
+let originalOverrideDir: string;
 let tmp: string;
+let overrides: string;
 
 beforeEach(() => {
   tmp = mkdtempSync(join(tmpdir(), "card-images-"));
+  overrides = mkdtempSync(join(tmpdir(), "card-overrides-"));
+  writeFileSync(join(overrides, "26000012-evo.png"), "override-png");
   config.CARD_IMAGE_DIR = tmp;
+  originalOverrideDir = setOverrideDir(overrides);
   refreshCardImageIndex();
 });
 
 afterEach(() => {
   config.CARD_IMAGE_DIR = originalDir;
+  setOverrideDir(originalOverrideDir);
   refreshCardImageIndex();
   rmSync(tmp, { recursive: true, force: true });
+  rmSync(overrides, { recursive: true, force: true });
 });
 
 describe("cardImages", () => {
@@ -47,7 +55,7 @@ describe("cardImages", () => {
     expect(resolveCardIcon(SKELETON_ARMY, "hero", null)).toBeNull();
   });
 
-  test("hasOverride only reports public/cards files", () => {
+  test("hasOverride only reports files in the override dir", () => {
     writeFileSync(join(tmp, "26000000.png"), "png");
     refreshCardImageIndex();
     expect(hasOverride(SKELETON_ARMY, "evo")).toBe(true);
@@ -95,7 +103,7 @@ describe("GET /cards/:file", () => {
     expect(fresh.status).toBe(200);
     expect(fresh.headers.get("content-type")).toBe("image/png");
     expect(fresh.headers.get("cache-control")).toBe("public, max-age=31536000, immutable");
-    expect((await fresh.arrayBuffer()).byteLength).toBeGreaterThan(0);
+    expect(await fresh.text()).toBe("override-png");
 
     const bare = await app.request("/cards/26000012-evo.png");
     expect(bare.status).toBe(200);

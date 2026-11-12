@@ -273,10 +273,9 @@ briefly runs the old and new container together. That is harmless, because battl
 3. The official Supercell URL from the API.
 
 Files are named `<cardId>.png`, `<cardId>-evo.png` and `<cardId>-hero.png`. Card ids come from `GET /api/cards`.
-Because an override is never refreshed, it is how you pin art the API gets wrong. Shipped overrides:
-`26000012-evo.png` (the API serves the base art for the Skeleton Army evolution), `26000042-hero.png` and
-`26000085-evo.png` (Season 88's Hero Electro Wizard and Electro Giant evolution, whose official URLs 404 on
-Supercell's CDN as of 2026-10-09; delete them once Supercell uploads the assets).
+Because an override is never refreshed, it is how you pin art the API gets wrong, such as a new evo or hero
+whose official URL 404s before Supercell uploads it. None ship today. Delete an override once the official
+art is right, or it will keep shadowing it.
 
 **Admin tokens.** `bun run cli admin-token list` shows each token's id, name, prefix, creation time, last use,
 and revocation. Revoke one with `bun run cli admin-token revoke <id>`.
