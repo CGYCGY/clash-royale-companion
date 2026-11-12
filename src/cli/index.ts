@@ -8,6 +8,8 @@ import { config } from "../config";
 import { getCrClient } from "../cr/client";
 import { normalizeTag } from "../cr/tag";
 import { getDb, migrate } from "../db";
+import { BOOST_SCHEDULE } from "../domain/boostedCards";
+import { cardsMap } from "../repos/cards";
 import { getPlayer, listAllPlayers } from "../repos/players";
 import { syncAll, syncCardImages, syncPlayer } from "../sync";
 import { pruneSnapshots } from "../sync/retention";
@@ -33,6 +35,8 @@ Commands:
   sync images                               Re-download official card images into CARD_IMAGE_DIR
   snapshot prune                            Apply opt-in snapshot thinning (SNAPSHOT_KEEP_*; 0 = off)
   stats                                     Row counts per table and database file size
+  boost list                                Card Boost windows, which are active today, and card names
+                                            the synced catalog doesn't know
 
 Options:
   -h, --help                                Show this help
@@ -69,6 +73,28 @@ function printStats(): void {
   }
 }
 
+function printBoosts(): number {
+  const today = new Date().toISOString().slice(0, 10);
+  console.table(
+    BOOST_SCHEDULE.map((w) => ({
+      label: w.label,
+      from: w.from,
+      until: w.until,
+      status: today < w.from ? "upcoming" : today > w.until ? "ended" : "ACTIVE",
+      cards: w.cards.join(", "),
+    })),
+  );
+  const catalog = cardsMap();
+  if (!catalog.size) {
+    console.error("Card catalog is empty (no sync yet), so card names weren't checked.");
+    return 0;
+  }
+  // Boosts match collection cards by exact name, so a near-miss spelling silently boosts nothing.
+  const unknown = BOOST_SCHEDULE.flatMap((w) => w.cards.filter((n) => !catalog.has(n)).map((n) => `${w.label}: ${n}`));
+  if (!unknown.length) return 0;
+  console.error(`Not in the card catalog (check spelling and case):\n  ${unknown.join("\n  ")}`);
+  return 1;
+}
 
 async function main(argv: string[]): Promise<number> {
   const { values, positionals } = parseArgs({
@@ -234,6 +260,8 @@ async function main(argv: string[]): Promise<number> {
     case "stats":
       printStats();
       return 0;
+    case "boost list":
+      return printBoosts();
     default:
       console.error(`Unknown command: ${positionals.join(" ")}\n\n${USAGE}`);
       return 1;

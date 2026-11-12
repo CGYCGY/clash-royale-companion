@@ -43,7 +43,7 @@ src/
                        assets.ts (content-hashed /static URLs and their Cache-Control).
   domain/              collection.ts (collection entries, sortCollection), upgradeTable.ts (copies/gold, upgradableNow),
                        deckUsage.ts (saved vs used vs equipped decks), context.ts (AI context markdown),
-                       boostedCards.ts (seasonal Card Boost schedule, kept by hand).
+                       boostedCards.ts (Card Boost schedule, kept by hand).
   routes/index.ts      registerRoutes(app): THE place routers are mounted.
   routes/cards.ts      GET /cards/:file, indexed card images only. Mounted in createApp before auth, not in registerRoutes.
   routes/api/*.ts      JSON routers, mounted under /api.
@@ -342,7 +342,9 @@ The scheduler is in-process, so run exactly one app instance per database.
   `kingTowerLevel` and `collectionLevel` are missing from snapshots taken before that update.
 - **Card Boost**: each season some cards play at the King Tower level (from King Tower 7). The player endpoint
   has no boost field and reports real levels, so `BOOST_SCHEDULE` in `src/domain/boostedCards.ts` lists the
-  windows by hand; add each new season's (and week's) boosted cards there. Collection entries carry
+  windows by hand: one entry per window (season-long or a single event week), `from`/`until` inclusive UTC
+  dates. A malformed window throws at import, so tests and startup fail; `bun run cli boost list` shows each
+  window's status and flags card names the synced catalog doesn't know (names match exactly). Collection entries carry
   `boostedLevel`/`boostedUntil`; `level` and costs stay real. Battle logs seem to report the boosted level (an
   opponent's Mirror showed 12 among 10–11 cards on 2026-11-03, one sample). Tests run with the schedule empty.
 - **Modes**: battle `type`s include `trail` and `unknown` (Royale Shuffle, Princess Gambit, 2v2 events), and
